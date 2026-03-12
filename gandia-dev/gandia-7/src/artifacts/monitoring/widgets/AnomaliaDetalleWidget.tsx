@@ -1,5 +1,5 @@
 /**
- * AnomaliaDetalleWidget — Widget: anomalia:detalle
+ * AnomaliaDetalleWidget — REDISEÑO v2
  */
 import type { Anomalia } from './AnomaliaFeedWidget'
 
@@ -10,89 +10,116 @@ interface Props {
 }
 
 const SENALES: Record<string, string[]> = {
-  'Separación del hato':    ['Separación del hato', 'Postura caída', 'Movimiento reducido', 'Sin ingesta registrada'],
-  'Postura caída':          ['Postura caída', 'Sin movimiento > 20 min', 'Sin ingesta'],
-  'Movimiento reducido':    ['Movimiento reducido', 'Velocidad de desplazamiento baja'],
-  'Sin ingesta registrada': ['Sin acercamiento al comedero > 4h', 'Postura inactiva'],
-  'Temperatura elevada':    ['Temperatura estimada > 39.5°C', 'Jadeo', 'Búsqueda de sombra'],
+  'Separación del hato':    ['Separación del hato', 'Postura caída', 'Movimiento reducido', 'Sin ingesta'],
+  'Postura caída':          ['Postura caída', 'Sin movimiento >20min', 'Sin ingesta'],
+  'Movimiento reducido':    ['Movimiento reducido', 'Velocidad baja'],
+  'Sin ingesta registrada': ['Sin acercamiento >4h', 'Postura inactiva'],
+  'Temperatura elevada':    ['Temp. >39.5°C', 'Jadeo', 'Búsqueda de sombra'],
 }
 
 export default function AnomaliaDetalleWidget({ anomalia, onResolver, onClose }: Props) {
   const isAlta  = anomalia.severidad === 'alta'
+  const color   = isAlta ? '#E5484D' : '#F5A623'
   const senales = SENALES[anomalia.tipo] ?? [anomalia.tipo]
 
-  const sevCard   = isAlta ? 'border-red-200 dark:border-red-800/40 border-l-red-400'   : 'border-[#2FAF8F]/30 dark:border-[#2FAF8F]/20 border-l-[#2FAF8F]'
-  const sevBadge  = isAlta ? 'bg-red-50 dark:bg-red-950/30 text-red-700 dark:text-red-400 border-red-200 dark:border-red-800/40' : 'bg-[#2FAF8F]/10 dark:bg-[#2FAF8F]/20 text-[#2FAF8F] border-[#2FAF8F]/30'
-  const sevDot    = isAlta ? 'bg-red-400' : 'bg-[#2FAF8F]'
-  const sevTag    = isAlta ? 'bg-red-50 dark:bg-red-950/30 text-red-700 dark:text-red-400 border-red-200 dark:border-red-800/40' : 'bg-[#2FAF8F]/10 dark:bg-[#2FAF8F]/20 text-[#2FAF8F] border-[#2FAF8F]/30'
-
   return (
-    <div className={`bg-white dark:bg-[#1c1917] border border-l-[3px] rounded-[18px] overflow-hidden ${sevCard}`}>
+    <div style={{
+      background: '#171717',
+      border: '1px solid #252525',
+      borderLeft: `3px solid ${color}`,
+      borderRadius: 12, overflow: 'hidden',
+      fontFamily: 'system-ui, -apple-system, sans-serif',
+    }}>
       {/* Header */}
-      <div className="px-[18px] py-3.5 border-b border-stone-100 dark:border-stone-800/40 flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <span className={`w-2 h-2 rounded-full ${sevDot} ${!anomalia.resuelto ? 'animate-pulse' : ''}`} />
-          <p className="text-[13px] font-bold text-stone-700 dark:text-stone-200">{anomalia.tipo}</p>
+      <div style={{ padding: '12px 14px', borderBottom: '1px solid #202020', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <span style={{
+            width: 8, height: 8, borderRadius: '50%', background: color, flexShrink: 0,
+            animation: anomalia.resuelto ? 'none' : 'apulse 1.5s ease-in-out infinite',
+          }} />
+          <p style={{ fontSize: 13, fontWeight: 600, color: '#F0F0F0', margin: 0 }}>{anomalia.tipo}</p>
+          {/* Severidad: texto con color, sin fondo */}
+          <span style={{ fontSize: 11, color, fontWeight: 600 }}>· {anomalia.severidad}</span>
         </div>
-        <div className="flex items-center gap-2">
-          <span className={`text-[9px] font-bold px-2 py-0.5 rounded-md border uppercase tracking-[0.04em] ${sevBadge}`}>
-            ● {anomalia.severidad}
-          </span>
-          {onClose && (
-            <button onClick={onClose} className="w-[26px] h-[26px] flex items-center justify-center rounded-[7px] border border-stone-200/70 dark:border-stone-800/60 bg-white dark:bg-[#1c1917] text-stone-400 dark:text-stone-500 hover:text-stone-600 dark:hover:text-stone-300 transition-colors text-[13px]">✕</button>
-          )}
-        </div>
+        {onClose && (
+          <button onClick={onClose} style={{
+            width: 26, height: 26, borderRadius: 6,
+            background: '#222', border: '1px solid #2E2E2E',
+            color: '#666', cursor: 'pointer', fontSize: 11,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            transition: 'color 0.15s',
+          }}
+          onMouseEnter={e => { e.currentTarget.style.color = '#F0F0F0' }}
+          onMouseLeave={e => { e.currentTarget.style.color = '#666' }}>✕</button>
+        )}
       </div>
 
-      <div className="p-[16px_18px] flex flex-col gap-3.5">
-        {/* Animal info */}
-        <div className="flex items-center gap-3 bg-stone-50 dark:bg-[#141210] border border-stone-100 dark:border-stone-800/40 rounded-[12px] p-[12px_14px]">
-          <div className="w-11 h-11 rounded-[10px] overflow-hidden shrink-0 border border-stone-100 dark:border-stone-800/40">
-            <img src="https://images.unsplash.com/photo-1546445317-29f4545e9d53?q=80&w=200" alt="animal" className="w-full h-full object-cover grayscale-[20%]" />
+      <div style={{ padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+
+        {/* Animal */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: '#111', border: '1px solid #1E1E1E', borderRadius: 9, padding: '10px 12px' }}>
+          <div style={{ width: 42, height: 42, borderRadius: 8, overflow: 'hidden', flexShrink: 0, border: '1px solid #222', filter: 'grayscale(60%) brightness(0.65)' }}>
+            <img src="https://images.unsplash.com/photo-1546445317-29f4545e9d53?q=80&w=200" alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
           </div>
-          <div className="flex-1">
-            <p className="text-[13px] font-bold text-stone-700 dark:text-stone-200">Ejemplar {anomalia.animal}</p>
-            <p className="text-[11px] text-stone-400 dark:text-stone-500 mt-0.5">{anomalia.corral} · Detectado {anomalia.ts}</p>
+          <div>
+            <p style={{ fontSize: 12, fontWeight: 600, color: '#F0F0F0', margin: '0 0 2px', fontFamily: 'ui-monospace, monospace' }}>Ejemplar {anomalia.animal}</p>
+            <p style={{ fontSize: 10, color: '#555', margin: 0 }}>{anomalia.corral} · {anomalia.ts}</p>
           </div>
         </div>
 
         {/* Señales */}
         <div>
-          <p className="text-[10px] font-semibold text-stone-400 dark:text-stone-500 uppercase tracking-[0.05em] mb-2">Señales observadas</p>
-          <div className="flex flex-wrap gap-1.5">
+          <p style={{ fontSize: 10, fontWeight: 600, color: '#555', letterSpacing: '0.05em', textTransform: 'uppercase', margin: '0 0 8px' }}>Señales detectadas</p>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
             {senales.map((s, i) => (
-              <span key={i} className={`text-[11px] font-semibold px-2.5 py-1 rounded-[8px] border ${sevTag}`}>{s}</span>
+              /* Tags: border de color, fondo transparente */
+              <span key={i} style={{
+                fontSize: 11, fontWeight: 500,
+                background: 'transparent',
+                color: '#CCC',
+                border: `1px solid #333`,
+                borderRadius: 5,
+                padding: '4px 9px',
+              }}>{s}</span>
             ))}
           </div>
         </div>
 
         {/* Recomendación */}
-        <div className="bg-[#2FAF8F]/08 dark:bg-[#2FAF8F]/12 border border-[#2FAF8F]/30 rounded-[12px] p-[12px_14px]">
-          <p className="text-[10px] font-semibold text-[#2FAF8F] uppercase tracking-[0.04em] mb-1.5">Recomendación</p>
-          <p className="text-[12px] text-stone-600 dark:text-stone-300 leading-relaxed">
-            Revisión visual directa en los próximos 30 min. Si se confirma postración, contactar MVZ de guardia.
+        <div style={{ background: '#111', border: '1px solid #222', borderLeft: '2px solid #2FAF8F', borderRadius: 9, padding: '10px 12px' }}>
+          <p style={{ fontSize: 10, fontWeight: 600, color: '#2FAF8F', letterSpacing: '0.05em', textTransform: 'uppercase', margin: '0 0 5px' }}>Recomendación</p>
+          <p style={{ fontSize: 12, color: '#AAA', margin: '0 0 4px', lineHeight: 1.6 }}>
+            Revisión visual en los próximos 30 min. Si se confirma postración, contactar MVZ de guardia.
           </p>
-          <p className="text-[11px] text-[#2FAF8F] mt-1.5 italic">La IA alerta. El humano decide y actúa.</p>
+          <p style={{ fontSize: 11, color: '#2FAF8F', margin: 0, fontStyle: 'italic' }}>La IA alerta. El humano decide.</p>
         </div>
 
-        {/* Acciones */}
+        {/* CTA */}
         {!anomalia.resuelto && onResolver && (
-          <div className="flex justify-end">
-            <button onClick={() => onResolver(anomalia.id)} className="flex items-center gap-1.5 px-[18px] py-2 rounded-[10px] bg-[#2FAF8F] hover:bg-[#27a07f] text-white text-[12px] font-semibold transition-colors border-0 cursor-pointer">
-              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>
-              Marcar resuelta
-            </button>
-          </div>
+          <button onClick={() => onResolver(anomalia.id)} style={{
+            width: '100%', padding: '11px',
+            borderRadius: 9, background: '#2FAF8F', border: 'none',
+            color: 'white', fontSize: 12, fontWeight: 600,
+            cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7,
+            transition: 'opacity 0.15s',
+          }}
+          onMouseEnter={e => { e.currentTarget.style.opacity = '0.85' }}
+          onMouseLeave={e => { e.currentTarget.style.opacity = '1' }}>
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round">
+              <polyline points="20 6 9 17 4 12"/>
+            </svg>
+            Marcar como resuelta
+          </button>
         )}
 
         {anomalia.resuelto && (
-          <div className="flex items-center gap-1.5 justify-center py-2 bg-[#2FAF8F]/08 rounded-[10px]">
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7, padding: '10px', background: '#111', border: '1px solid #222', borderRadius: 9 }}>
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#2FAF8F" strokeWidth="2.5" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>
-            <span className="text-[12px] text-[#2FAF8F] font-semibold">Anomalía resuelta</span>
+            <span style={{ fontSize: 12, color: '#2FAF8F', fontWeight: 600 }}>Anomalía resuelta</span>
           </div>
         )}
       </div>
-      <style>{`@keyframes livePulse{0%,100%{opacity:1}50%{opacity:.4}}`}</style>
+      <style>{`@keyframes apulse{0%,100%{opacity:1}50%{opacity:0.3}}`}</style>
     </div>
   )
 }

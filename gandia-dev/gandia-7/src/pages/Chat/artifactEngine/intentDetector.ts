@@ -102,6 +102,22 @@ const EXTENDED_RULES: Array<{ keywords: string[]; widgetId: string; domain: Arti
   { keywords: ['historial verificacion', 'historial de verificacion', 'ya verificado', 'verificaciones anteriores'],                                               widgetId: 'verification:historial',     domain: 'verification',  level: 'widget' },
   { keywords: ['inconsistencias', 'inconsistencia', 'sin verificar', 'rechazado sin seguimiento', 'conflicto de datos'],                                           widgetId: 'verification:inconsistencias', domain: 'verification', level: 'widget' },
   { keywords: ['verificar', 'verificacion', 'verificación', 'confirmar accion', 'confirmar acción', 'revisar lo que hizo la ia', 'revisar acciones'],              widgetId: 'verification:cola',          domain: 'verification',  level: 'widget' },
+
+  // ── Vinculación ── máxima prioridad primero
+  { keywords: ['espacio gandia vinculacion', 'espacio vinculacion', 'abrir espacio vinculacion'],                                                                   widgetId: 'vinculacion:lista',      domain: 'vinculacion', level: 'anima'  },
+  { keywords: ['módulo vinculacion', 'modulo vinculacion', 'abrir módulo vinculacion', 'vinculacion completo', 'abrir vinculacion completo'],                        widgetId: 'vinculacion:lista',      domain: 'vinculacion', level: 'module' },
+  { keywords: ['aceptar vinculacion', 'rechazar vinculacion', 'solicitudes pendientes vinculacion', 'pendientes de vinculacion', 'vinculaciones pendientes'],        widgetId: 'vinculacion:pendientes', domain: 'vinculacion', level: 'widget' },
+  { keywords: ['nueva vinculacion', 'solicitar vinculacion', 'vincularme con', 'vincular con', 'agregar vinculacion', 'conectar con entidad'],                      widgetId: 'vinculacion:nueva',      domain: 'vinculacion', level: 'widget' },
+  { keywords: ['historial vinculacion', 'vinculaciones anteriores', 'vinculaciones revocadas', 'entidades revocadas'],                                              widgetId: 'vinculacion:historial',  domain: 'vinculacion', level: 'widget' },
+  { keywords: ['mis vinculaciones', 'ver vinculaciones', 'entidades vinculadas', 'quién tiene acceso', 'quien tiene acceso', 'accesos activos', 'vinculacion'],     widgetId: 'vinculacion:lista',      domain: 'vinculacion', level: 'widget' },
+
+  // ── Exportación ── máxima prioridad primero
+  { keywords: ['espacio gandia exportacion', 'espacio exportacion', 'abrir espacio exportacion', 'espacio de exportacion'],                                        widgetId: 'exportacion:solicitud', domain: 'exportacion', level: 'anima'  },
+  { keywords: ['módulo exportacion', 'modulo exportacion', 'abrir módulo exportacion', 'exportacion completo', 'abrir exportacion completo'],                      widgetId: 'exportacion:solicitud', domain: 'exportacion', level: 'module' },
+  { keywords: ['escanear aretes', 'escanear arete', 'scan arete', 'cámara aretes', 'camara aretes', 'leer arete'],                                                widgetId: 'exportacion:scanner',   domain: 'exportacion', level: 'widget' },
+  { keywords: ['validar aretes', 'validar solicitud', 'validar exportacion', 'verificar aretes', 'revisar duplicados', 'duplicados aretes', 'errores aretes'],     widgetId: 'exportacion:validacion', domain: 'exportacion', level: 'widget' },
+  { keywords: ['tabla de aretes', 'tabla aretes', 'llenar tabla', 'capturar aretes', 'lista de aretes', 'aretes capturados'],                                     widgetId: 'exportacion:tabla',     domain: 'exportacion', level: 'widget' },
+  { keywords: ['solicitud de aretes', 'solicitud aretes', 'nueva solicitud exportacion', 'aretes de exportacion', 'aretes de exportación', 'psg exportacion', 'psg exportación', 'exportar ganado', 'exportar bovinos', 'solicitud senasica aretes'], widgetId: 'exportacion:solicitud', domain: 'exportacion', level: 'widget' },
 ]
 
 export function detectIntent(text: string): DetectedIntent | null {

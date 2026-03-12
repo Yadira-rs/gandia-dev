@@ -1,7 +1,7 @@
 /**
- * CamaraListaWidget — Widget: camara:lista
+ * CamaraListaWidget — REDISEÑO v2
+ * UI: Negro real, sin verde en fondos, badges limpios
  */
-
 export interface Camara {
   id:         number
   label:      string
@@ -24,50 +24,92 @@ export default function CamaraListaWidget({ camaras, selectedId, onSelectCamara,
   const offline = camaras.length - online
 
   return (
-    <div className="flex flex-col h-full">
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', fontFamily: 'system-ui, -apple-system, sans-serif' }}>
+
       {/* Header */}
-      <div className="flex items-center justify-between mb-3">
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10, flexShrink: 0 }}>
         <div>
-          <p className="text-[12px] font-bold text-stone-700 dark:text-stone-200">Cámaras</p>
-          <p className="text-[10.5px] text-stone-400 dark:text-stone-500 mt-0.5">
-            <span className="text-[#2FAF8F] font-semibold">{online} online</span>
-            {offline > 0 && <span className="text-red-400"> · {offline} offline</span>}
-          </p>
+          <p style={{ fontSize: 13, fontWeight: 600, color: '#F0F0F0', margin: '0 0 3px' }}>Cámaras</p>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <span style={{ fontSize: 11, color: '#2FAF8F', fontWeight: 500, display: 'flex', alignItems: 'center', gap: 5 }}>
+              <span style={{ display: 'inline-block', width: 6, height: 6, borderRadius: '50%', background: '#2FAF8F', animation: 'dotPulse 2s ease-in-out infinite' }} />
+              {online} online
+            </span>
+            {offline > 0 && (
+              <span style={{ fontSize: 11, color: '#666' }}>{offline} offline</span>
+            )}
+          </div>
         </div>
         {onAgregar && (
-          <button onClick={onAgregar} className="w-7 h-7 flex items-center justify-center rounded-[8px] bg-[#2FAF8F] hover:bg-[#27a07f] text-white text-base font-light border-0 cursor-pointer transition-colors">+</button>
+          <button onClick={onAgregar} style={{
+            height: 30, padding: '0 12px', borderRadius: 7,
+            background: '#2FAF8F', border: 'none', color: 'white',
+            fontSize: 11, fontWeight: 600, cursor: 'pointer',
+            display: 'flex', alignItems: 'center', gap: 4, transition: 'opacity 0.15s',
+          }}
+          onMouseEnter={e => { e.currentTarget.style.opacity = '0.85' }}
+          onMouseLeave={e => { e.currentTarget.style.opacity = '1' }}>
+            <span style={{ fontSize: 16, lineHeight: 1, fontWeight: 300 }}>+</span>
+            Agregar
+          </button>
         )}
       </div>
 
-      {/* Lista */}
-      <div className="flex-1 flex flex-col gap-1.5 overflow-y-auto">
+      {/* List */}
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 4, overflowY: 'auto' }}>
         {camaras.map(cam => {
           const isSelected = cam.id === selectedId
-          const match      = cam.inventario > 0 ? Math.round(cam.detectados / cam.inventario * 100) : 0
           const isOnline   = cam.estado === 'online'
+          const match      = cam.inventario > 0 ? Math.round(cam.detectados / cam.inventario * 100) : 0
+          const matchColor = match === 100 ? '#2FAF8F' : match >= 90 ? '#F5A623' : '#E5484D'
+
           return (
-            <div
-              key={cam.id}
-              onClick={() => isOnline && onSelectCamara?.(cam)}
-              className={`rounded-[12px] px-3 py-2.5 border transition-all
-                ${isSelected ? 'bg-[#2FAF8F]/08 dark:bg-[#2FAF8F]/15 border-[#2FAF8F]/40' : 'bg-white dark:bg-[#1c1917] border-stone-200/70 dark:border-stone-800/60'}
-                ${isOnline ? 'cursor-pointer hover:bg-stone-50 dark:hover:bg-[#141210]' : 'opacity-50 cursor-default'}
-                ${isSelected && isOnline ? 'hover:bg-[#2FAF8F]/08 dark:hover:bg-[#2FAF8F]/15' : ''}`}
-            >
-              <div className="flex items-center justify-between mb-1">
-                <span className="text-[12px] font-bold text-stone-700 dark:text-stone-200">{cam.label}</span>
-                <span className={`text-[8px] font-bold px-1.5 py-0.5 rounded-[5px] uppercase tracking-[0.04em] ${isOnline ? 'bg-[#2FAF8F]/10 text-[#2FAF8F]' : 'bg-red-50 dark:bg-red-950/30 text-red-500'}`}>
-                  {cam.estado}
+            <div key={cam.id} onClick={() => isOnline && onSelectCamara?.(cam)} style={{
+              borderRadius: 9, padding: '10px 12px',
+              border: isSelected ? '1px solid #2FAF8F' : '1px solid #252525',
+              background: isSelected ? 'rgba(47,175,143,0.04)' : '#171717',
+              cursor: isOnline ? 'pointer' : 'default',
+              opacity: isOnline ? 1 : 0.4,
+              transition: 'border-color 0.15s, background 0.15s',
+            }}
+            onMouseEnter={e => { if (isOnline && !isSelected) { e.currentTarget.style.borderColor = '#333'; e.currentTarget.style.background = '#1C1C1C' } }}
+            onMouseLeave={e => { if (!isSelected) { e.currentTarget.style.borderColor = '#252525'; e.currentTarget.style.background = '#171717' } }}>
+
+              {/* Top row */}
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: isOnline ? 5 : 0 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none"
+                    stroke={isOnline ? '#2FAF8F' : '#444'} strokeWidth="2" strokeLinecap="round">
+                    <path d="M23 7l-7 5 7 5V7z"/><rect x="1" y="5" width="15" height="14" rx="2"/>
+                  </svg>
+                  <span style={{ fontSize: 12, fontWeight: 600, color: '#F0F0F0', fontFamily: 'ui-monospace, monospace' }}>
+                    {cam.label}
+                  </span>
+                </div>
+                {/* Status badge: solo dot + texto sin fondo de color */}
+                <span style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 10, color: isOnline ? '#2FAF8F' : '#555' }}>
+                  <span style={{ width: 5, height: 5, borderRadius: '50%', background: isOnline ? '#2FAF8F' : '#444', animation: isOnline ? 'dotPulse 2s ease-in-out infinite' : 'none' }} />
+                  {isOnline ? 'Online' : 'Offline'}
                 </span>
               </div>
-              <p className="text-[10.5px] text-stone-400 dark:text-stone-500">Corral {cam.corral}</p>
+
+              <p style={{ fontSize: 11, color: '#555', margin: isOnline ? '0 0 7px' : '1px 0 0' }}>{cam.corral}</p>
+
               {isOnline && (
-                <p className="text-[10.5px] text-[#2FAF8F] mt-0.5">{cam.detectados} det. · {match}% · {cam.fps}fps</p>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <div style={{ flex: 1, height: 2, background: '#2A2A2A', borderRadius: 2, overflow: 'hidden' }}>
+                    <div style={{ height: '100%', width: `${match}%`, background: matchColor, borderRadius: 2, transition: 'width 1s ease' }} />
+                  </div>
+                  <span style={{ fontSize: 11, fontWeight: 600, color: matchColor, fontFamily: 'ui-monospace, monospace', flexShrink: 0 }}>
+                    {cam.detectados} · {match}%
+                  </span>
+                </div>
               )}
             </div>
           )
         })}
       </div>
+      <style>{`@keyframes dotPulse{0%,100%{opacity:1}50%{opacity:0.3}}`}</style>
     </div>
   )
 }

@@ -1,306 +1,354 @@
 /**
- * FichaNuevoWidget — Widget: passport:nuevo
+ * FichaNuevoWidget — Registro real de animal a Supabase
+ * 
  * ARCHIVO → src/artifacts/passport/widgets/FichaNuevoWidget.tsx
- *
- * Registro de nueva ficha ganadera.
- * Filosofía Gandia: flujo por pasos, no formulario extenso.
- * 3 pasos → resumen → confirmar.
- * UX de campo: controles grandes, un campo por foco, validación clara.
+ * 
+ * CAMBIOS vs versión mock:
+ *   - Llama a registrarAnimal() que invoca la Edge Function generate-mrz
+ *   - Muestra el QR del MRZ generado tras registrar exitosamente
+ *   - Validación de SINIIGA formato mexicano
  */
-import { useState } from 'react'
 
-interface FormData {
-  // Paso 1 — Identidad
-  arete:     string
-  rfid:      string
-  siniiga:   string
-  // Paso 2 — Animal
-  nombre:    string
-  raza:      string
-  sexo:      'M' | 'H' | ''
-  nacimiento:string
-  peso:      string
-  // Paso 3 — Propiedad
-  upp:       string
-  propietario: string
-  lote:      string
-}
+import { useState } from 'react'
+import { useUser } from '../../../context/UserContext'
+import { registrarAnimal, dbToPassportData, useRanchoId, getAuthUserId, type NuevoAnimalInput, type AnimalDB } from '../../../hooks/useAnimales'
+import FichaCard from './FichaCard'
+
+// ─── PROPS ────────────────────────────────────────────────────────────────────
 
 interface Props {
-  onGuardar?: (data: FormData) => void
-  onCancelar?: () => void
+  onCancelar: () => void
+  onGuardar:  () => void
 }
 
-const PASO_INFO = [
-  { num: 1, label: 'Identificación',  desc: 'Aretes y registros oficiales' },
-  { num: 2, label: 'Animal',          desc: 'Raza, sexo y datos físicos'   },
-  { num: 3, label: 'Propiedad',       desc: 'UPP, propietario y lote'      },
+// ─── CONSTANTES ───────────────────────────────────────────────────────────────
+
+const ESTADOS_MX = [
+  { code: 'AGS', label: 'Aguascalientes' }, { code: 'BC',  label: 'Baja California' },
+  { code: 'BCS', label: 'Baja California Sur' }, { code: 'CAM', label: 'Campeche' },
+  { code: 'CHI', label: 'Chihuahua' }, { code: 'CHS', label: 'Chiapas' },
+  { code: 'COA', label: 'Coahuila' }, { code: 'COL', label: 'Colima' },
+  { code: 'DGO', label: 'Durango' }, { code: 'GRO', label: 'Guerrero' },
+  { code: 'GTO', label: 'Guanajuato' }, { code: 'HGO', label: 'Hidalgo' },
+  { code: 'JAL', label: 'Jalisco' }, { code: 'MEX', label: 'Estado de México' },
+  { code: 'MCH', label: 'Michoacán' }, { code: 'MOR', label: 'Morelos' },
+  { code: 'NAY', label: 'Nayarit' }, { code: 'NL',  label: 'Nuevo León' },
+  { code: 'OAX', label: 'Oaxaca' }, { code: 'PUE', label: 'Puebla' },
+  { code: 'QRO', label: 'Querétaro' }, { code: 'QR',  label: 'Quintana Roo' },
+  { code: 'SLP', label: 'San Luis Potosí' }, { code: 'SIN', label: 'Sinaloa' },
+  { code: 'SON', label: 'Sonora' }, { code: 'TAB', label: 'Tabasco' },
+  { code: 'TAM', label: 'Tamaulipas' }, { code: 'TLX', label: 'Tlaxcala' },
+  { code: 'VER', label: 'Veracruz' }, { code: 'YUC', label: 'Yucatán' },
+  { code: 'ZAC', label: 'Zacatecas' }, { code: 'CMX', label: 'CDMX' },
 ]
 
-const RAZAS = ['Angus', 'Brahman', 'Charolais', 'Hereford', 'Limousin', 'Simmental', 'Suizo', 'Sardo Negro', 'Otra']
+const RAZAS_BOVINAS = [
+  'Angus', 'Brahman', 'Brangus', 'Charolais', 'Hereford', 'Limousin',
+  'Salers', 'Simmental', 'Suizo Europeo', 'Suizo Americano',
+  'Charolais × Suizo', 'Simmental × Brahman', 'Otra',
+]
 
-const inputCls = "w-full h-11 px-3.5 rounded-[10px] border border-stone-200/70 dark:border-stone-800/60 bg-stone-50 dark:bg-[#141210] text-[13px] text-stone-700 dark:text-stone-200 placeholder:text-stone-400 dark:placeholder:text-stone-500 outline-none focus:border-[#2FAF8F]/60 focus:ring-2 focus:ring-[#2FAF8F]/08 transition-all"
-const labelCls = "text-[11.5px] font-semibold text-stone-500 dark:text-stone-400 uppercase tracking-[0.05em] mb-1.5 block"
+// ─── WIDGET ───────────────────────────────────────────────────────────────────
 
-function FieldGroup({ label, children }: { label: string; children: React.ReactNode }) {
+export default function FichaNuevoWidget({ onCancelar, onGuardar }: Props) {
+  const { profile } = useUser()
+  const userId   = profile?.user_id ?? null
+  const { ranchoId } = useRanchoId(userId)
+  const pd          = (profile?.personal_data as Record<string, string> | null) ?? {}
+  const propietario = pd.fullName ?? pd.full_name ?? pd.nombre_completo ?? pd.nombre ?? '—'
+
+  const [form, setForm] = useState<NuevoAnimalInput>({
+    siniiga:          '',
+    rfid:             '',
+    nombre:           '',
+    raza:             '',
+    especie:          'bovino',
+    sexo:             'hembra',
+    fecha_nacimiento: '',
+    peso_kg:          undefined,
+    upp:              '',
+    estado_mx:        'NL',
+    municipio:        '',
+  })
+
+  const [loading,      setLoading]      = useState(false)
+  const [error,        setError]        = useState<string | null>(null)
+  const [animalCreado, setAnimalCreado] = useState<AnimalDB | null>(null)
+
+  // ── Validación de SINIIGA ─────────────────────────────────────────────────
+  const siniigaValido = (s: string) => {
+    // SINIIGA México: formato MX-XX-YYYY-NNNNNN o 15 dígitos numéricos
+    const conGuiones = /^MX-[A-Z]{2,3}-\d{4}-\d{4,6}$/i
+    const numerico   = /^\d{15}$/
+    return conGuiones.test(s.trim()) || numerico.test(s.trim())
+  }
+
+  // ── Handlers ─────────────────────────────────────────────────────────────
+
+  const set = (field: keyof NuevoAnimalInput, value: NuevoAnimalInput[keyof NuevoAnimalInput]) =>
+    setForm(prev => ({ ...prev, [field]: value }))
+
+  const handleSubmit = async () => {
+    const authUserId = await getAuthUserId()
+    if (!authUserId || !ranchoId) {
+      setError('Sin sesión o rancho activo. Recarga la página.')
+      return
+    }
+
+    // Validaciones básicas
+    if (!form.siniiga.trim())      return setError('El SINIIGA es obligatorio')
+    if (!siniigaValido(form.siniiga)) return setError('Formato SINIIGA inválido (ej: MX-NL-2024-000142)')
+    if (!form.raza)                return setError('Selecciona una raza')
+    if (!form.fecha_nacimiento)    return setError('La fecha de nacimiento es obligatoria')
+    if (!form.estado_mx)           return setError('Selecciona el estado')
+
+    setLoading(true)
+    setError(null)
+
+    const { animal, error: err } = await registrarAnimal(
+      {
+        ...form,
+        rfid:    form.rfid    || undefined,
+        nombre:  form.nombre  || undefined,
+        upp:     form.upp     || undefined,
+        municipio: form.municipio || undefined,
+      },
+      ranchoId,
+      authUserId
+    )
+
+    setLoading(false)
+
+    if (err) {
+      setError(err)
+      return
+    }
+
+    setAnimalCreado(animal)
+  }
+
+  // ── Si ya se registró, mostrar FichaCard con el QR ───────────────────────
+  if (animalCreado) {
+    return (
+      <div className="flex flex-col gap-4">
+        <div className="flex items-center gap-2.5 p-3 rounded-[10px] bg-[#2FAF8F]/08 dark:bg-[#2FAF8F]/10 border border-[#2FAF8F]/20">
+          <svg className="w-4 h-4 text-[#2FAF8F] shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+            <polyline points="20 6 9 17 4 12"/>
+          </svg>
+          <div>
+            <p className="text-[12.5px] font-semibold text-stone-700 dark:text-stone-200">
+              Animal registrado exitosamente
+            </p>
+            <p className="text-[11px] text-stone-400 dark:text-stone-500">
+              El MRZ y QR han sido generados y guardados de forma permanente
+            </p>
+          </div>
+        </div>
+
+        <FichaCard data={dbToPassportData(animalCreado, propietario)} />
+
+        <div className="flex gap-2 mt-2">
+          <button
+            onClick={onGuardar}
+            className="flex-1 py-2.5 rounded-[10px] bg-[#2FAF8F] text-white text-[12px] font-semibold hover:bg-[#27a07f] transition-colors border-0 cursor-pointer"
+          >
+            Ver todos los animales
+          </button>
+        </div>
+      </div>
+    )
+  }
+
+  // ── Formulario ───────────────────────────────────────────────────────────
   return (
-    <div className="flex flex-col">
-      <label className={labelCls}>{label}</label>
-      {children}
+    <div className="flex flex-col gap-5">
+
+      <div>
+        <p className="text-[13px] font-semibold text-stone-700 dark:text-stone-200">Registrar animal</p>
+        <p className="text-[11px] text-stone-400 dark:text-stone-500 mt-0.5">
+          El MRZ y código QR se generan automáticamente al guardar.
+        </p>
+      </div>
+
+      {/* ── Sección: Identificación ── */}
+      <Section label="Identificación">
+        <Field label="SINIIGA *" hint="ej: MX-NL-2024-000142">
+          <input
+            type="text"
+            placeholder="MX-NL-2024-000142"
+            value={form.siniiga}
+            onChange={e => set('siniiga', e.target.value.trim())}
+            className={inputClass}
+          />
+        </Field>
+        <Field label="RFID (transponder)" hint="15 dígitos del chip">
+          <input
+            type="text"
+            placeholder="900115000234821"
+            value={form.rfid}
+            onChange={e => set('rfid', e.target.value)}
+            className={inputClass}
+          />
+        </Field>
+        <Field label="Nombre del animal" hint="opcional">
+          <input
+            type="text"
+            placeholder="Lupita"
+            value={form.nombre}
+            onChange={e => set('nombre', e.target.value)}
+            className={inputClass}
+          />
+        </Field>
+      </Section>
+
+      {/* ── Sección: Características ── */}
+      <Section label="Características">
+        <Field label="Raza *">
+          <select value={form.raza} onChange={e => set('raza', e.target.value)} className={inputClass}>
+            <option value="">Seleccionar…</option>
+            {RAZAS_BOVINAS.map(r => <option key={r} value={r}>{r}</option>)}
+          </select>
+        </Field>
+        <Field label="Sexo *">
+          <div className="flex gap-2">
+            {(['hembra', 'macho'] as const).map(s => (
+              <button
+                key={s}
+                type="button"
+                onClick={() => set('sexo', s)}
+                className={`flex-1 py-2 rounded-[8px] text-[11.5px] font-medium border transition-all cursor-pointer ${
+                  form.sexo === s
+                    ? 'bg-[#2FAF8F] text-white border-[#2FAF8F]'
+                    : 'bg-transparent text-stone-500 dark:text-stone-400 border-stone-200/70 dark:border-stone-800 hover:border-stone-300 dark:hover:border-stone-700'
+                }`}
+              >
+                {s === 'hembra' ? 'Hembra' : 'Macho'}
+              </button>
+            ))}
+          </div>
+        </Field>
+        <Field label="Fecha de nacimiento *">
+          <input
+            type="date"
+            value={form.fecha_nacimiento}
+            onChange={e => set('fecha_nacimiento', e.target.value)}
+            className={inputClass}
+          />
+        </Field>
+        <Field label="Peso inicial (kg)" hint="opcional">
+          <input
+            type="number"
+            placeholder="485"
+            min={0}
+            max={2000}
+            value={form.peso_kg ?? ''}
+            onChange={e => set('peso_kg', e.target.value ? Number(e.target.value) : undefined)}
+            className={inputClass}
+          />
+        </Field>
+      </Section>
+
+      {/* ── Sección: Ubicación ── */}
+      <Section label="Ubicación y UPP">
+        <Field label="Estado *">
+          <select value={form.estado_mx} onChange={e => set('estado_mx', e.target.value)} className={inputClass}>
+            {ESTADOS_MX.map(e => (
+              <option key={e.code} value={e.code}>{e.label}</option>
+            ))}
+          </select>
+        </Field>
+        <Field label="Municipio" hint="opcional">
+          <input
+            type="text"
+            placeholder="Nombre del municipio"
+            value={form.municipio}
+            onChange={e => set('municipio', e.target.value)}
+            className={inputClass}
+          />
+        </Field>
+        <Field label="UPP (Unidad de Producción Pecuaria)" hint="opcional">
+          <input
+            type="text"
+            placeholder="UPP Rancho Morales"
+            value={form.upp}
+            onChange={e => set('upp', e.target.value)}
+            className={inputClass}
+          />
+        </Field>
+      </Section>
+
+      {/* ── Error ── */}
+      {error && (
+        <div className="flex items-center gap-2 p-3 rounded-[10px] bg-red-50 dark:bg-red-950/30 border border-red-200/70 dark:border-red-900/50">
+          <svg className="w-3.5 h-3.5 text-red-500 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+            <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+          </svg>
+          <p className="text-[11.5px] text-red-600 dark:text-red-400">{error}</p>
+        </div>
+      )}
+
+      {/* ── Botones ── */}
+      <div className="flex gap-2 pt-1">
+        <button
+          onClick={onCancelar}
+          disabled={loading}
+          className="flex-1 py-2.5 rounded-[10px] border border-stone-200/70 dark:border-stone-800 text-[12px] text-stone-500 dark:text-stone-400 hover:text-stone-700 dark:hover:text-stone-200 transition-colors bg-transparent cursor-pointer disabled:opacity-50"
+        >
+          Cancelar
+        </button>
+        <button
+          onClick={handleSubmit}
+          disabled={loading}
+          className="flex-1 py-2.5 rounded-[10px] bg-[#2FAF8F] text-white text-[12px] font-semibold hover:bg-[#27a07f] transition-colors border-0 cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+        >
+          {loading ? (
+            <>
+              <div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+              Generando MRZ…
+            </>
+          ) : (
+            'Registrar y generar QR'
+          )}
+        </button>
+      </div>
     </div>
   )
 }
 
-export default function FichaNuevoWidget({ onGuardar, onCancelar }: Props) {
-  const [paso, setPaso] = useState(1)
-  const [saved, setSaved] = useState(false)
-  const [form, setForm] = useState<FormData>({
-    arete: '', rfid: '', siniiga: '',
-    nombre: '', raza: '', sexo: '', nacimiento: '', peso: '',
-    upp: '', propietario: '', lote: '',
-  })
+// ─── HELPERS DE DISEÑO ────────────────────────────────────────────────────────
 
-  const set = (k: keyof FormData, v: string) => setForm(f => ({ ...f, [k]: v }))
+const inputClass = `
+  w-full px-3 py-2 text-[12px]
+  bg-stone-50 dark:bg-stone-800/60
+  border border-stone-200/70 dark:border-stone-800
+  rounded-[8px]
+  text-stone-700 dark:text-stone-200
+  placeholder-stone-300 dark:placeholder-stone-600
+  outline-none focus:border-[#2FAF8F]/50
+  transition-colors
+`.trim().replace(/\s+/g, ' ')
 
-  // Validación por paso
-  const valid1 = form.arete.trim().length > 0
-  const valid2 = form.raza && form.sexo && form.nacimiento
-  const valid3 = form.upp.trim().length > 0 && form.propietario.trim().length > 0
-
-  const canNext = paso === 1 ? valid1 : paso === 2 ? valid2 : paso === 3 ? valid3 : false
-
-  const handleGuardar = () => {
-    setSaved(true)
-    setTimeout(() => { onGuardar?.(form); setSaved(false) }, 1200)
-  }
-
-  // ── Resumen para paso 4
-  const RESUMEN = [
-    { k: 'Arete',       v: form.arete      || '—' },
-    { k: 'RFID',        v: form.rfid       || '—' },
-    { k: 'SINIIGA',     v: form.siniiga    || '—' },
-    { k: 'Nombre',      v: form.nombre     || '—' },
-    { k: 'Raza',        v: form.raza       || '—' },
-    { k: 'Sexo',        v: form.sexo === 'M' ? 'Macho' : form.sexo === 'H' ? 'Hembra' : '—' },
-    { k: 'Nacimiento',  v: form.nacimiento || '—' },
-    { k: 'Peso aprox.', v: form.peso ? `${form.peso} kg` : '—' },
-    { k: 'UPP',         v: form.upp        || '—' },
-    { k: 'Propietario', v: form.propietario || '—' },
-    { k: 'Lote',        v: form.lote       || '—' },
-  ]
-
+function Section({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <div className="flex flex-col gap-4">
-
-      {/* ── Header ── */}
-      <div className="flex items-center justify-between">
-        <div>
-          <p className="text-[14px] font-bold text-stone-800 dark:text-stone-100 leading-tight">Nueva Ficha Ganadera</p>
-          <p className="text-[11.5px] text-stone-400 dark:text-stone-500 mt-0.5">Registro de animal en la UPP</p>
-        </div>
-        {onCancelar && (
-          <button onClick={onCancelar} className="text-[11.5px] text-stone-400 hover:text-stone-600 transition-colors cursor-pointer border-0 bg-transparent p-0">
-            Cancelar
-          </button>
-        )}
+    <div className="flex flex-col gap-3">
+      <p className="text-[10.5px] font-semibold text-stone-400 dark:text-stone-500 uppercase tracking-wider">
+        {label}
+      </p>
+      <div className="flex flex-col gap-2.5">
+        {children}
       </div>
+    </div>
+  )
+}
 
-      {/* ── Stepper ── */}
-      <div className="flex items-center gap-0">
-        {PASO_INFO.map((p, i) => {
-          const done   = paso > p.num
-          const active = paso === p.num
-          return (
-            <div key={p.num} className="flex items-center flex-1 last:flex-none">
-              <div className="flex flex-col items-center gap-1">
-                <div className={`w-8 h-8 rounded-full flex items-center justify-center text-[12.5px] font-bold transition-all duration-200 ${
-                  done   ? 'bg-[#2FAF8F] text-white' :
-                  active ? 'bg-stone-800 dark:bg-stone-100 text-white dark:text-stone-800' :
-                  'bg-stone-100 dark:bg-stone-800/60 text-stone-400 dark:text-stone-500'
-                }`}>
-                  {done
-                    ? <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>
-                    : p.num
-                  }
-                </div>
-                <span className={`text-[9.5px] font-semibold text-center leading-tight ${
-                  active ? 'text-stone-700 dark:text-stone-200' : 'text-stone-400 dark:text-stone-500'
-                }`}>{p.label}</span>
-              </div>
-              {i < PASO_INFO.length - 1 && (
-                <div className={`flex-1 h-px mx-1 mb-4 ${
-                  paso > p.num ? 'bg-[#2FAF8F]' : 'bg-stone-200 dark:bg-stone-700/60'
-                }`} />
-              )}
-            </div>
-          )
-        })}
+function Field({ label, hint, children }: { label: string; hint?: string; children: React.ReactNode }) {
+  return (
+    <div className="flex flex-col gap-1">
+      <div className="flex items-baseline gap-1.5">
+        <label className="text-[11px] font-medium text-stone-500 dark:text-stone-400">{label}</label>
+        {hint && <span className="text-[10px] text-stone-300 dark:text-stone-600">{hint}</span>}
       </div>
-
-      {/* ── Contenido por paso ── */}
-      <div className="bg-white dark:bg-[#1c1917] border border-stone-200/70 dark:border-stone-800/60 rounded-[14px] overflow-hidden">
-        <div className="px-5 py-4 border-b border-stone-100 dark:border-stone-800/40">
-          <p className="text-[12px] font-semibold text-stone-700 dark:text-stone-200">
-            {paso <= 3 ? `Paso ${paso} · ${PASO_INFO[paso - 1].desc}` : 'Resumen · Confirmar registro'}
-          </p>
-        </div>
-
-        <div className="px-5 py-5 flex flex-col gap-4">
-
-          {/* ── PASO 1: Identidad ── */}
-          {paso === 1 && (
-            <>
-              <FieldGroup label="Arete *">
-                <input
-                  autoFocus
-                  value={form.arete}
-                  onChange={e => set('arete', e.target.value)}
-                  placeholder="Ej. #0142"
-                  className={inputCls}
-                />
-              </FieldGroup>
-              <div className="grid grid-cols-2 gap-3">
-                <FieldGroup label="RFID (chip)">
-                  <input value={form.rfid} onChange={e => set('rfid', e.target.value)} placeholder="900xxxxxxxxxxxx" className={inputCls} />
-                </FieldGroup>
-                <FieldGroup label="SINIIGA">
-                  <input value={form.siniiga} onChange={e => set('siniiga', e.target.value)} placeholder="MX…" className={inputCls} />
-                </FieldGroup>
-              </div>
-              <p className="text-[11.5px] text-stone-400 dark:text-stone-500 leading-relaxed">
-                El arete es el único campo obligatorio. RFID y SINIIGA pueden agregarse después.
-              </p>
-            </>
-          )}
-
-          {/* ── PASO 2: Animal ── */}
-          {paso === 2 && (
-            <>
-              <FieldGroup label="Nombre del animal">
-                <input autoFocus value={form.nombre} onChange={e => set('nombre', e.target.value)} placeholder="Ej. Lupita" className={inputCls} />
-              </FieldGroup>
-              <FieldGroup label="Raza *">
-                <select value={form.raza} onChange={e => set('raza', e.target.value)} className={inputCls + ' cursor-pointer'}>
-                  <option value="">Seleccionar raza…</option>
-                  {RAZAS.map(r => <option key={r} value={r}>{r}</option>)}
-                </select>
-              </FieldGroup>
-              <FieldGroup label="Sexo *">
-                <div className="flex gap-2">
-                  {([['M', 'Macho'], ['H', 'Hembra']] as const).map(([val, lbl]) => (
-                    <button
-                      key={val}
-                      onClick={() => set('sexo', val)}
-                      className={`flex-1 h-11 rounded-[10px] border text-[13px] font-semibold cursor-pointer transition-all ${
-                        form.sexo === val
-                          ? 'border-[#2FAF8F]/50 bg-[#2FAF8F]/08 dark:bg-[#2FAF8F]/15 text-[#2FAF8F]'
-                          : 'border-stone-200/70 dark:border-stone-800/60 bg-stone-50 dark:bg-[#141210] text-stone-500 dark:text-stone-400'
-                      }`}
-                    >
-                      {lbl}
-                    </button>
-                  ))}
-                </div>
-              </FieldGroup>
-              <div className="grid grid-cols-2 gap-3">
-                <FieldGroup label="Fecha de nacimiento *">
-                  <input
-                    type="date"
-                    value={form.nacimiento}
-                    onChange={e => set('nacimiento', e.target.value)}
-                    className={inputCls}
-                  />
-                </FieldGroup>
-                <FieldGroup label="Peso aprox. (kg)">
-                  <input
-                    type="number"
-                    value={form.peso}
-                    onChange={e => set('peso', e.target.value)}
-                    placeholder="Ej. 480"
-                    className={inputCls}
-                  />
-                </FieldGroup>
-              </div>
-            </>
-          )}
-
-          {/* ── PASO 3: Propiedad ── */}
-          {paso === 3 && (
-            <>
-              <FieldGroup label="UPP / Rancho *">
-                <input autoFocus value={form.upp} onChange={e => set('upp', e.target.value)} placeholder="Ej. UPP Rancho Morales" className={inputCls} />
-              </FieldGroup>
-              <FieldGroup label="Propietario *">
-                <input value={form.propietario} onChange={e => set('propietario', e.target.value)} placeholder="Nombre completo" className={inputCls} />
-              </FieldGroup>
-              <FieldGroup label="Lote / Corral">
-                <input value={form.lote} onChange={e => set('lote', e.target.value)} placeholder="Ej. A1 o C-03" className={inputCls} />
-              </FieldGroup>
-            </>
-          )}
-
-          {/* ── PASO 4: Resumen ── */}
-          {paso === 4 && (
-            <div className="flex flex-col gap-0 divide-y divide-stone-100 dark:divide-stone-800/40">
-              {RESUMEN.map(({ k, v }) => (
-                <div key={k} className="flex justify-between py-2.5">
-                  <span className="text-[12px] text-stone-400 dark:text-stone-500">{k}</span>
-                  <span className={`text-[12.5px] font-semibold text-right ${v === '—' ? 'text-stone-300 dark:text-stone-600' : 'text-stone-700 dark:text-stone-200'}`}>{v}</span>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* ── Navegación ── */}
-      <div className="flex gap-2">
-        {paso > 1 && (
-          <button
-            onClick={() => setPaso(p => p - 1)}
-            className="h-11 px-5 rounded-[10px] border border-stone-200/70 dark:border-stone-800/60 bg-white dark:bg-[#1c1917] text-[13px] text-stone-500 dark:text-stone-400 cursor-pointer hover:text-stone-700 dark:hover:text-stone-200 transition-colors"
-          >
-            ← Anterior
-          </button>
-        )}
-
-        {paso < 4 ? (
-          <button
-            onClick={() => setPaso(p => p + 1)}
-            disabled={!canNext && paso < 4}
-            className={`flex-1 h-11 rounded-[10px] text-[13px] font-semibold transition-all ${
-              canNext || paso === 4
-                ? 'bg-[#2FAF8F] hover:bg-[#27a07f] text-white cursor-pointer active:scale-[0.98] border-0'
-                : 'bg-stone-100 dark:bg-stone-800/50 text-stone-400 dark:text-stone-500 cursor-default border border-stone-200/70 dark:border-stone-800/60'
-            }`}
-          >
-            {paso === 3 ? 'Revisar resumen →' : 'Siguiente →'}
-          </button>
-        ) : (
-          <button
-            onClick={handleGuardar}
-            disabled={saved}
-            className={`flex-1 h-11 rounded-[10px] text-[13px] font-semibold border-0 cursor-pointer transition-all flex items-center justify-center gap-2 active:scale-[0.98] ${
-              saved
-                ? 'bg-[#2FAF8F] text-white opacity-80'
-                : 'bg-[#2FAF8F] hover:bg-[#27a07f] text-white shadow-[0_2px_14px_rgba(47,175,143,0.28)]'
-            }`}
-          >
-            {saved ? (
-              <><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>Ficha registrada</>
-            ) : (
-              <>Registrar ficha ganadera</>
-            )}
-          </button>
-        )}
-      </div>
-
-      {/* Nota paso 4 */}
-      {paso === 4 && (
-        <p className="text-[11px] text-stone-400 dark:text-stone-500 text-center leading-relaxed px-2">
-          Después del registro, podrás capturar la huella de morro y adjuntar documentos desde la ficha.
-        </p>
-      )}
+      {children}
     </div>
   )
 }

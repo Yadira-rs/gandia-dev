@@ -9,7 +9,8 @@
  */
 
 import { useState } from 'react'
-import { MOCK_PASSPORT } from '../../pages/Chat/artifactEngine/mockData'
+import { useUser } from '../../context/UserContext'
+import { useAnimalDetalle, dbToPassportData } from '../../hooks/useAnimales'
 
 import FichaCard             from './widgets/FichaCard'
 import FichaPerfilesWidget,  { type AnimalPerfil } from './widgets/FichaPerfilesWidget'
@@ -40,9 +41,14 @@ export default function FichaModulo({ onClose, onEscalate, initialTab = 'perfile
   const [tab,             setTab]             = useState<TabId>(initialTab)
   const [selectedAnimal,  setSelectedAnimal]  = useState<AnimalPerfil | null>(null)
 
+  const { profile } = useUser()
+  const pd           = (profile?.personal_data as Record<string, string> | null) ?? {}
+  const propietario  = pd.fullName ?? pd.full_name ?? pd.nombre_completo ?? pd.nombre ?? '—'
+
+  const { animal: animalData, loading: loadingAnimal } = useAnimalDetalle(selectedAnimal?.id ?? null)
+
   const handleSelectAnimal = (a: AnimalPerfil) => {
     setSelectedAnimal(a)
-    // nos quedamos en Perfiles mostrando el detalle (igual que Gemelos)
   }
 
   return (
@@ -133,11 +139,17 @@ export default function FichaModulo({ onClose, onEscalate, initialTab = 'perfile
                   </svg>
                   Todos los animales
                 </button>
-                <FichaCard
-                  data={MOCK_PASSPORT}
-                 
-                  onHuella={() => setTab('huella')}
-                />
+                {loadingAnimal && (
+                  <div className="flex justify-center py-8">
+                    <div className="w-5 h-5 border-2 border-[#2FAF8F] border-t-transparent rounded-full animate-spin" />
+                  </div>
+                )}
+                {!loadingAnimal && animalData && (
+                  <FichaCard
+                    data={dbToPassportData(animalData, propietario)}
+                    onHuella={() => setTab('huella')}
+                  />
+                )}
               </div>
             ) : (
               <FichaPerfilesWidget
@@ -149,6 +161,7 @@ export default function FichaModulo({ onClose, onEscalate, initialTab = 'perfile
 
           {tab === 'documentos' && selectedAnimal && (
             <FichaDocumentosWidget
+              animalId={selectedAnimal.id}
               animalNombre={selectedAnimal.nombre}
               animalArete={selectedAnimal.arete}
             />

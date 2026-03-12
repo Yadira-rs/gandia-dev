@@ -112,11 +112,12 @@ export default function NotificacionesPage() {
         .np { font-family: 'Geist', system-ui, sans-serif; }
         .np-serif { font-family: 'Instrument Serif', Georgia, serif; }
 
-        .np-scroll::-webkit-scrollbar { width: 3px; }
-        .np-scroll::-webkit-scrollbar-track { background: transparent; }
-        .np-scroll::-webkit-scrollbar-thumb { background: #e7e5e4; border-radius: 999px; }
-        .dark .np-scroll::-webkit-scrollbar-thumb { background: #3c3836; }
-        .np-scroll { scrollbar-width: thin; scrollbar-color: #e7e5e4 transparent; }
+        ::-webkit-scrollbar { width: 3px; height: 3px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #e7e5e4; border-radius: 999px; }
+        .dark ::-webkit-scrollbar-thumb { background: #3c3836; }
+        * { scrollbar-width: thin; scrollbar-color: #e7e5e4 transparent; }
+        .dark * { scrollbar-color: #3c3836 transparent; }
 
         @keyframes np-in {
           from { opacity: 0; transform: translateY(8px); }

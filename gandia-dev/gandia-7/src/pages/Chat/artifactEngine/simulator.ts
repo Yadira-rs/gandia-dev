@@ -240,6 +240,53 @@ const CONFIGS: Record<string, SimConfig> = {
     steps:   ['Buscando acciones sin verificar por más de 24 hrs...', 'Detectando rechazos sin seguimiento...', 'Identificando conflictos de datos...', '3 inconsistencias · 1 crítica'],
     content: 'Hay 3 inconsistencias activas. La más crítica: el registro de vacunación del 02-FEB lleva 3 días sin verificar y bloquea la elegibilidad USDA de Lupita.',
   },
+
+  // ── Vinculación ──
+  'vinculacion:lista': {
+    domain:  'vinculacion',
+    steps:   ['Consultando vinculaciones activas...', 'Verificando estados y permisos...', '4 activas · 1 suspendida · 2 pendientes de respuesta'],
+    content: 'Tienes 4 vinculaciones activas. La auditoría SENASICA · Flores vence el 30 de marzo. Hay 2 solicitudes pendientes de tu atención.',
+  },
+  'vinculacion:pendientes': {
+    domain:  'vinculacion',
+    steps:   ['Cargando solicitudes entrantes y salientes...', 'Verificando identidad institucional de las entidades...', '1 solicitud entrante · 1 solicitud saliente en espera'],
+    content: 'Exportadora SurAgro Ltda. solicitó vinculación comercial hace 2 horas. Tu solicitud a la MVZ Dra. Sánchez Ruiz sigue en espera de respuesta.',
+  },
+  'vinculacion:nueva': {
+    domain:  'vinculacion',
+    steps:   ['Preparando formulario de solicitud...', 'Cargando catálogo de tipos de vinculación...', 'Listo para enviar solicitud'],
+    content: 'Formulario de nueva vinculación listo. Ingresa el identificador de la entidad y selecciona el tipo de relación institucional.',
+  },
+  'vinculacion:historial': {
+    domain:  'vinculacion',
+    steps:   ['Recuperando historial de vinculaciones...', 'Ordenando por fecha...', '5 eventos · 2 revocadas · 1 rechazada · 2 aceptadas'],
+    content: 'Historial: 5 eventos en los últimos 3 meses. Frigorífico del Norte fue revocado en febrero y el Laboratorio Diagnos. Vet. rechazó tu solicitud en enero.',
+  },
+
+  // ── Exportación ──
+  'exportacion:solicitud': {
+    domain:  'exportacion',
+    steps:   ['Consultando solicitudes activas de la UPP...', 'Verificando PSG registrado en SENASICA...', 'Cargando progreso de captura...', '1 solicitud en borrador · 28 de 35 aretes capturados'],
+    content: 'Tienes una solicitud activa (SOL-2025-0041) con 28 de 35 aretes capturados. Faltan 7 aretes y hay 2 errores detectados que debes corregir antes de exportar.',
+  },
+
+  'exportacion:tabla': {
+    domain:  'exportacion',
+    steps:   ['Cargando aretes registrados en la solicitud...', 'Verificando formato SINIIGA...', 'Detectando duplicados...', '28 aretes · 1 duplicado · 1 formato inválido'],
+    content: 'Tabla de aretes lista. Se detectaron 2 problemas: un arete duplicado en la fila 3 y un formato inválido en la fila 5. Corrígelos para poder exportar.',
+  },
+
+  'exportacion:validacion': {
+    domain:  'exportacion',
+    steps:   ['Analizando tabla de aretes...', 'Cruzando con base de datos SINIIGA...', 'Revisando folios de factura...', 'Verificando consistencia de cabezas declaradas...', '32 correctos · 1 duplicado · 1 formato inválido · Score 91'],
+    content: 'Análisis completado. Score 91/100: 32 aretes correctos, 1 duplicado en fila 3 y 1 formato inválido en fila 5. Corrígelos para llegar a 100 y exportar.',
+  },
+
+  'exportacion:scanner': {
+    domain:  'exportacion',
+    steps:   ['Inicializando motor OCR de aretes...', 'Cargando modelos de detección...', 'Listo para escanear · Apunta al arete'],
+    content: 'Escáner de aretes listo. Activa la cámara y apunta al arete para capturarlo automáticamente. Los duplicados se detectan en tiempo real.',
+  },
 }
 
 const STEP_INTERVAL_MS = 850

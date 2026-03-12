@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { Menu, X } from 'lucide-react'
 
 interface HeaderProps {
-  currentSection?: 'home' | 'precios' | 'recursos' | 'blog' | 'contacto'
+  currentSection?: 'home' | 'precios' | 'recursos' | 'blog' | 'contacto' | 'cursos'
   isDark?: boolean
 }
 
@@ -23,13 +23,14 @@ export default function Header({ currentSection = 'home', isDark = false }: Head
     return () => obs.disconnect()
   }, [])
 
-  type NavId = 'home' | 'precios' | 'recursos' | 'blog' | 'contacto'
+  type NavId = 'home' | 'precios' | 'recursos' | 'blog' | 'cursos' | 'contacto'
 
   const navItems: { id: NavId; label: string; path: string }[] = [
-    { id: 'home',     label: 'Inicio',   path: '/home' },
-    { id: 'precios',  label: 'Precios',  path: '/modelo-operativo' },
+    { id: 'home', label: 'Inicio', path: '/home' },
+    { id: 'precios', label: 'Precios', path: '/modelo-operativo' },
     { id: 'recursos', label: 'Recursos', path: '/recursos' },
-    { id: 'blog',     label: 'Blog',     path: '/blog' },
+    { id: 'blog', label: 'Blog', path: '/blog' },
+    { id: 'cursos', label: 'Cursos', path: '/cursos' },
     { id: 'contacto', label: 'Contacto', path: '/contacto' },
   ]
 
@@ -40,8 +41,8 @@ export default function Header({ currentSection = 'home', isDark = false }: Head
     ? 'bg-[#0c0a09]/80 border-[#ffffff08] shadow-[0_1px_0_0_rgba(255,255,255,0.04)]'
     : 'bg-white/80 border-[#00000008] shadow-[0_1px_0_0_rgba(0,0,0,0.04)]'
 
-  const textBase  = isDark ? 'text-[#FAFAFA]' : 'text-[#171717]'
-  const textMuted = isDark ? 'text-[#777]'    : 'text-[#808080]'
+  const textBase = isDark ? 'text-[#FAFAFA]' : 'text-[#171717]'
+  const textMuted = isDark ? 'text-[#777]' : 'text-[#808080]'
   const mobilePane = isDark
     ? 'bg-[#0c0a09]/96 border-[#ffffff08]'
     : 'bg-white/96 border-[#00000008]'
@@ -158,7 +159,7 @@ export default function Header({ currentSection = 'home', isDark = false }: Head
             aria-expanded={mobileMenuOpen}
           >
             {mobileMenuOpen
-              ? <X    className="w-[18px] h-[18px]" />
+              ? <X className="w-[18px] h-[18px]" />
               : <Menu className="w-[18px] h-[18px]" />
             }
           </button>

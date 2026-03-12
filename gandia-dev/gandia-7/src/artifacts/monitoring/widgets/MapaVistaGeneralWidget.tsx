@@ -1,7 +1,7 @@
 /**
- * MapaVistaGeneralWidget — Widget: mapa:vista-general
+ * MapaVistaGeneralWidget — REDISEÑO v2
+ * Negro real, sin tintes verdes en fondos
  */
-
 export interface Corral {
   id:        number
   label:     string
@@ -13,8 +13,6 @@ export interface Corral {
   camara:    boolean
   lat?:      number
   lng?:      number
-  anchoM?:   number
-  largoM?:   number
 }
 
 interface Props {
@@ -22,10 +20,10 @@ interface Props {
   onSelectCorral?: (corral: Corral) => void
 }
 
-const ESTADO: Record<string, { dot: string; border: string; label: string }> = {
-  normal:     { dot: '#2FAF8F', border: '#2FAF8F',   label: 'Normal'     },
-  atencion:   { dot: '#f59e0b', border: '#f59e0b',   label: 'Atención'   },
-  cuarentena: { dot: '#ef4444', border: '#ef4444',   label: 'Cuarentena' },
+const E = {
+  normal:     { dot: '#2FAF8F', label: 'Normal'     },
+  atencion:   { dot: '#F5A623', label: 'Atención'   },
+  cuarentena: { dot: '#E5484D', label: 'Cuarentena' },
 }
 
 const PIN_POS: Record<number, { top: string; left: string }> = {
@@ -34,83 +32,103 @@ const PIN_POS: Record<number, { top: string; left: string }> = {
   5: { top: '60%', left: '52%' }, 6: { top: '48%', left: '74%' },
 }
 
-function StatsRow({ corrales }: { corrales: Corral[] }) {
+export default function MapaVistaGeneralWidget({ corrales, onSelectCorral }: Props) {
   const total    = corrales.reduce((s, c) => s + c.animales, 0)
   const cap      = corrales.reduce((s, c) => s + c.capacidad, 0)
-  const ocupacion = Math.round(total / cap * 100)
+  const pctOcup  = cap > 0 ? Math.round(total / cap * 100) : 0
   const alertas  = corrales.filter(c => c.estado !== 'normal').length
-  const activos  = corrales.filter(c => c.estado === 'normal').length
+  const normales = corrales.filter(c => c.estado === 'normal').length
 
   return (
-    <div className="grid grid-cols-2 md:grid-cols-4 gap-3 shrink-0">
-      {[
-        { label: 'Total animales',   value: total,          sub: `de ${cap}`,               color: 'text-stone-800 dark:text-stone-100' },
-        { label: 'Ocupación',        value: `${ocupacion}%`, sub: 'capacidad total',        color: 'text-stone-800 dark:text-stone-100' },
-        { label: 'Alertas activas',  value: alertas,        sub: 'corrales',               color: alertas > 0 ? 'text-red-500' : 'text-[#2FAF8F]' },
-        { label: 'Corrales activos', value: activos,        sub: `de ${corrales.length}`,   color: 'text-[#2FAF8F]' },
-      ].map((s, i) => (
-        <div key={i} className="bg-white dark:bg-[#1c1917] border border-stone-200/70 dark:border-stone-800/60 rounded-[14px] px-4 py-3.5 flex flex-col gap-1">
-          <span className="text-[11px] text-stone-400 dark:text-stone-500">{s.label}</span>
-          <span className={`text-[26px] font-bold leading-none ${s.color}`}>{s.value}</span>
-          <span className="text-[10.5px] text-stone-300 dark:text-stone-600">{s.sub}</span>
-        </div>
-      ))}
-    </div>
-  )
-}
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 10, height: '100%', fontFamily: 'system-ui, -apple-system, sans-serif' }}>
 
-export default function MapaVistaGeneralWidget({ corrales, onSelectCorral }: Props) {
-  return (
-    <div className="flex flex-col h-full gap-4">
-      <StatsRow corrales={corrales} />
+      {/* Stats bar — negro limpio */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 8 }}>
+        {[
+          { label: 'Animales',  value: total,          sub: `/ ${cap}`,            accent: '#F0F0F0' },
+          { label: 'Ocupación', value: `${pctOcup}%`,  sub: 'capacidad total',     accent: pctOcup > 90 ? '#F5A623' : '#F0F0F0' },
+          { label: 'Alertas',   value: alertas,        sub: 'corrales',            accent: alertas > 0 ? '#E5484D' : '#F0F0F0' },
+          { label: 'Activos',   value: normales,       sub: `de ${corrales.length}`, accent: '#F0F0F0' },
+        ].map((s, i) => (
+          <div key={i} style={{
+            background: '#171717',
+            border: '1px solid #252525',
+            borderRadius: 10,
+            padding: '10px 14px',
+          }}>
+            <div style={{ fontSize: 10, color: '#555', marginBottom: 4 }}>{s.label}</div>
+            <div style={{ fontSize: 24, fontWeight: 700, lineHeight: 1, color: s.accent, fontFamily: 'ui-monospace, monospace' }}>{s.value}</div>
+            <div style={{ fontSize: 10, color: '#444', marginTop: 3 }}>{s.sub}</div>
+          </div>
+        ))}
+      </div>
 
-      <div className="flex-1 rounded-[18px] overflow-hidden relative border border-stone-200/70 dark:border-stone-800/60 min-h-0">
+      {/* Map */}
+      <div style={{ flex: 1, borderRadius: 12, overflow: 'hidden', position: 'relative', border: '1px solid #252525', minHeight: 240 }}>
         <iframe
           title="Mapa UPP"
           width="100%" height="100%"
-          className="block border-0"
+          style={{ display: 'block', border: 'none', filter: 'saturate(0.6) brightness(0.7)' }}
           src="https://www.google.com/maps/embed?pb=!1m14!1m12!1m3!1d8000!2d-104.6!3d24.15!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!5e1!3m2!1ses!2smx!4v1700000000000!5m2!1ses!2smx"
           allowFullScreen loading="lazy" referrerPolicy="no-referrer-when-downgrade"
         />
+        <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', boxShadow: 'inset 0 0 40px rgba(0,0,0,0.5)' }} />
 
+        {/* Pins */}
         {corrales.map(c => {
           const pos = PIN_POS[c.id]
-          const col = ESTADO[c.estado]
+          const col = E[c.estado]
           if (!pos) return null
+          const pct = Math.round(c.animales / c.capacidad * 100)
           return (
-            <div
-              key={c.id}
-              onClick={() => onSelectCorral?.(c)}
-              className="absolute z-10 cursor-pointer flex flex-col items-center transition-transform hover:scale-[1.08]"
-              style={{ top: pos.top, left: pos.left, transform: 'translate(-50%,-100%)', filter: 'drop-shadow(0 2px 8px rgba(0,0,0,0.25))' }}
-            >
-              <div className="bg-white rounded-[10px] px-2.5 py-1 flex items-center gap-1.5 whitespace-nowrap" style={{ border: `2px solid ${col.dot}` }}>
-                <span className="w-1.5 h-1.5 rounded-full" style={{ background: col.dot }} />
-                <span className="text-[11px] font-bold text-stone-700">{c.label}</span>
-                <span className="text-[11px] text-stone-400">{c.animales}</span>
+            <div key={c.id} onClick={() => onSelectCorral?.(c)}
+              style={{ position: 'absolute', top: pos.top, left: pos.left, transform: 'translate(-50%, -100%)', cursor: 'pointer', zIndex: 10, transition: 'transform 0.15s' }}
+              onMouseEnter={e => { e.currentTarget.style.transform = 'translate(-50%, -100%) scale(1.1)' }}
+              onMouseLeave={e => { e.currentTarget.style.transform = 'translate(-50%, -100%) scale(1)' }}>
+              <div style={{
+                background: 'rgba(10,10,10,0.92)',
+                border: `1.5px solid ${col.dot}`,
+                borderRadius: 7,
+                padding: '5px 10px',
+                display: 'flex', alignItems: 'center', gap: 6,
+                whiteSpace: 'nowrap',
+                backdropFilter: 'blur(8px)',
+              }}>
+                <span style={{ width: 7, height: 7, borderRadius: '50%', background: col.dot, flexShrink: 0,
+                  animation: c.estado !== 'normal' ? 'mpulse 1.5s ease-in-out infinite' : 'none',
+                }} />
+                <span style={{ fontSize: 11, fontWeight: 700, color: '#F0F0F0', fontFamily: 'ui-monospace, monospace' }}>{c.label}</span>
+                <span style={{ fontSize: 10, color: col.dot, fontFamily: 'ui-monospace, monospace', fontWeight: 600 }}>{c.animales}</span>
+                <span style={{ fontSize: 9, color: '#777', fontFamily: 'ui-monospace, monospace' }}>{pct}%</span>
               </div>
-              <div className="w-0 h-0 -mt-px" style={{ borderLeft: '6px solid transparent', borderRight: '6px solid transparent', borderTop: `7px solid ${col.dot}` }} />
+              <div style={{ width: 0, height: 0, margin: '0 auto', marginTop: -1, borderLeft: '5px solid transparent', borderRight: '5px solid transparent', borderTop: `6px solid ${col.dot}` }} />
             </div>
           )
         })}
 
-        {/* Badge live */}
-        <div className="absolute top-3.5 left-3.5 z-20 flex items-center gap-1.5 bg-white/92 dark:bg-black/60 backdrop-blur-[10px] border border-black/08 dark:border-white/10 rounded-[10px] px-3 py-1.5 shadow-md">
-          <span className="w-1.5 h-1.5 rounded-full bg-[#2FAF8F] animate-pulse" />
-          <span className="text-[10px] text-stone-700 dark:text-stone-200 font-semibold">EN VIVO · UPP Rancho Morales</span>
+        {/* Live badge */}
+        <div style={{ position: 'absolute', top: 12, left: 12, zIndex: 20, display: 'flex', alignItems: 'center', gap: 7, background: 'rgba(10,10,10,0.88)', backdropFilter: 'blur(10px)', border: '1px solid #2A2A2A', borderRadius: 7, padding: '6px 12px' }}>
+          <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#2FAF8F', animation: 'mpulse 2s ease-in-out infinite' }} />
+          <span style={{ fontSize: 10, fontWeight: 600, color: '#F0F0F0', fontFamily: 'ui-monospace, monospace' }}>EN VIVO</span>
+          <span style={{ fontSize: 9, color: '#555', fontFamily: 'ui-monospace, monospace' }}>UPP RANCHO MORALES</span>
         </div>
 
-        {/* Leyenda */}
-        <div className="absolute bottom-3.5 left-3.5 z-20 bg-white/92 dark:bg-black/60 backdrop-blur-[10px] border border-black/08 dark:border-white/10 rounded-[10px] px-3 py-2 flex gap-3.5 shadow-md">
-          {[{ color: '#2FAF8F', label: 'Normal' }, { color: '#f59e0b', label: 'Atención' }, { color: '#ef4444', label: 'Cuarentena' }].map(l => (
-            <div key={l.label} className="flex items-center gap-1">
-              <span className="w-1.5 h-1.5 rounded-full" style={{ background: l.color }} />
-              <span className="text-[10.5px] text-stone-500 dark:text-stone-400">{l.label}</span>
+        {/* Legend */}
+        <div style={{ position: 'absolute', bottom: 12, left: 12, zIndex: 20, display: 'flex', alignItems: 'center', gap: 12, background: 'rgba(10,10,10,0.88)', backdropFilter: 'blur(10px)', border: '1px solid #2A2A2A', borderRadius: 7, padding: '6px 12px' }}>
+          {Object.entries(E).map(([key, v]) => (
+            <div key={key} style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+              <span style={{ width: 6, height: 6, borderRadius: '50%', background: v.dot }} />
+              <span style={{ fontSize: 9, color: '#888' }}>{v.label}</span>
             </div>
           ))}
         </div>
+
+        <div style={{ position: 'absolute', top: 12, right: 12, zIndex: 20, background: 'rgba(10,10,10,0.88)', backdropFilter: 'blur(10px)', border: '1px solid #2A2A2A', borderRadius: 7, padding: '6px 12px' }}>
+          <span style={{ fontSize: 9, color: '#555', fontFamily: 'ui-monospace, monospace' }}>{corrales.length} CORRALES</span>
+        </div>
       </div>
-      <style>{`@keyframes livePulse{0%,100%{opacity:1}50%{opacity:.4}}`}</style>
+
+      <style>{`@keyframes mpulse{0%,100%{opacity:1}50%{opacity:0.35}}`}</style>
     </div>
   )
 }

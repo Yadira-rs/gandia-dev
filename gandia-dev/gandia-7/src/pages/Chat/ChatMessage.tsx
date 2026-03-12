@@ -184,7 +184,7 @@ export function ChatMessage({
   MAX_CHARS,
 }: ChatMessageProps) {
   return (
-    <div className="flex flex-col gap-0">
+    <div className="flex flex-col gap-0" data-msg-id={msg.id}>
       {msg.role === 'assistant' && msg.thoughts && msg.thoughts.length > 0 && (
         <SavedThoughts
           thoughts={msg.thoughts}
@@ -195,15 +195,8 @@ export function ChatMessage({
 
       {msg.artifact && artifact === null && renderInlineWidget(msg.artifact.id as string)}
 
-      <div className={`ch-msg flex gap-3 ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+      <div className={`ch-msg flex gap-3 mt-4 ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
         <div className={`group relative ${msg.role === 'user' ? 'max-w-[80%]' : 'flex-1 min-w-0 max-w-[85%]'}`}>
-
-          {/* Pin indicator */}
-          {msg.pinned && (
-            <div className="absolute -top-1.5 -right-1.5 z-10 w-4 h-4 rounded-full bg-[#2FAF8F] flex items-center justify-center shadow-sm">
-              <svg className="w-2 h-2 text-white" viewBox="0 0 24 24" fill="currentColor"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/></svg>
-            </div>
-          )}
 
           {msg.role === 'user' && (
             editingIdx === idx ? (
@@ -229,7 +222,7 @@ export function ChatMessage({
                 </div>
               </div>
             ) : (
-              <div className="bg-white dark:bg-[#1c1917] border border-stone-200/70 dark:border-stone-800/60 rounded-2xl rounded-br-md px-4 py-3">
+              <div className={`bg-white dark:bg-[#1c1917] border border-stone-200/70 dark:border-stone-800/60 rounded-2xl rounded-br-md px-4 py-3 ${msg.pinned ? 'border-l-2 border-l-[#2FAF8F]/60' : ''}`}>
                 {msg.files && msg.files.length > 0 && (
                   <div className={`space-y-1.5 ${msg.content ? 'mb-3' : ''}`}>
                     {msg.files.map(f => <SentFileChip key={f.id} f={f} onLightbox={onLightbox} />)}
@@ -254,7 +247,7 @@ export function ChatMessage({
                 </div>
               ) : (
                 <>
-                  <div className="text-[14px] leading-[1.75] text-stone-700 dark:text-stone-200 space-y-1">
+                  <div className={`text-[14px] leading-[1.75] text-stone-700 dark:text-stone-200 space-y-1 ${msg.pinned ? 'border-l-2 border-[#2FAF8F]/50 pl-3' : ''}`}>
                     {renderContent(msg.content)}
                   </div>
                   {msg.artifact && artifact?.kind === 'module' && (

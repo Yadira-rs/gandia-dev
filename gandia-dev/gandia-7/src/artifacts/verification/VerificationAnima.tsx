@@ -198,7 +198,7 @@ export default function VerificationAnima({ onClose, onEscalate }: Props) {
           <span className="w-2 h-2 rounded-full bg-[#ec4899]" style={{ boxShadow: '0 0 0 3px rgba(236,72,153,0.15)' }} />
           <span className="text-[13px] font-bold text-stone-700 dark:text-stone-200">Verificación</span>
           {altaCount > 0 && (
-            <span className="hidden md:inline text-[10px] font-bold bg-red-50 dark:bg-red-950/30 text-red-700 dark:text-red-400 px-2 py-0.5 rounded-[6px] border border-red-200 dark:border-red-800/40 ml-1">
+            <span className="hidden md:inline text-[10px] font-semibold text-stone-500 dark:text-stone-400 px-2 py-0.5 rounded-[6px] border border-stone-200/80 dark:border-stone-700/60 ml-1">
               {altaCount} alta prioridad
             </span>
           )}
@@ -259,7 +259,7 @@ export default function VerificationAnima({ onClose, onEscalate }: Props) {
 
         {/* Panel derecho — Inconsistencias siempre visibles (salvo cuando ya están en el central) */}
         {activeWidget !== 'inconsistencias' && (
-          <div className="hidden md:flex md:flex-col w-[280px] border-l border-stone-200/70 dark:border-stone-800/60 bg-white dark:bg-[#1c1917] p-4 shrink-0 overflow-hidden">
+          <div className="hidden md:flex md:flex-col w-[280px] border-l border-stone-200/70 dark:border-stone-800/60 bg-white dark:bg-[#1c1917] p-4 shrink-0 overflow-y-auto [&::-webkit-scrollbar]:w-[3px] [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-stone-200 dark:[&::-webkit-scrollbar-thumb]:bg-stone-700 [&::-webkit-scrollbar-thumb]:rounded-full hover:[&::-webkit-scrollbar-thumb]:bg-stone-300 dark:hover:[&::-webkit-scrollbar-thumb]:bg-stone-600">
             <VerificationInconsistenciasWidget
               inconsistencias={inconsistencias}
               onAtender={handleAtenderInconsistencia}

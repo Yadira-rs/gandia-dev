@@ -1,5 +1,5 @@
 /**
- * AnomaliaConfigUmbralWidget — Widget: anomalia:config-umbral
+ * AnomaliaConfigUmbralWidget — REDISEÑO PRO
  */
 import { useState } from 'react'
 
@@ -13,15 +13,38 @@ interface Umbral {
 }
 
 const UMBRALES_DEFAULT: Umbral[] = [
-  { id: 'separacion',  label: 'Separación del hato',      desc: 'Animal a más de X metros del grupo',     valor: '15 m',   severidad: 'alta',  activo: true },
-  { id: 'postura',     label: 'Postura caída',             desc: 'Animal sin movimiento detectado por',    valor: '20 min', severidad: 'alta',  activo: true },
-  { id: 'ingesta',     label: 'Sin ingesta',               desc: 'Sin acercarse al comedero en más de',    valor: '4 hrs',  severidad: 'media', activo: true },
-  { id: 'temperatura', label: 'Temperatura corporal alta', desc: 'Temperatura estimada por sensor mayor a', valor: '39.5°C',severidad: 'media', activo: true },
+  { id: 'separacion',  label: 'Separación del hato',       desc: 'Animal a más de X metros del grupo',      valor: '15 m',    severidad: 'alta',  activo: true },
+  { id: 'postura',     label: 'Postura caída',              desc: 'Animal sin movimiento detectado por',     valor: '20 min',  severidad: 'alta',  activo: true },
+  { id: 'ingesta',     label: 'Sin ingesta',                desc: 'Sin acercarse al comedero en más de',     valor: '4 hrs',   severidad: 'media', activo: true },
+  { id: 'temperatura', label: 'Temperatura corporal alta',  desc: 'Temperatura estimada mayor a',            valor: '39.5°C',  severidad: 'media', activo: true },
 ]
 
 interface Props {
   onGuardar?: (umbrales: Umbral[]) => void
 }
+
+const Toggle = ({ value, onChange }: { value: boolean; onChange: () => void }) => (
+  <button
+    onClick={onChange}
+    style={{
+      width: 38, height: 20, borderRadius: 10,
+      background: value ? '#2FAF8F' : '#222222',
+      border: 'none', cursor: 'pointer', position: 'relative',
+      transition: 'background 0.2s',
+      flexShrink: 0,
+    }}
+  >
+    <span style={{
+      position: 'absolute', top: 2,
+      left: value ? 20 : 2,
+      width: 16, height: 16,
+      borderRadius: '50%',
+      background: 'white',
+      boxShadow: '0 1px 4px rgba(0,0,0,0.4)',
+      transition: 'left 0.2s',
+    }} />
+  </button>
+)
 
 export default function AnomaliaConfigUmbralWidget({ onGuardar }: Props) {
   const [umbrales, setUmbrales] = useState(UMBRALES_DEFAULT)
@@ -30,62 +53,151 @@ export default function AnomaliaConfigUmbralWidget({ onGuardar }: Props) {
 
   const toggle = (id: string) => setUmbrales(u => u.map(um => um.id === id ? { ...um, activo: !um.activo } : um))
   const update = (id: string, valor: string) => setUmbrales(u => u.map(um => um.id === id ? { ...um, valor } : um))
-  const save   = () => { setSaved(true); setTimeout(() => { onGuardar?.(umbrales); setSaved(false) }, 1000) }
+  const save   = () => {
+    setSaved(true)
+    setTimeout(() => { onGuardar?.(umbrales); setSaved(false) }, 1200)
+  }
 
   return (
-    <div className="flex flex-col h-full">
-      <div className="bg-white dark:bg-[#1c1917] border border-stone-200/70 dark:border-stone-800/60 rounded-[18px] overflow-hidden flex-1 flex flex-col">
-        {/* Header */}
-        <div className="px-5 py-3.5 border-b border-stone-100 dark:border-stone-800/40 flex items-center justify-between shrink-0">
-          <div>
-            <p className="text-[13px] font-semibold text-stone-700 dark:text-stone-200">Umbrales de alerta</p>
-            <p className="text-[11px] text-stone-400 dark:text-stone-500 mt-0.5">La IA dispara alertas cuando se superan estos valores</p>
-          </div>
-          <button onClick={save} className={`px-4 py-1.5 rounded-[9px] border-0 text-white text-[11px] font-semibold cursor-pointer transition-colors ${saved ? 'bg-[#2FAF8F]' : 'bg-[#2FAF8F] hover:bg-[#27a07f]'}`}>
-            {saved ? '✓ Guardado' : 'Guardar'}
-          </button>
+    <div style={{
+      background: '#111111',
+      border: '1px solid #222222',
+      borderRadius: 14,
+      overflow: 'hidden',
+      fontFamily: 'system-ui, sans-serif',
+    }}>
+      {/* Header */}
+      <div style={{
+        padding: '12px 16px',
+        borderBottom: '1px solid #191919',
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+      }}>
+        <div>
+          <p style={{ fontSize: 12, fontWeight: 700, color: '#F0F0F0', margin: 0 }}>
+            Umbrales de alerta
+          </p>
+          <p style={{ fontSize: 10, color: '#666666', margin: '3px 0 0', fontFamily: 'ui-monospace, monospace' }}>
+            La IA dispara alertas al superar estos valores
+          </p>
         </div>
+        <button
+          onClick={save}
+          style={{
+            padding: '7px 16px',
+            borderRadius: 8,
+            background: saved ? 'rgba(47,175,143,0.15)' : '#2FAF8F',
+            border: saved ? '1px solid rgba(47,175,143,0.3)' : 'none',
+            color: saved ? '#2FAF8F' : 'white',
+            fontSize: 11, fontWeight: 700, cursor: 'pointer',
+            transition: 'all 0.2s',
+            fontFamily: 'ui-monospace, monospace',
+            letterSpacing: '0.03em',
+          }}
+        >
+          {saved ? '✓ GUARDADO' : 'GUARDAR'}
+        </button>
+      </div>
 
-        {/* Lista */}
-        <div className="flex-1 overflow-y-auto">
-          {umbrales.map((u, i) => (
-            <div key={u.id} className={`px-5 py-4 flex items-center gap-3.5 transition-opacity ${i < umbrales.length - 1 ? 'border-b border-stone-100 dark:border-stone-800/40' : ''} ${u.activo ? 'opacity-100' : 'opacity-45'}`}>
-              <span className={`w-2 h-2 rounded-full shrink-0 ${u.severidad === 'alta' ? 'bg-red-400' : 'bg-[#2FAF8F]'}`} />
-              <div className="flex-1">
-                <p className="text-[12px] font-semibold text-stone-700 dark:text-stone-200">{u.label}</p>
-                <p className="text-[11px] text-stone-400 dark:text-stone-500 mt-0.5">{u.desc}</p>
-              </div>
+      {/* Rows */}
+      {umbrales.map((u, i) => {
+        const isAlta  = u.severidad === 'alta'
+        const color   = isAlta ? '#E5484D' : '#F5A623'
+        const isLast  = i === umbrales.length - 1
+        return (
+          <div
+            key={u.id}
+            style={{
+              padding: '12px 16px',
+              borderBottom: isLast ? 'none' : '1px solid #161616',
+              display: 'flex', alignItems: 'center', gap: 12,
+              opacity: u.activo ? 1 : 0.4,
+              transition: 'opacity 0.2s',
+            }}
+          >
+            {/* Severity dot */}
+            <span style={{
+              width: 7, height: 7, borderRadius: '50%',
+              background: color,
+              boxShadow: u.activo && isAlta ? `0 0 6px ${color}` : 'none',
+              flexShrink: 0,
+            }} />
 
-              {editando === u.id ? (
-                <input
-                  defaultValue={u.valor}
-                  autoFocus
-                  onChange={e => update(u.id, e.target.value)}
-                  onBlur={() => setEditando(null)}
-                  onKeyDown={e => e.key === 'Enter' && setEditando(null)}
-                  className="w-[90px] px-2 py-1 rounded-[7px] border border-[#2FAF8F]/40 bg-[#2FAF8F]/08 dark:bg-[#2FAF8F]/15 text-[12px] font-bold text-[#2FAF8F] outline-none text-center"
-                />
-              ) : (
-                <div onClick={() => setEditando(u.id)} className="bg-stone-50 dark:bg-[#141210] border border-stone-200/70 dark:border-stone-800/60 rounded-[8px] px-3 py-1 text-[12px] font-bold text-stone-700 dark:text-stone-200 min-w-[72px] text-center cursor-pointer hover:border-[#2FAF8F]/40 transition-colors">
-                  {u.valor}
-                </div>
-              )}
-
-              <span className={`text-[9px] font-bold px-2 py-0.5 rounded-md border uppercase tracking-[0.04em] shrink-0 ${u.severidad === 'alta' ? 'bg-red-50 dark:bg-red-950/30 text-red-700 dark:text-red-400 border-red-200 dark:border-red-800/40' : 'bg-[#2FAF8F]/10 dark:bg-[#2FAF8F]/20 text-[#2FAF8F] border-[#2FAF8F]/30'}`}>
-                {u.severidad}
-              </span>
-
-              <button onClick={() => toggle(u.id)} className={`w-[38px] h-5 rounded-full relative cursor-pointer border-0 transition-colors shrink-0 ${u.activo ? 'bg-[#2FAF8F]' : 'bg-stone-200 dark:bg-stone-700'}`}>
-                <span className="absolute top-[2px] w-4 h-4 rounded-full bg-white shadow-sm transition-all duration-200" style={{ left: u.activo ? '18px' : '2px' }} />
-              </button>
+            {/* Label */}
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <p style={{ fontSize: 11, fontWeight: 600, color: '#F0F0F0', margin: '0 0 2px' }}>{u.label}</p>
+              <p style={{ fontSize: 10, color: '#666666', margin: 0, fontFamily: 'ui-monospace, monospace' }}>{u.desc}</p>
             </div>
-          ))}
-        </div>
 
-        {/* Footer */}
-        <div className="px-5 py-3 border-t border-stone-100 dark:border-stone-800/40 bg-[#2FAF8F]/05 dark:bg-[#2FAF8F]/08 shrink-0">
-          <p className="text-[11px] text-[#2FAF8F]">⚠️ Cambios en umbrales afectan la sensibilidad del sistema. Ajustar con criterio veterinario.</p>
-        </div>
+            {/* Value editor */}
+            {editando === u.id ? (
+              <input
+                defaultValue={u.valor}
+                autoFocus
+                onChange={e => update(u.id, e.target.value)}
+                onBlur={() => setEditando(null)}
+                onKeyDown={e => e.key === 'Enter' && setEditando(null)}
+                style={{
+                  width: 80, padding: '5px 9px',
+                  borderRadius: 7,
+                  border: `1px solid rgba(47,175,143,0.4)`,
+                  background: 'transparent',
+                  color: '#2FAF8F', fontSize: 12, fontWeight: 700,
+                  outline: 'none', textAlign: 'center',
+                  fontFamily: 'ui-monospace, monospace',
+                }}
+              />
+            ) : (
+              <button
+                onClick={() => setEditando(u.id)}
+                style={{
+                  padding: '5px 12px',
+                  borderRadius: 7,
+                  background: '#191919',
+                  border: '1px solid #222222',
+                  color: '#F0F0F0',
+                  fontSize: 12, fontWeight: 700,
+                  cursor: 'pointer', minWidth: 72, textAlign: 'center',
+                  fontFamily: 'ui-monospace, monospace',
+                  transition: 'border-color 0.15s',
+                }}
+                onMouseEnter={e => { e.currentTarget.style.borderColor = 'rgba(47,175,143,0.35)' }}
+                onMouseLeave={e => { e.currentTarget.style.borderColor = '#222222' }}
+              >
+                {u.valor}
+              </button>
+            )}
+
+            {/* Severity badge */}
+            <span style={{
+              fontSize: 8, fontWeight: 700,
+              background: `${color}12`,
+              color,
+              border: `1px solid ${color}25`,
+              borderRadius: 5,
+              padding: '3px 7px',
+              flexShrink: 0,
+              fontFamily: 'ui-monospace, monospace',
+              letterSpacing: '0.06em',
+            }}>
+              {u.severidad.toUpperCase()}
+            </span>
+
+            <Toggle value={u.activo} onChange={() => toggle(u.id)} />
+          </div>
+        )
+      })}
+
+      {/* Footer warning */}
+      <div style={{
+        padding: '10px 16px',
+        borderTop: '1px solid #191919',
+        background: 'transparent',
+        display: 'flex', alignItems: 'flex-start', gap: 8,
+      }}>
+        <span style={{ fontSize: 11, flexShrink: 0 }}>⚠️</span>
+        <p style={{ fontSize: 10, color: '#8a7a3a', margin: 0, lineHeight: 1.5, fontFamily: 'ui-monospace, monospace' }}>
+          Cambios en umbrales afectan la sensibilidad del sistema. Ajustar con criterio veterinario.
+        </p>
       </div>
     </div>
   )

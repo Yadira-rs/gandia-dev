@@ -93,6 +93,68 @@ function QuickIcon({ icon }: { icon: string }) {
   return <svg {...s}><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
 }
 
+// ─── PinnedBar ────────────────────────────────────────────────────────────────
+function PinnedBar({ messages, onUnpin }: { messages: import('./chatTypes').UIMessage[]; onUnpin: (id: string) => void }) {
+  const [open, setOpen] = useState(false)
+  const pinned = messages.filter(m => m.pinned).slice(0, 5)
+  if (pinned.length === 0) return null
+
+  const scrollToMsg = (id: string) => {
+    const el = document.querySelector(`[data-msg-id="${id}"]`)
+    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+  }
+  return (
+    <div className="border-b border-[#2FAF8F]/15 dark:border-[#2FAF8F]/10" style={{ background: 'linear-gradient(to bottom, rgba(47,175,143,0.06), rgba(47,175,143,0.02))', boxShadow: '0 2px 12px rgba(47,175,143,0.06)' }}>
+      <button
+        onClick={() => setOpen(p => !p)}
+        className="w-full flex items-center gap-2 px-4 py-2 text-left hover:bg-stone-50 dark:hover:bg-stone-800/40 transition-colors"
+      >
+        <svg className="w-3 h-3 text-[#2FAF8F] shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/>
+        </svg>
+        <span className="text-[11.5px] font-semibold text-stone-500 dark:text-stone-400 flex-1">
+          {pinned.length} destacado{pinned.length > 1 ? 's' : ''}
+        </span>
+        <svg
+          className={`w-3 h-3 text-stone-300 dark:text-stone-600 transition-transform duration-200 ${open ? 'rotate-180' : ''}`}
+          viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"
+        >
+          <polyline points="6 9 12 15 18 9"/>
+        </svg>
+      </button>
+      {open && (
+        <div className="flex flex-col divide-y divide-stone-100 dark:divide-stone-800/60 px-4 pb-2">
+          {pinned.map(m => (
+            <div key={m.id} className="flex items-start gap-3 py-2.5">
+              <div className="w-px self-stretch bg-[#2FAF8F]/40 shrink-0" />
+              <button
+                onClick={() => scrollToMsg(m.id)}
+                className="flex-1 text-left text-[12.5px] text-stone-600 dark:text-stone-300 leading-[1.6] line-clamp-2 min-w-0 hover:text-stone-800 dark:hover:text-stone-100 transition-colors"
+              >
+                {m.content}
+              </button>
+              <div className="flex items-center gap-2 shrink-0 ml-1">
+                <span className="text-[10.5px] text-stone-300 dark:text-stone-600">
+                  {new Date(m.ts).toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' })}
+                </span>
+                <button
+                  onClick={() => onUnpin(m.id)}
+                  title="Quitar destacado"
+                  className="w-5 h-5 flex items-center justify-center rounded-md text-stone-300 dark:text-stone-600 hover:text-rose-400 dark:hover:text-rose-400 hover:bg-stone-100 dark:hover:bg-stone-800 transition-all"
+                >
+                  <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                    <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+                  </svg>
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
 // ─── Chat ─────────────────────────────────────────────────────────────────────
 export default function Chat() {
   const navigate = useNavigate()
@@ -354,7 +416,10 @@ export default function Chat() {
         <div className="flex flex-1 min-h-0">
 
           {/* ── Chat pane ──────────────────────────────────────────── */}
-          <div className={`flex flex-col min-w-0 transition-all duration-300 ${artifact?.kind === 'module' ? 'hidden md:flex md:w-[42%]' : 'w-full'}`}>
+          <div className={`relative flex flex-col min-w-0 transition-all duration-300 ${artifact?.kind === 'module' ? 'hidden md:flex md:w-[42%]' : 'w-full'}`}>
+
+            {/* Pinned bar — flujo normal, encima del scroll */}
+            <PinnedBar messages={messages} onUnpin={handlePin} />
 
             {/* Scroll to bottom pill */}
             {!isAtBottom && hasNewMsg && (
@@ -429,7 +494,7 @@ export default function Chat() {
                             <svg className="w-3.5 h-3.5 ch-spin text-[#2FAF8F]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
                             Subiendo archivos…
                           </div>
-                        ) : !showThinking && !isStreaming ? (
+                        ) : !showThinking && !isStreaming && !(isSimulating && simSteps.length > 0) ? (
                           <div className="gl-wrap py-1">
                             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#2FAF8F" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
                               <g className="gl-b"><path d="M2 17l10 5 10-5"/></g>
@@ -459,6 +524,9 @@ export default function Chat() {
                 </div>
               )}
             </div>
+
+            {/* Gradient — overlapa el scroll sin ocupar espacio */}
+            <div className="h-16 -mt-16 bg-gradient-to-t from-[#fafaf9] dark:from-[#0c0a09] to-transparent pointer-events-none shrink-0 relative z-10" />
 
             {/* Input bar */}
             <ChatInputBar
