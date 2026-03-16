@@ -4,12 +4,22 @@ import {
   type ChatMode,
   type ChatModel,
   type AttachedFile,
+  type AssistantPrefs,
 } from '../../lib/chatService'
 import type { UIMessage, Toast } from './chatTypes'
 import { dbToUI } from './chatUtils'
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 export const MAX_CHARS   = 4000
+
+// ─── Read assistant prefs from localStorage (set by Configuraciones) ─────────
+function getAssistantPrefs(): AssistantPrefs & { suggestions: boolean; history: boolean } {
+  try {
+    const raw = localStorage.getItem('gandia-assistant-prefs')
+    if (raw) return { detailLevel: 'balanced', tone: 'professional', suggestions: true, history: true, ...JSON.parse(raw) }
+  } catch { /* ignore */ }
+  return { detailLevel: 'balanced', tone: 'professional', suggestions: true, history: true }
+}
 export const MAX_FILE_MB = 10
 
 // ─── Smart error messages ─────────────────────────────────────────────────────
@@ -225,12 +235,16 @@ export function useChat(onArtifactText?: (text: string) => boolean) {
         m.id === 'temp-user' ? { ...dbToUI(savedUser), thoughtsExpanded: false } : m
       ))
 
-      // 4. Construir historial
+      // 4. Construir historial (respetando preferencia mantener_historial)
+      const assistantPrefs = getAssistantPrefs()
+      const historyToSend = assistantPrefs.history
+        ? history.filter(m => !m.isError).map(m => ({
+            role: m.role as 'user' | 'assistant',
+            content: m.content,
+          }))
+        : []
       const apiHistory = [
-        ...history.filter(m => !m.isError).map(m => ({
-          role: m.role as 'user' | 'assistant',
-          content: m.content,
-        })),
+        ...historyToSend,
         { role: 'user' as const, content: userContent },
       ]
 
@@ -256,6 +270,7 @@ export function useChat(onArtifactText?: (text: string) => boolean) {
           }
           setStreamingText(prev => prev + chunk)
         },
+        assistantPrefs,
       )
 
       // 6. Guardar respuesta
@@ -327,6 +342,22 @@ export function useChat(onArtifactText?: (text: string) => boolean) {
     runGeneration(trimmed, attachedFiles, rawToUpload, conversationId, currentHistory)
   }, [message, attachedFiles, pendingFiles, isGenerating, messages, conversationId, runGeneration, onArtifactText])
 
+  // ─── handleSendWith: envía texto directo (usado por voz) ───────────────────
+  const handleSendWith = useCallback((text: string) => {
+    const trimmed = text.trim()
+    if (!trimmed || isGenerating) return
+    const tempUserMsg: UIMessage = {
+      id: 'temp-user', role: 'user', content: trimmed,
+      files: [], thoughts: [], thoughtsExpanded: false,
+      isError: false, ts: Date.now(),
+    }
+    const currentHistory = [...messages]
+    setMessages(prev => [...prev, tempUserMsg])
+    setMessage('')
+    if (onArtifactText?.(trimmed)) return
+    runGeneration(trimmed, [], [], conversationId, currentHistory)
+  }, [isGenerating, messages, conversationId, runGeneration, onArtifactText])
+
   // ─── Edit & resend ───────────────────────────────────────────────────────────
   const handleEditSave = useCallback((idx: number) => {
     const trimmed = editingText.trim()
@@ -394,6 +425,7 @@ export function useChat(onArtifactText?: (text: string) => boolean) {
     doNewChat,
     handleNewChat,
     handleSend,
+    handleSendWith,
     handleEditSave,
     handleRegenerate,
     handlePin,

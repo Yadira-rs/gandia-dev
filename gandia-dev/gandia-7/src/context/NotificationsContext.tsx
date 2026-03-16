@@ -15,6 +15,58 @@ import { getCurrentUser } from '../lib/authService'
 
 export type NotifType = 'approval' | 'tramite' | 'system'
 
+// Mapa de tipo de notificación → clave en NotifPrefs
+const TYPE_PREF_MAP: Record<NotifType, string> = {
+  approval: 'certificaciones',
+  tramite:  'auditorias',
+  system:   'sistema',
+}
+
+interface NotifPrefs {
+  alerts:         boolean
+  newsletter:     boolean
+  auditorias:     boolean
+  certificaciones: boolean
+  sistema:        boolean
+  menciones:      boolean
+  push:           boolean
+  email:          boolean
+  sms:            boolean
+  dnd_from:       string
+  dnd_to:         string
+}
+
+const DEFAULT_PREFS: NotifPrefs = {
+  alerts: true, newsletter: false, auditorias: true,
+  certificaciones: true, sistema: true, menciones: true,
+  push: true, email: true, sms: false,
+  dnd_from: '22:00', dnd_to: '07:00',
+}
+
+// ── Verificar si estamos en horario No Molestar ───────────────────────────────
+function isInDND(prefs: NotifPrefs): boolean {
+  const now  = new Date()
+  const hhmm = `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`
+  const from = prefs.dnd_from
+  const to   = prefs.dnd_to
+  if (from === to) return false
+  if (from < to) return hhmm >= from && hhmm < to
+  return hhmm >= from || hhmm < to   // cruza medianoche
+}
+
+// ── Web Push: solicitar permiso y mostrar notificación nativa ─────────────────
+async function showPushNotification(title: string, body: string) {
+  try {
+    if (!('Notification' in window)) return
+    if (Notification.permission === 'denied') return
+    if (Notification.permission === 'default') {
+      const perm = await Notification.requestPermission()
+      if (perm !== 'granted') return
+    }
+    new Notification(title, { body, icon: '/vite.svg', tag: 'gandia-notif' })
+  } catch { /* browser sin soporte */ }
+}
+
 export interface AppNotification {
   id: string
   user_id: string
@@ -57,6 +109,17 @@ export const NotificationsProvider = ({ children }: { children: ReactNode }) => 
   const [notifications, setNotifications] = useState<AppNotification[]>([])
   const [isLoading, setIsLoading]         = useState(true)
   const [userId, setUserId]               = useState<string | null>(null)
+  const prefsRef = { current: DEFAULT_PREFS as NotifPrefs }
+
+  // Leer prefs del localStorage (escritas por Configuraciones al guardar)
+  const loadPrefs = (): NotifPrefs => {
+    try {
+      const raw = localStorage.getItem('gandia-notif-prefs')
+      if (raw) return { ...DEFAULT_PREFS, ...JSON.parse(raw) }
+    } catch { /* ignore */ }
+    return DEFAULT_PREFS
+  }
+  prefsRef.current = loadPrefs()
 
   // ── Carga notificaciones del usuario ─────────────────────────────────────
   const fetchNotifications = useCallback(async (uid: string) => {
@@ -104,6 +167,20 @@ export const NotificationsProvider = ({ children }: { children: ReactNode }) => 
           },
           (payload) => {
             const newNotif = payload.new as AppNotification
+            const prefs = loadPrefs()
+
+            // ── Filtrar por tipo habilitado ───────────────────────────────
+            const prefKey = TYPE_PREF_MAP[newNotif.type]
+            if (prefKey && !(prefs as unknown as Record<string,boolean>)[prefKey]) return
+
+            // ── No molestar ───────────────────────────────────────────────
+            if (isInDND(prefs)) return
+
+            // ── Web Push si está habilitado ───────────────────────────────
+            if (prefs.push) {
+              showPushNotification(newNotif.title, newNotif.body)
+            }
+
             setNotifications(prev => [newNotif, ...prev])
           }
         )

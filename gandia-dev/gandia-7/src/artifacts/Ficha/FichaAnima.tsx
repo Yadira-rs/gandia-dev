@@ -151,8 +151,10 @@ export default function FichaAnima({ onClose, onEscalate }: Props) {
         {tab === 'huella' && animalSelecto && (
           <div className="max-w-2xl mx-auto">
             <FichaHuellaWidget
+              animalId={animalSelecto.id}
+              animalNombre={animalSelecto.nombre}
+              animalArete={animalSelecto.arete}
               onCapturar={() => {}}
-              onVerHistorial={() => {}}
             />
           </div>
         )}

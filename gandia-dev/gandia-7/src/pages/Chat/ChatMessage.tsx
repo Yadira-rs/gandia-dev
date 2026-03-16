@@ -1,3 +1,4 @@
+import { useState, useCallback, useRef } from 'react'
 import type { ReactNode } from 'react'
 import type { AttachedFile } from '../../lib/chatService'
 import type { UIMessage } from './chatTypes'
@@ -169,6 +170,7 @@ interface ChatMessageProps {
   onAddToast:       (text: string, kind?: 'error' | 'info') => void
   onCloseArtifact:  () => void
   onPin:            (id: string) => void
+  onFeedback:       (msgId: string, kind: 'up' | 'down') => Promise<void>
   renderInlineWidget: (id: string) => ReactNode
   onToggleThoughts: (idx: number) => void
   MAX_CHARS:        number
@@ -179,10 +181,40 @@ export function ChatMessage({
   editingIdx, editingText,
   copiedId, artifact,
   onSetEditingIdx, onSetEditingText, onEditSave,
-  onCopy, onRegenerate, onLightbox, onAddToast, onCloseArtifact, onPin,
+  onCopy, onRegenerate, onLightbox, onCloseArtifact, onPin, onFeedback,
   renderInlineWidget, onToggleThoughts,
   MAX_CHARS,
 }: ChatMessageProps) {
+  // ── TTS ────────────────────────────────────────────────────────────────────
+  const [speaking,   setSpeaking]   = useState(false)
+  const uttRef       = useRef<SpeechSynthesisUtterance | null>(null)
+
+  const handleSpeak = useCallback(() => {
+    if (!window.speechSynthesis) return
+    if (speaking) {
+      window.speechSynthesis.cancel()
+      setSpeaking(false)
+      return
+    }
+    const text = msg.content.replace(/\*\*/g, '').replace(/^[-•]\s/gm, '').trim()
+    const utt  = new SpeechSynthesisUtterance(text)
+    utt.lang   = 'es-MX'
+    utt.rate   = 1.05
+    utt.onend  = () => setSpeaking(false)
+    utt.onerror = () => setSpeaking(false)
+    uttRef.current = utt
+    setSpeaking(true)
+    window.speechSynthesis.speak(utt)
+  }, [speaking, msg.content])
+
+  // ── Feedback ───────────────────────────────────────────────────────────────
+  const [feedback, setFeedback] = useState<'up' | 'down' | null>(null)
+
+  const handleFeedback = useCallback(async (kind: 'up' | 'down') => {
+    if (feedback) return  // ya votó
+    setFeedback(kind)
+    await onFeedback(msg.id, kind)
+  }, [feedback, msg.id, onFeedback])
   return (
     <div className="flex flex-col gap-0" data-msg-id={msg.id}>
       {msg.role === 'assistant' && msg.thoughts && msg.thoughts.length > 0 && (
@@ -294,18 +326,35 @@ export function ChatMessage({
                 <ActionBtn onClick={() => onPin(msg.id)} title={msg.pinned ? 'Quitar destacado' : 'Destacar'}>
                   <span className={msg.pinned ? 'text-[#2FAF8F]' : ''}><IcoPin /></span>
                 </ActionBtn>
-                <ActionBtn onClick={() => onAddToast('Gracias por tu feedback', 'info')} title="Me gusta">
-                  <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <ActionBtn
+                  onClick={() => handleFeedback('up')}
+                  title={feedback === 'up' ? 'Gracias por tu feedback' : 'Me gusta'}
+                >
+                  <svg className={`w-3.5 h-3.5 transition-colors ${feedback === 'up' ? 'text-[#2FAF8F]' : ''}`} viewBox="0 0 24 24" fill={feedback === 'up' ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                     <path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3H14z"/>
                     <path d="M7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3"/>
                   </svg>
                 </ActionBtn>
-                <ActionBtn onClick={() => onAddToast('Gracias por tu feedback', 'info')} title="No me gusta">
-                  <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <ActionBtn
+                  onClick={() => handleFeedback('down')}
+                  title={feedback === 'down' ? 'Gracias por tu feedback' : 'No me gusta'}
+                >
+                  <svg className={`w-3.5 h-3.5 transition-colors ${feedback === 'down' ? 'text-rose-400' : ''}`} viewBox="0 0 24 24" fill={feedback === 'down' ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                     <path d="M10 15v4a3 3 0 0 0 3 3l4-9V2H5.72a2 2 0 0 0-2 1.7l-1.38 9a2 2 0 0 0 2 2.3H10z"/>
                     <path d="M17 2h2.67A2.31 2.31 0 0 1 22 4v7a2.31 2.31 0 0 1-2.33 2H17"/>
                   </svg>
                 </ActionBtn>
+                {/* TTS — leer respuesta en voz alta */}
+                {'speechSynthesis' in window && (
+                  <ActionBtn onClick={handleSpeak} title={speaking ? 'Detener lectura' : 'Escuchar respuesta'}>
+                    <svg className={`w-3.5 h-3.5 transition-colors ${speaking ? 'text-[#2FAF8F]' : ''}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      {speaking
+                        ? <><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></>
+                        : <><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/></>
+                      }
+                    </svg>
+                  </ActionBtn>
+                )}
                 <div className="w-px h-3 bg-stone-200 dark:bg-stone-700/60 mx-0.5" />
                 <ActionBtn onClick={() => onRegenerate(idx)} title="Regenerar"><IcoRefresh /></ActionBtn>
               </>

@@ -169,8 +169,10 @@ export default function FichaModulo({ onClose, onEscalate, initialTab = 'perfile
 
           {tab === 'huella' && selectedAnimal && (
             <FichaHuellaWidget
+              animalId={selectedAnimal.id}
+              animalNombre={selectedAnimal.nombre}
+              animalArete={selectedAnimal.arete}
               onCapturar={onEscalate}
-              onVerHistorial={onEscalate}
             />
           )}
 
