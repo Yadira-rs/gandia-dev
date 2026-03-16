@@ -186,9 +186,9 @@ export default function VerificationModulo({ onClose, onEscalate }: Props) {
           <span className="w-2 h-2 rounded-full bg-[#ec4899]" />
           <span className="text-[12px] font-bold text-stone-700 dark:text-stone-200">Verificación</span>
           {pendientesCount > 0 && (
-            <span className="flex items-center gap-1 text-[10px] font-medium bg-stone-50 dark:bg-stone-800/50 text-stone-500 dark:text-stone-400 px-2 py-0.5 rounded-full border border-stone-200/70 dark:border-stone-700/50">
+            <span className="flex items-center gap-1 text-[10px] font-medium text-stone-500 dark:text-stone-400 px-2 py-0.5 rounded-full border border-stone-200/80 dark:border-stone-700/60">
               {pendientesCount} pendientes
-              {altaCount > 0 && <span className="w-1 h-1 rounded-full bg-red-400 animate-pulse" />}
+              {altaCount > 0 && <span className="w-1 h-1 rounded-full bg-red-400" />}
             </span>
           )}
         </div>

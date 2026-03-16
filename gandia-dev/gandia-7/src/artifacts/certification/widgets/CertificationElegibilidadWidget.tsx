@@ -1,7 +1,10 @@
+import { useState, useEffect } from 'react'
+
 /**
- * CertificationElegibilidadWidget
- * Diseño institucional — número hero, tabla de dominios, sin rings ni cajas.
+ * CertificationElegibilidadWidget — European Document v5
+ * Drop-in replacement. Mismos tipos y exports.
  */
+
 export type EstadoElegibilidad = 'listo' | 'casi' | 'bloqueado'
 
 export interface DominioCheck {
@@ -30,98 +33,188 @@ interface Props {
   onVerDetalle?: () => void
 }
 
-const EST = {
-  listo:    { label: 'Listo para certificar',    color: '#2FAF8F' },
-  casi:     { label: 'Casi listo',               color: '#d97706' },
-  bloqueado:{ label: 'Bloqueado',                color: '#e11d48' },
+// Status: left border ONLY. Label text is neutral.
+const STATUS: Record<EstadoElegibilidad, { label: string; border: string }> = {
+  listo:     { label: 'Listo para certificar', border: '#2A7A5A' },
+  casi:      { label: 'Casi listo',             border: '#8A6800' },
+  bloqueado: { label: 'Bloqueado',              border: '#8C1A1A' },
+}
+
+function useDark() {
+  const [d, setD] = useState(() => typeof document !== 'undefined' && document.documentElement.classList.contains('dark'))
+  useEffect(() => {
+    const obs = new MutationObserver(() => setD(document.documentElement.classList.contains('dark')))
+    obs.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] })
+    return () => obs.disconnect()
+  }, [])
+  return d
 }
 
 export default function CertificationElegibilidadWidget({ datos, onExpedir, onVerDetalle }: Props) {
-  const col = EST[datos.estado]
+  const dark = useDark()
+  const tk = dark
+    ? { bg:'#0E0D0C', card:'#1C1917', b:'#2A2724', blt:'#221F1D', tx:'#F4F2EF', txMd:'#A19D97', txSm:'#58534E', acc:'#2FAF8F' }
+    : { bg:'#FAFAF9', card:'#FFFFFF', b:'#E7E5E4', blt:'#F5F5F4', tx:'#1C1917', txMd:'#57534E', txSm:'#A8A29E', acc:'#2FAF8F' }
+
+  const s     = STATUS[datos.estado]
+  const marks = [0, 25, 50, 75, 100]
 
   return (
-    <div className="flex flex-col gap-0">
+    <>
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600;700&family=Sora:wght@400;500;600&display=swap');
 
-      {/* Hero — número + estado sin decoración */}
-      <div className="pb-5 border-b border-stone-200/60 dark:border-stone-800/50">
-        <div className="flex items-end justify-between gap-4">
-          <div>
-            <p className="text-[11px] text-stone-400 dark:text-stone-500 uppercase tracking-widest mb-2">{datos.tipoCert}</p>
-            <div className="flex items-baseline gap-3">
-              <p className="text-[56px] font-black leading-none tabular-nums" style={{ color: col.color }}>{datos.score}</p>
-              <div>
-                <p className="text-[13px] text-stone-300 dark:text-stone-600 leading-none mb-1">/ 100</p>
-                <p className="text-[13px] font-bold" style={{ color: col.color }}>{col.label}</p>
+        .cel5 * { box-sizing:border-box; margin:0; padding:0; }
+        .cel5 {
+          font-family:'Sora',ui-sans-serif,sans-serif; font-size:13px;
+          color:var(--tx); background:var(--card); -webkit-font-smoothing:antialiased;
+          border:1px solid var(--b); border-radius:2px; overflow:hidden; position:relative;
+        }
+        .cel5::after {
+          content:''; position:absolute; inset:0; pointer-events:none; z-index:10;
+          background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='200' height='200' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E");
+        }
+        .cel5 > * { position:relative; z-index:1; }
+        .cel5-serif { font-family:'Cormorant Garamond',Georgia,serif; }
+        .cel5-mono  { font-family:ui-monospace,'Cascadia Code',monospace; }
+        .cel5-lbl   { font-size:9px; font-weight:600; letter-spacing:.11em; text-transform:uppercase; color:var(--tx-sm); }
+
+        .cel5-hero {
+          background-color:var(--bg);
+          background-image:repeating-linear-gradient(
+            -45deg, transparent, transparent 5px,
+            rgba(0,0,0,.022) 5px, rgba(0,0,0,.022) 6px
+          );
+          position:relative; overflow:hidden;
+        }
+        .cel5-ghost {
+          position:absolute; right:-12px; bottom:-24px;
+          font-family:'Cormorant Garamond',Georgia,serif;
+          font-size:160px; font-weight:700; line-height:1; letter-spacing:-.04em;
+          color:var(--tx); opacity:.04; user-select:none; pointer-events:none;
+        }
+
+        .cel5-status {
+          display:inline-flex; align-items:center; gap:5px;
+          border-left:2px solid; padding:2px 0 2px 8px;
+        }
+
+        .cel5-btn-ghost {
+          font-family:'Sora',sans-serif; font-size:11px; font-weight:500; letter-spacing:.04em;
+          padding:7px 0; flex:1; border:1px solid var(--b); border-radius:2px;
+          background:transparent; color:var(--tx-md); cursor:pointer;
+          transition:border-color .12s, color .12s;
+        }
+        .cel5-btn-ghost:hover { border-color:var(--tx-md); color:var(--tx); }
+        .cel5-btn-solid {
+          font-family:'Sora',sans-serif; font-size:11px; font-weight:600; letter-spacing:.04em;
+          padding:7px 0; flex:1; border:1px solid var(--tx); border-radius:2px;
+          background:var(--tx); color:var(--card); cursor:pointer; transition:opacity .12s;
+        }
+        .cel5-btn-solid:hover { opacity:.82; }
+
+        .cel5-chip {
+          display:inline-flex; align-items:center; gap:4px;
+          font-size:10px; padding:2px 7px; border-radius:1px;
+          border:1px solid var(--blt); color:var(--tx-md);
+          background:var(--bg); font-weight:400;
+        }
+        .cel5-chip.pending { border-color:var(--b); font-weight:500; }
+      `}</style>
+
+      <div className="cel5" style={{ '--bg':tk.bg,'--card':tk.card,'--b':tk.b,'--blt':tk.blt,'--tx':tk.tx,'--tx-md':tk.txMd,'--tx-sm':tk.txSm,'--acc':tk.acc, borderLeft:`2px solid ${s.border}` } as React.CSSProperties}>
+
+        {/* ── Hero ── */}
+        <div className="cel5-hero" style={{ padding:'18px 18px 16px', borderBottom:'1px solid var(--b)' }}>
+          <div className="cel5-ghost">{datos.score}</div>
+
+          <p className="cel5-lbl" style={{ marginBottom:14, position:'relative' }}>{datos.tipoCert}</p>
+
+          <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-end', gap:12, marginBottom:16, position:'relative' }}>
+            <div>
+              <div style={{ display:'flex', alignItems:'baseline', gap:6, marginBottom:10 }}>
+                <span className="cel5-serif" style={{ fontSize:60, fontWeight:600, color:'var(--tx)', lineHeight:1, letterSpacing:'-.03em' }}>
+                  {datos.score}
+                </span>
+                <span className="cel5-serif" style={{ fontSize:26, color:'var(--b)', lineHeight:1 }}>/100</span>
+              </div>
+              {/* Status — left border line, neutral text */}
+              <div className="cel5-status" style={{ borderLeftColor: s.border }}>
+                <span style={{ fontSize:11, fontWeight:500, color:'var(--tx-md)' }}>{s.label}</span>
               </div>
             </div>
-            <p className="text-[13px] text-stone-600 dark:text-stone-300 mt-2 font-medium">
-              {datos.animal} <span className="font-mono text-stone-400 dark:text-stone-500 font-normal">{datos.arete}</span>
-              <span className="text-stone-300 dark:text-stone-600"> · </span>
-              <span className="text-stone-400 dark:text-stone-500">{datos.lote}</span>
-            </p>
-            {datos.fechaCorte && (
-              <p className="text-[11px] text-amber-600 dark:text-amber-500 mt-1.5">Fecha límite: {datos.fechaCorte}</p>
-            )}
-          </div>
 
-          {/* Barra vertical de score */}
-          <div className="flex flex-col items-center gap-1 pb-1">
-            <div className="w-2 h-24 bg-stone-100 dark:bg-stone-800/60 rounded-full overflow-hidden flex flex-col justify-end">
-              <div className="w-full rounded-full transition-all duration-700" style={{ height: `${datos.score}%`, backgroundColor: col.color }} />
+            <div style={{ textAlign:'right', paddingBottom:4 }}>
+              <p style={{ fontSize:13, fontWeight:600, color:'var(--tx)', marginBottom:3 }}>{datos.animal}</p>
+              <p className="cel5-mono" style={{ fontSize:11.5, color:'var(--tx-sm)' }}>{datos.arete}</p>
+              <p style={{ fontSize:11, color:'var(--tx-sm)', marginTop:2 }}>{datos.lote}</p>
             </div>
           </div>
+
+          {/* Score bar — thin, dark fill */}
+          <div style={{ height:1, background:'var(--blt)', borderRadius:99, overflow:'hidden', marginBottom:5, position:'relative' }}>
+            <div style={{ position:'absolute', top:0, left:0, height:'100%', width:`${datos.score}%`, background:'var(--tx-md)', borderRadius:99, transition:'width .8s cubic-bezier(.16,1,.3,1)' }} />
+          </div>
+          <div style={{ display:'flex', justifyContent:'space-between', position:'relative' }}>
+            {marks.map(m => (
+              <span key={m} className="cel5-mono" style={{ fontSize:8.5, color:'var(--blt)' }}>{m}</span>
+            ))}
+          </div>
+
+          {/* Fecha corte */}
+          {datos.fechaCorte && (
+            <p style={{ fontSize:10.5, color:'var(--tx-sm)', marginTop:10, position:'relative' }}>
+              Fecha límite de certificación: <strong style={{ color:'var(--tx-md)', fontWeight:600 }}>{datos.fechaCorte}</strong>
+            </p>
+          )}
+
+          {/* Bloqueantes */}
+          {datos.bloqueantes.length > 0 && (
+            <div style={{ marginTop:12, paddingTop:12, borderTop:'1px solid var(--blt)', position:'relative' }}>
+              {datos.bloqueantes.map((b, i) => (
+                <div key={i} style={{ display:'flex', gap:8, marginBottom: i < datos.bloqueantes.length - 1 ? 6 : 0 }}>
+                  <span className="cel5-mono" style={{ fontSize:11, color:'var(--tx-sm)', flexShrink:0, marginTop:2 }}>✕</span>
+                  <p style={{ fontSize:12, color:'var(--tx)', fontWeight:500, lineHeight:1.45 }}>{b}</p>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Pendientes */}
+          {datos.pendientes.length > 0 && datos.estado !== 'bloqueado' && (
+            <div style={{ marginTop:8, position:'relative' }}>
+              {datos.pendientes.map((p, i) => (
+                <div key={i} style={{ display:'flex', gap:8, marginBottom: i < datos.pendientes.length - 1 ? 5 : 0 }}>
+                  <span style={{ fontSize:7, color:'var(--tx-sm)', flexShrink:0, marginTop:5 }}>●</span>
+                  <p style={{ fontSize:12, color:'var(--tx-md)', lineHeight:1.45 }}>{p}</p>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
-        {/* Bloqueantes */}
-        {datos.bloqueantes.length > 0 && (
-          <div className="mt-4 pt-4 border-t border-stone-100 dark:border-stone-800/40">
-            {datos.bloqueantes.map((b, i) => (
-              <p key={i} className="text-[11.5px] text-rose-600 dark:text-rose-400 flex gap-2 mb-1 leading-snug">
-                <span className="shrink-0 font-black mt-0.5">✕</span>{b}
-              </p>
-            ))}
+        {/* ── Dominios ── */}
+        <div>
+          <div style={{ padding:'6px 18px 5px', background:'var(--bg)', borderBottom:'1px solid var(--blt)' }}>
+            <span className="cel5-lbl">Verificación por dominio</span>
           </div>
-        )}
 
-        {/* Pendientes */}
-        {datos.pendientes.length > 0 && datos.estado !== 'bloqueado' && (
-          <div className={`mt-3 ${datos.bloqueantes.length === 0 ? 'pt-4 border-t border-stone-100 dark:border-stone-800/40' : ''}`}>
-            {datos.pendientes.map((p, i) => (
-              <p key={i} className="text-[11.5px] text-amber-600 dark:text-amber-500 flex gap-2 mb-1 leading-snug">
-                <span className="shrink-0 mt-0.5">·</span>{p}
-              </p>
-            ))}
-          </div>
-        )}
-      </div>
-
-      {/* Tabla de dominios */}
-      <div className="pt-2">
-        <p className="text-[10px] text-stone-400 dark:text-stone-500 uppercase tracking-widest font-semibold px-1 py-3">Verificación por dominio</p>
-        <div className="divide-y divide-stone-100 dark:divide-stone-800/40">
           {datos.dominios.map((d, i) => {
             const fail = d.items.filter(x => !x.ok)
-            const bloq = fail.some(x => x.critico)
-            const statusColor = d.ok ? '#2FAF8F' : bloq ? '#e11d48' : '#d97706'
             return (
-              <div key={i} className="py-3 px-1">
-                <div className="flex items-center justify-between mb-2">
-                  <p className="text-[12px] font-semibold text-stone-700 dark:text-stone-200 capitalize">{d.label}</p>
-                  <p className="text-[11px] font-semibold" style={{ color: statusColor }}>
-                    {d.ok ? `${d.items.length}/${d.items.length} ✓` : `${fail.length} faltante${fail.length > 1 ? 's' : ''}`}
+              <div key={i} style={{ padding:'11px 18px', borderBottom: i < datos.dominios.length - 1 ? '1px solid var(--blt)' : 'none' }}>
+                <div style={{ display:'flex', justifyContent:'space-between', marginBottom:8 }}>
+                  <p style={{ fontSize:12.5, fontWeight:500, color:'var(--tx)' }}>{d.label}</p>
+                  <p style={{ fontSize:10.5, color:'var(--tx-sm)' }}>
+                    {d.ok ? `${d.items.length}/${d.items.length}` : `${fail.length} pendiente${fail.length > 1 ? 's' : ''}`}
                   </p>
                 </div>
-                {/* Items como chips mínimos */}
-                <div className="flex flex-wrap gap-1.5">
+                <div style={{ display:'flex', flexWrap:'wrap', gap:5 }}>
                   {d.items.map((item, j) => (
-                    <span key={j} className={`text-[10.5px] px-2 py-0.5 rounded-md
-                      ${item.ok
-                        ? 'text-stone-400 dark:text-stone-500 bg-stone-100/80 dark:bg-stone-800/40'
-                        : item.critico
-                          ? 'text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-950/20 font-medium'
-                          : 'text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/20'
-                      }`}>
-                      {item.ok ? '✓ ' : '○ '}{item.texto}
+                    <span key={j} className={`cel5-chip${!item.ok ? ' pending' : ''}`}
+                      style={{ opacity: item.ok ? .6 : 1 }}
+                    >
+                      {item.ok ? '✓' : '○'} {item.texto}
                     </span>
                   ))}
                 </div>
@@ -129,24 +222,17 @@ export default function CertificationElegibilidadWidget({ datos, onExpedir, onVe
             )
           })}
         </div>
-      </div>
 
-      {/* Acciones */}
-      <div className="flex gap-2 pt-4 border-t border-stone-200/60 dark:border-stone-800/50 mt-2">
-        {onVerDetalle && (
-          <button onClick={onVerDetalle}
-            className="flex-1 py-2.5 rounded-[10px] border border-stone-200/70 dark:border-stone-800/60 text-[12px] font-semibold text-stone-500 dark:text-stone-400 hover:text-stone-700 dark:hover:text-stone-200 cursor-pointer transition-colors bg-transparent">
-            Ver checklist
-          </button>
-        )}
-        {onExpedir && datos.estado !== 'bloqueado' && (
-          <button onClick={onExpedir}
-            className="flex-1 py-2.5 rounded-[10px] text-[12px] font-semibold text-white cursor-pointer transition-colors border-0"
-            style={{ backgroundColor: '#2FAF8F' }}>
-            Preparar expediente
-          </button>
+        {/* ── Actions ── */}
+        {(onVerDetalle || onExpedir) && (
+          <div style={{ display:'flex', gap:8, padding:'12px 18px', borderTop:'1px solid var(--b)' }}>
+            {onVerDetalle && <button className="cel5-btn-ghost" onClick={onVerDetalle}>Ver checklist</button>}
+            {onExpedir && datos.estado !== 'bloqueado' && (
+              <button className="cel5-btn-solid" onClick={onExpedir}>Preparar expediente</button>
+            )}
+          </div>
         )}
       </div>
-    </div>
+    </>
   )
 }

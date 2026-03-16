@@ -367,11 +367,18 @@ export interface AcipeResponse {
  * por un ReadableStream / EventSource y actualiza el Chat.tsx para recibir
  * los chunks. La firma de esta función no cambia desde el punto de vista del Chat.
  */
+// ─── Preferencias del asistente (leídas desde localStorage por useChat) ────────
+export interface AssistantPrefs {
+  detailLevel: 'concise' | 'balanced' | 'detailed'
+  tone:        'professional' | 'casual'
+}
+
 async function callAcipe(
-  messages:  AcipeRequestMessage[],
-  mode:      ChatMode,
-  model:     ChatModel,
-  onChunk?:  (chunk: string) => void,  // callback opcional para streaming
+  messages:       AcipeRequestMessage[],
+  mode:           ChatMode,
+  model:          ChatModel,
+  onChunk?:       (chunk: string) => void,
+  assistantPrefs?: AssistantPrefs,
 ): Promise<AcipeResponse> {
   const user_id     = await getActiveUserId()
   const BACKEND_URL = import.meta.env.VITE_ACIPE_URL ?? ''
@@ -387,7 +394,7 @@ async function callAcipe(
     const res = await fetch(`${BACKEND_URL}/api/chat`, {
       method:  'POST',
       headers: { 'Content-Type': 'application/json' },
-      body:    JSON.stringify({ messages, mode, model, user_id }),
+      body:    JSON.stringify({ messages, mode, model, user_id, assistant_prefs: assistantPrefs }),
     })
 
     if (!res.ok) {
@@ -406,7 +413,7 @@ async function callAcipe(
   const res = await fetch(`${BACKEND_URL}/api/chat/stream`, {
     method:  'POST',
     headers: { 'Content-Type': 'application/json' },
-    body:    JSON.stringify({ messages, mode, model, user_id }),
+    body:    JSON.stringify({ messages, mode, model, user_id, assistant_prefs: assistantPrefs }),
   })
 
   if (!res.ok) {
@@ -495,5 +502,5 @@ export const chatService = {
   deleteFile,
 
   // ACIPE backend
-  callAcipe,
+  callAcipe: (messages: AcipeRequestMessage[], mode: ChatMode, model: ChatModel, onChunk?: (chunk: string) => void, assistantPrefs?: AssistantPrefs) => callAcipe(messages, mode, model, onChunk, assistantPrefs),
 }

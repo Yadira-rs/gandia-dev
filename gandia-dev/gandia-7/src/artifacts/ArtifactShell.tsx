@@ -41,6 +41,14 @@ import VerificationAnima  from './verification/VerificationAnima'
 import GemelosModulo from './twins/GemelosModulo'
 import GemelosAnima  from './twins/GemelosAnima'
 
+// ── Exportación ────────────────────────────────────────────────────────────────
+import ExportacionModulo from './exportacion/ExportacionModulo'
+import ExportacionAnima  from './exportacion/ExportacionAnima'
+
+// ── Vinculación ────────────────────────────────────────────────────────────────
+import VinculacionModulo from './vinculacion/VinculacionModulo'
+import VinculacionAnima  from './vinculacion/VinculacionAnima'
+
 // ─── PROPS ────────────────────────────────────────────────────────────────────
 
 interface Props {
@@ -158,6 +166,22 @@ function AwakeShell({
         />
       )
 
+    case 'exportacion:form':
+      return (
+        <ExportacionModulo
+          onClose={onClose}
+          onEscalate={onEscalate}
+        />
+      )
+
+    case 'vinculacion:panel':
+      return (
+        <VinculacionModulo
+          onClose={onClose}
+          onEscalate={onEscalate}
+        />
+      )
+
     default:
       return null
   }
@@ -234,6 +258,22 @@ function AnimaShell({
         />
       )
 
+    case 'exportacion':
+      return (
+        <ExportacionAnima
+          onClose={onClose}
+          onEscalate={onDeescalate}
+        />
+      )
+
+    case 'vinculacion':
+      return (
+        <VinculacionAnima
+          onClose={onClose}
+          onEscalate={onDeescalate}
+        />
+      )
+
     default:
       return null
   }
@@ -250,6 +290,8 @@ const DOMAIN_COLOR: Record<ArtifactDomain, string> = {
   verification:  '#ec4899',
   sanidad:       '#ef4444',
   biometria:     '#6366f1',
+  exportacion:   '#f97316',
+  vinculacion:   '#0ea5e9',
 }
 
 function ComingSoonPanel({

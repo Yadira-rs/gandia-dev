@@ -11,7 +11,8 @@
 
 import { useState } from 'react'
 import CopiloAnima from '../CopiloAnima'
-import { MOCK_PASSPORT } from '../../pages/Chat/artifactEngine/mockData'
+import { useUser } from '../../context/UserContext'
+import { useAnimalDetalle, dbToPassportData } from '../../hooks/useAnimales'
 
 import FichaCard             from './widgets/FichaCard'
 import FichaPerfilesWidget   from './widgets/FichaPerfilesWidget'
@@ -41,6 +42,12 @@ const TABS: { id: TabId; label: string }[] = [
 export default function FichaAnima({ onClose, onEscalate }: Props) {
   const [tab,           setTab]          = useState<TabId>('perfiles')
   const [animalSelecto, setAnimalSelecto] = useState<AnimalPerfil | null>(null)
+
+  const { profile } = useUser()
+  const pd           = (profile?.personal_data as Record<string, string> | null) ?? {}
+  const propietario  = pd.fullName ?? pd.full_name ?? pd.nombre_completo ?? pd.nombre ?? '—'
+
+  const { animal: animalData, loading: loadingAnimal } = useAnimalDetalle(animalSelecto?.id ?? null)
 
   return (
     <div className="fixed inset-0 z-50 flex flex-col bg-[#fafaf9] dark:bg-[#0c0a09]">
@@ -111,11 +118,17 @@ export default function FichaAnima({ onClose, onEscalate }: Props) {
                 </svg>
                 Todos los animales
               </button>
-              <FichaCard
-                data={MOCK_PASSPORT}
-               
-                onHuella={() => setTab('huella')}
-              />
+              {loadingAnimal && (
+                <div className="flex justify-center py-8">
+                  <div className="w-5 h-5 border-2 border-[#2FAF8F] border-t-transparent rounded-full animate-spin" />
+                </div>
+              )}
+              {!loadingAnimal && animalData && (
+                <FichaCard
+                  data={dbToPassportData(animalData, propietario)}
+                  onHuella={() => setTab('huella')}
+                />
+              )}
             </div>
           ) : (
             <FichaPerfilesWidget
@@ -128,6 +141,7 @@ export default function FichaAnima({ onClose, onEscalate }: Props) {
         {tab === 'documentos' && animalSelecto && (
           <div className="max-w-2xl mx-auto">
             <FichaDocumentosWidget
+              animalId={animalSelecto.id}
               animalNombre={animalSelecto?.nombre}
               animalArete={animalSelecto?.arete}
             />
@@ -137,8 +151,10 @@ export default function FichaAnima({ onClose, onEscalate }: Props) {
         {tab === 'huella' && animalSelecto && (
           <div className="max-w-2xl mx-auto">
             <FichaHuellaWidget
+              animalId={animalSelecto.id}
+              animalNombre={animalSelecto.nombre}
+              animalArete={animalSelecto.arete}
               onCapturar={() => {}}
-              onVerHistorial={() => {}}
             />
           </div>
         )}

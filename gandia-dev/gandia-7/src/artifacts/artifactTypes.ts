@@ -20,6 +20,8 @@ export type ArtifactDomain =
   | 'verification'   // Verificaciones y auditorías
   | 'sanidad'        // Sanidad y riesgos epidemiológicos
   | 'biometria'      // Identificación por huella de morro
+  | 'exportacion'    // Solicitud de aretes de exportación SENASICA
+  | 'vinculacion'    // Vinculaciones entre entidades institucionales
 
 // ─── NIVEL 1 · DORMIDO ────────────────────────────────────────────────────────
 
@@ -58,13 +60,25 @@ export type WidgetArtifactId =
   | 'verification:item'
   | 'verification:historial'
   | 'verification:inconsistencias'
+  // Exportación
+  | 'exportacion:solicitud'
+  | 'exportacion:tabla'
+  | 'exportacion:validacion'
+  | 'exportacion:scanner'
+  | 'exportacion:export'
+  | 'exportacion:historial'
+  // Vinculación
+  | 'vinculacion:lista'
+  | 'vinculacion:pendientes'
+  | 'vinculacion:nueva'
+  | 'vinculacion:historial'
 
 export interface WidgetArtifact {
-  kind:   'widget'
-  id:     WidgetArtifactId
+  kind: 'widget'
+  id: WidgetArtifactId
   domain: ArtifactDomain
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  data?:  any
+  data?: any
 }
 
 // ─── NIVEL 2 · DESPIERTO ──────────────────────────────────────────────────────
@@ -88,22 +102,26 @@ export type ModuleArtifactId =
   | 'verification:panel'
   // Biometría de morro
   | 'biometria:dashboard'
+  // Exportación
+  | 'exportacion:form'
+  // Vinculación
+  | 'vinculacion:panel'
 
 export interface ModuleArtifact {
-  kind:        'module'
-  id:          ModuleArtifactId
-  domain:      ArtifactDomain
-  dormants:    WidgetArtifactId[]
+  kind: 'module'
+  id: ModuleArtifactId
+  domain: ArtifactDomain
+  dormants: WidgetArtifactId[]
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  data?:       any
+  data?: any
 }
 
 // ─── NIVEL 3 · ÁNIMA ──────────────────────────────────────────────────────────
 
 export interface AnimaArtifact {
-  kind:        'anima'
-  domain:      ArtifactDomain
-  awakes:      ModuleArtifactId[]
+  kind: 'anima'
+  domain: ArtifactDomain
+  awakes: ModuleArtifactId[]
 }
 
 // ─── UNION TYPE ───────────────────────────────────────────────────────────────
@@ -213,47 +231,118 @@ export function detectArtifactIntent(text: string): WidgetArtifact | null {
 export function widgetToModule(dormantId: WidgetArtifactId): ModuleArtifact {
   const map: Record<WidgetArtifactId, ModuleArtifact> = {
     // Ficha Ganadera
-    'passport:card':        { kind: 'module', id: 'passport:full', domain: 'passport', dormants: ['passport:card', 'passport:perfiles', 'passport:documentos', 'passport:biometria'] },
-    'passport:perfiles':    { kind: 'module', id: 'passport:full', domain: 'passport', dormants: ['passport:perfiles', 'passport:card', 'passport:nuevo'] },
-    'passport:documentos':  { kind: 'module', id: 'passport:full', domain: 'passport', dormants: ['passport:card', 'passport:documentos'] },
-    'passport:biometria':   { kind: 'module', id: 'passport:full', domain: 'passport', dormants: ['passport:card', 'passport:biometria'] },
-    'passport:nuevo':       { kind: 'module', id: 'passport:full', domain: 'passport', dormants: ['passport:nuevo'] },
+    'passport:card': { kind: 'module', id: 'passport:full', domain: 'passport', dormants: ['passport:card', 'passport:perfiles', 'passport:documentos', 'passport:biometria'] },
+    'passport:perfiles': { kind: 'module', id: 'passport:full', domain: 'passport', dormants: ['passport:perfiles', 'passport:card', 'passport:nuevo'] },
+    'passport:documentos': { kind: 'module', id: 'passport:full', domain: 'passport', dormants: ['passport:card', 'passport:documentos'] },
+    'passport:biometria': { kind: 'module', id: 'passport:full', domain: 'passport', dormants: ['passport:card', 'passport:biometria'] },
+    'passport:nuevo': { kind: 'module', id: 'passport:full', domain: 'passport', dormants: ['passport:nuevo'] },
     // Gemelo digital
-    'twins:timeline':       { kind: 'module', id: 'twins:historial',     domain: 'twins',         dormants: ['twins:timeline', 'twins:feed']            },
-    'twins:feed':           { kind: 'module', id: 'twins:historial',     domain: 'twins',         dormants: ['twins:timeline', 'twins:feed']            },
-    'twins:alimentacion':   { kind: 'module', id: 'twins:alimentacion',  domain: 'twins',         dormants: ['twins:alimentacion']                      },
+    'twins:timeline': { kind: 'module', id: 'twins:historial', domain: 'twins', dormants: ['twins:timeline', 'twins:feed'] },
+    'twins:feed': { kind: 'module', id: 'twins:historial', domain: 'twins', dormants: ['twins:timeline', 'twins:feed'] },
+    'twins:alimentacion': { kind: 'module', id: 'twins:alimentacion', domain: 'twins', dormants: ['twins:alimentacion'] },
     // Monitoring
-    'monitoring:mapa':      { kind: 'module', id: 'monitoring:dashboard', domain: 'monitoring',   dormants: ['monitoring:mapa', 'monitoring:sensor', 'monitoring:anomalia'] },
-    'monitoring:sensor':    { kind: 'module', id: 'monitoring:dashboard', domain: 'monitoring',   dormants: ['monitoring:mapa', 'monitoring:sensor', 'monitoring:anomalia'] },
-    'monitoring:anomalia':  { kind: 'module', id: 'monitoring:dashboard', domain: 'monitoring',   dormants: ['monitoring:mapa', 'monitoring:sensor', 'monitoring:anomalia'] },
-    'sanidad:gusano':              { kind: 'module', id: 'sanidad:detail',          domain: 'sanidad',       dormants: ['sanidad:gusano'] },
-    'certification:card':          { kind: 'module', id: 'certification:detail',    domain: 'certification', dormants: ['certification:card', 'certification:elegibilidad', 'certification:checklist']    },
-    'certification:elegibilidad':  { kind: 'module', id: 'certification:detail',    domain: 'certification', dormants: ['certification:card', 'certification:elegibilidad', 'certification:checklist']    },
-    'certification:checklist':     { kind: 'module', id: 'certification:detail',    domain: 'certification', dormants: ['certification:checklist', 'certification:documentos']                            },
-    'certification:documentos':    { kind: 'module', id: 'certification:expediente',domain: 'certification', dormants: ['certification:documentos', 'certification:checklist']                            },
-    'certification:vencimientos':  { kind: 'module', id: 'certification:detail',    domain: 'certification', dormants: ['certification:vencimientos']                                                    },
-    'tramites:status':             { kind: 'module', id: 'tramites:detail',         domain: 'tramites',      dormants: ['tramites:status']                         },
-    'biometria:captura':   { kind: 'module', id: 'biometria:dashboard', domain: 'biometria', dormants: ['biometria:captura', 'biometria:resultado', 'biometria:historial'] },
+    'monitoring:mapa': { kind: 'module', id: 'monitoring:dashboard', domain: 'monitoring', dormants: ['monitoring:mapa', 'monitoring:sensor', 'monitoring:anomalia'] },
+    'monitoring:sensor': { kind: 'module', id: 'monitoring:dashboard', domain: 'monitoring', dormants: ['monitoring:mapa', 'monitoring:sensor', 'monitoring:anomalia'] },
+    'monitoring:anomalia': { kind: 'module', id: 'monitoring:dashboard', domain: 'monitoring', dormants: ['monitoring:mapa', 'monitoring:sensor', 'monitoring:anomalia'] },
+    'sanidad:gusano': { kind: 'module', id: 'sanidad:detail', domain: 'sanidad', dormants: ['sanidad:gusano'] },
+    'certification:card': { kind: 'module', id: 'certification:detail', domain: 'certification', dormants: ['certification:card', 'certification:elegibilidad', 'certification:checklist'] },
+    'certification:elegibilidad': { kind: 'module', id: 'certification:detail', domain: 'certification', dormants: ['certification:card', 'certification:elegibilidad', 'certification:checklist'] },
+    'certification:checklist': { kind: 'module', id: 'certification:detail', domain: 'certification', dormants: ['certification:checklist', 'certification:documentos'] },
+    'certification:documentos': { kind: 'module', id: 'certification:expediente', domain: 'certification', dormants: ['certification:documentos', 'certification:checklist'] },
+    'certification:vencimientos': { kind: 'module', id: 'certification:detail', domain: 'certification', dormants: ['certification:vencimientos'] },
+    'tramites:status': { kind: 'module', id: 'tramites:detail', domain: 'tramites', dormants: ['tramites:status'] },
+    'biometria:captura': { kind: 'module', id: 'biometria:dashboard', domain: 'biometria', dormants: ['biometria:captura', 'biometria:resultado', 'biometria:historial'] },
     'biometria:resultado': { kind: 'module', id: 'biometria:dashboard', domain: 'biometria', dormants: ['biometria:captura', 'biometria:resultado', 'biometria:historial'] },
     'biometria:historial': { kind: 'module', id: 'biometria:dashboard', domain: 'biometria', dormants: ['biometria:captura', 'biometria:resultado', 'biometria:historial'] },
-    'verification:cola':            { kind: 'module', id: 'verification:panel', domain: 'verification', dormants: ['verification:cola', 'verification:item', 'verification:historial', 'verification:inconsistencias'] },
-    'verification:item':            { kind: 'module', id: 'verification:panel', domain: 'verification', dormants: ['verification:cola', 'verification:item', 'verification:historial', 'verification:inconsistencias'] },
-    'verification:historial':       { kind: 'module', id: 'verification:panel', domain: 'verification', dormants: ['verification:cola', 'verification:item', 'verification:historial', 'verification:inconsistencias'] },
+    'verification:cola': { kind: 'module', id: 'verification:panel', domain: 'verification', dormants: ['verification:cola', 'verification:item', 'verification:historial', 'verification:inconsistencias'] },
+    'verification:item': { kind: 'module', id: 'verification:panel', domain: 'verification', dormants: ['verification:cola', 'verification:item', 'verification:historial', 'verification:inconsistencias'] },
+    'verification:historial': { kind: 'module', id: 'verification:panel', domain: 'verification', dormants: ['verification:cola', 'verification:item', 'verification:historial', 'verification:inconsistencias'] },
     'verification:inconsistencias': { kind: 'module', id: 'verification:panel', domain: 'verification', dormants: ['verification:cola', 'verification:item', 'verification:historial', 'verification:inconsistencias'] },
+    // Exportación
+    'exportacion:solicitud': { kind: 'module', id: 'exportacion:form', domain: 'exportacion', dormants: ['exportacion:solicitud', 'exportacion:tabla', 'exportacion:validacion', 'exportacion:scanner', 'exportacion:export', 'exportacion:historial'] },
+    'exportacion:tabla': { kind: 'module', id: 'exportacion:form', domain: 'exportacion', dormants: ['exportacion:solicitud', 'exportacion:tabla', 'exportacion:validacion', 'exportacion:scanner', 'exportacion:export', 'exportacion:historial'] },
+    'exportacion:validacion': { kind: 'module', id: 'exportacion:form', domain: 'exportacion', dormants: ['exportacion:solicitud', 'exportacion:tabla', 'exportacion:validacion', 'exportacion:scanner', 'exportacion:export', 'exportacion:historial'] },
+    'exportacion:scanner': { kind: 'module', id: 'exportacion:form', domain: 'exportacion', dormants: ['exportacion:solicitud', 'exportacion:tabla', 'exportacion:validacion', 'exportacion:scanner', 'exportacion:export', 'exportacion:historial'] },
+    'exportacion:export': { kind: 'module', id: 'exportacion:form', domain: 'exportacion', dormants: ['exportacion:solicitud', 'exportacion:tabla', 'exportacion:validacion', 'exportacion:scanner', 'exportacion:export', 'exportacion:historial'] },
+    'exportacion:historial': { kind: 'module', id: 'exportacion:form', domain: 'exportacion', dormants: ['exportacion:solicitud', 'exportacion:tabla', 'exportacion:validacion', 'exportacion:scanner', 'exportacion:export', 'exportacion:historial'] },
+    // Vinculación
+    'vinculacion:lista': { kind: 'module', id: 'vinculacion:panel', domain: 'vinculacion', dormants: ['vinculacion:lista', 'vinculacion:pendientes', 'vinculacion:nueva', 'vinculacion:historial'] },
+    'vinculacion:pendientes': { kind: 'module', id: 'vinculacion:panel', domain: 'vinculacion', dormants: ['vinculacion:lista', 'vinculacion:pendientes', 'vinculacion:nueva', 'vinculacion:historial'] },
+    'vinculacion:nueva': { kind: 'module', id: 'vinculacion:panel', domain: 'vinculacion', dormants: ['vinculacion:lista', 'vinculacion:pendientes', 'vinculacion:nueva', 'vinculacion:historial'] },
+    'vinculacion:historial': { kind: 'module', id: 'vinculacion:panel', domain: 'vinculacion', dormants: ['vinculacion:lista', 'vinculacion:pendientes', 'vinculacion:nueva', 'vinculacion:historial'] },
   }
   return map[dormantId]
 }
 
+// ─── TIPOS DE DOMINIO: EXPORTACIÓN ───────────────────────────────────────────
+
+export interface SolicitudData {
+  psg: string
+  upp: string
+  sexo: 'Macho' | 'Hembra'
+  folioFactura: string
+}
+
+export interface AreteRow {
+  id: number
+  areteOrigen: string
+  folioFactura: string
+  status: 'ok' | 'duplicado' | 'invalido'
+}
+
+export interface SolicitudGuardada {
+  id: string
+  folio: string
+  solicitud: SolicitudData
+  rows: AreteRow[]
+  estado: 'borrador' | 'lista' | 'exportada'
+  fecha: string
+}
+
+// ─── TIPOS DE DOMINIO: VINCULACIÓN ───────────────────────────────────────────
+
+export type VinculacionTipo = 'sanitario' | 'comercial' | 'auditoria' | 'union'
+
+export interface Vinculacion {
+  id: string
+  entidad: string                   // nombre de la entidad vinculada
+  tipo: VinculacionTipo
+  estado: 'activa' | 'suspendida'
+  fecha: string                   // fecha de inicio
+  expira: string | null            // null = sin fecha de expiración
+}
+
+export interface VinculacionPendiente {
+  id: string
+  entidad: string
+  tipo: VinculacionTipo
+  direccion: 'recibida' | 'enviada'
+  fecha: string
+  mensaje: string | null
+}
+
+export interface VinculacionHistorial {
+  id: string
+  entidad: string
+  tipo: VinculacionTipo
+  estado: string               // 'creada' | 'aceptada' | 'rechazada' | 'revocada' | 'expirada'
+  fechaInicio: string
+  fechaFin: string
+  motivo: string
+}
+
 export function domainToAnima(domain: ArtifactDomain): AnimaArtifact {
   const map: Record<ArtifactDomain, AnimaArtifact> = {
-    passport:      { kind: 'anima', domain: 'passport',      awakes: ['passport:full']                                    },
-    twins:         { kind: 'anima', domain: 'twins',         awakes: ['twins:historial', 'twins:alimentacion']            },
-    monitoring:    { kind: 'anima', domain: 'monitoring',    awakes: ['monitoring:dashboard']                             },
+    passport: { kind: 'anima', domain: 'passport', awakes: ['passport:full'] },
+    twins: { kind: 'anima', domain: 'twins', awakes: ['twins:historial', 'twins:alimentacion'] },
+    monitoring: { kind: 'anima', domain: 'monitoring', awakes: ['monitoring:dashboard'] },
     certification: { kind: 'anima', domain: 'certification', awakes: ['certification:detail', 'certification:expediente'] },
-    tramites:      { kind: 'anima', domain: 'tramites',      awakes: ['tramites:detail']                                  },
-    verification:  { kind: 'anima', domain: 'verification',  awakes: ['verification:panel']                              },
-    sanidad:       { kind: 'anima', domain: 'sanidad',       awakes: ['sanidad:detail']                                   },
-    biometria:     { kind: 'anima', domain: 'biometria',     awakes: ['biometria:dashboard']                              },
+    tramites: { kind: 'anima', domain: 'tramites', awakes: ['tramites:detail'] },
+    verification: { kind: 'anima', domain: 'verification', awakes: ['verification:panel'] },
+    sanidad: { kind: 'anima', domain: 'sanidad', awakes: ['sanidad:detail'] },
+    biometria: { kind: 'anima', domain: 'biometria', awakes: ['biometria:dashboard'] },
+    exportacion: { kind: 'anima', domain: 'exportacion', awakes: ['exportacion:form'] },
+    vinculacion: { kind: 'anima', domain: 'vinculacion', awakes: ['vinculacion:panel'] },
   }
   return map[domain]
 }

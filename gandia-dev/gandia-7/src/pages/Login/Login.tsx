@@ -146,6 +146,9 @@ const Login = () => {
   const [pendingEmail, setPendingEmail] = useState('')
   const [isTyping, setIsTyping] = useState(false)
   const [isProcessing, setIsProcessing] = useState(false)
+  const [pendingResendEmail, setPendingResendEmail] = useState('')
+  const [resendCooldown, setResendCooldown] = useState(0)
+  const [resendLoading, setResendLoading] = useState(false)
   const [modal, setModal] = useState<{ open: boolean; title: string; description: string; confirmLabel: string; onConfirm: () => void }>
     ({ open: false, title: '', description: '', confirmLabel: 'Confirmar', onConfirm: () => {} })
   const showConfirm = (title: string, description: string, confirmLabel: string, onConfirm: () => void) =>
@@ -162,6 +165,12 @@ const Login = () => {
   }, [navigate])
 
   useEffect(() => { messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }) }, [messages, isTyping])
+
+  useEffect(() => {
+    if (resendCooldown <= 0) return
+    const t = setTimeout(() => setResendCooldown(c => c - 1), 1000)
+    return () => clearTimeout(t)
+  }, [resendCooldown])
 
   useEffect(() => {
     if (!showLoginChat) return
@@ -238,9 +247,15 @@ const Login = () => {
             password: value,
           })
           if (error) {
-            addMsg('bot', error.message.includes('Invalid login credentials')
-              ? 'Email o contraseña incorrectos. Verifica tus datos o regístrate si aún no tienes cuenta.'
-              : error.message)
+            if (error.message.includes('Email not confirmed')) {
+              addMsg('bot', 'Tu correo aún no está confirmado. Revisa tu bandeja de entrada (y spam) para activar tu cuenta.')
+              setPendingResendEmail(pendingEmail)
+              setResendCooldown(30)
+            } else {
+              addMsg('bot', error.message.includes('Invalid login credentials')
+                ? 'Email o contraseña incorrectos. Verifica tus datos o regístrate si aún no tienes cuenta.'
+                : error.message)
+            }
             setIsProcessing(false); return
           }
           addMsg('bot', 'Contraseña verificada ✓\n\nValidando tu cuenta...')
@@ -268,6 +283,24 @@ const Login = () => {
       })
     } else {
       navigate('/home')
+    }
+  }
+
+  const handleResendConfirmation = async () => {
+    if (resendCooldown > 0 || resendLoading || !pendingResendEmail) return
+    setResendLoading(true)
+    try {
+      await supabase.auth.resend({
+        type: 'signup',
+        email: pendingResendEmail,
+        options: { emailRedirectTo: `${window.location.origin}/signup/personal` },
+      })
+      setResendCooldown(60)
+      addMsg('bot', `Correo reenviado a ${pendingResendEmail}. Revisa también la carpeta de spam.`)
+    } catch {
+      addMsg('bot', 'No se pudo reenviar. Intenta de nuevo en un momento.')
+    } finally {
+      setResendLoading(false)
     }
   }
 
@@ -358,6 +391,22 @@ const Login = () => {
       {/* ── INPUT ── */}
       <div className="fixed bottom-0 left-0 right-0 z-50 px-4 pb-6 pt-4 bg-gradient-to-t from-[#fafaf9] dark:from-[#0c0a09] from-80% to-transparent">
         <div className="max-w-2xl mx-auto">
+
+          {/* Banner reenvío confirmación */}
+          {pendingResendEmail && (
+            <div className="mb-3 flex items-center justify-between bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/20 rounded-xl px-4 py-2.5 gap-3">
+              <p className="text-[12px] text-amber-700 dark:text-amber-400 leading-snug">
+                Revisa tu correo para activar tu cuenta.
+              </p>
+              <button
+                onClick={handleResendConfirmation}
+                disabled={resendCooldown > 0 || resendLoading}
+                className={`shrink-0 text-[11.5px] font-semibold transition-colors whitespace-nowrap ${resendCooldown > 0 || resendLoading ? 'text-amber-400 dark:text-amber-600 cursor-not-allowed' : 'text-amber-700 dark:text-amber-400 hover:text-amber-900 dark:hover:text-amber-300'}`}
+              >
+                {resendLoading ? 'Enviando...' : resendCooldown > 0 ? `Reenviar (${resendCooldown}s)` : 'Reenviar'}
+              </button>
+            </div>
+          )}
           <div className="bg-white dark:bg-[#141210] border border-stone-200/80 dark:border-stone-800/70 rounded-2xl shadow-[0_2px_12px_rgba(0,0,0,0.05)] dark:shadow-[0_2px_20px_rgba(0,0,0,0.25)]">
             {step === 'password' ? (
               <>

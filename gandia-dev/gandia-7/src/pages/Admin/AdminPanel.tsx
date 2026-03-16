@@ -117,7 +117,7 @@ const FIELD_LABELS: Record<string, string> = {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// ADMIN SERVICE — todo real, solo 2FA simulado (sin proveedor de email aún)
+// ADMIN SERVICE — todo real, incluido 2FA por email (Resend vía Supabase)
 // ─────────────────────────────────────────────────────────────────────────────
 class AdminService {
   async verifyAdminCredentials(email: string, password: string): Promise<string | null> {
@@ -160,7 +160,7 @@ class AdminService {
             refresh_token: tokenData.refresh_token,
           })
         }
-      } catch (fetchErr) {
+      } catch {
         return authError.message
       }
     }
@@ -193,18 +193,19 @@ class AdminService {
     return key === import.meta.env.VITE_ADMIN_MASTER_KEY
   }
 
-  // 2FA simulado — código en consola hasta que configures proveedor de email
+  // 2FA real — OTP por email vía Supabase (Resend)
   async send2FA(email: string): Promise<void> {
-    await new Promise(r => setTimeout(r, 300))
-    console.info(
-      `%c[GANDIA 2FA] → ${email}: 123456`,
-      'background:#2FAF8F;color:white;padding:4px 8px;border-radius:4px;font-weight:bold',
-    )
+    const { error } = await supabase.auth.signInWithOtp({ email })
+    if (error) throw new Error(error.message)
   }
 
-  async verify2FA(_email: string, code: string): Promise<boolean> {
-    await new Promise(r => setTimeout(r, 300))
-    return code === '123456'
+  async verify2FA(email: string, code: string): Promise<boolean> {
+    const { error } = await supabase.auth.verifyOtp({
+      email,
+      token: code,
+      type: 'email',
+    })
+    return !error
   }
 }
 
@@ -460,13 +461,16 @@ const AdminPanel = () => {
     setAuthError(''); setIsAuthLoading(true)
     try {
       const ok = await adminService.verifyMasterKey(masterKey)
-      if (ok) {
-        await adminService.send2FA(adminEmail)
-        setAuthStep('2fa'); setResendCountdown(CONFIG.RESEND_COOLDOWN)
-        showToast('Código 2FA enviado — revisa la consola del navegador', 'info')
-      } else { setAuthError('Llave maestra incorrecta') }
-    } catch { setAuthError('Error al verificar llave') }
-    finally { setIsAuthLoading(false) }
+      if (!ok) { setAuthError('Llave maestra incorrecta'); setIsAuthLoading(false); return }
+    } catch { setAuthError('Error al verificar llave'); setIsAuthLoading(false); return }
+    try {
+      await adminService.send2FA(adminEmail)
+      setAuthStep('2fa'); setResendCountdown(CONFIG.RESEND_COOLDOWN)
+      showToast('Código enviado — revisa tu correo', 'info')
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Error al enviar el código 2FA'
+      setAuthError(msg.includes('rate') ? 'Demasiados intentos. Espera unos minutos.' : `Error al enviar código: ${msg}`)
+    } finally { setIsAuthLoading(false) }
   }
 
   const handle2FASubmit = async () => {
@@ -644,7 +648,7 @@ const AdminPanel = () => {
                       onKeyDown={e => e.key === 'Enter' && twoFACode.length === 6 && handle2FASubmit()}
                       className={`w-full px-4 py-4 rounded-xl border outline-none font-mono text-center text-3xl tracking-[0.6em] transition-colors ${inp}`} />
                     <p className={`mt-2 text-xs ${sec}`}>
-                      💡 2FA simulado — revisa la consola del navegador para ver el código.
+                      Revisa tu correo electrónico — el código expira en 10 minutos.
                     </p>
                   </div>
                   {authError && <ErrorBanner message={authError} />}

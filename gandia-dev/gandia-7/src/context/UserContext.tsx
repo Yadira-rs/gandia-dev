@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/set-state-in-effect */
 import {
   createContext,
   useContext,
@@ -43,10 +44,14 @@ function getInitialAuthStatus(): AuthStatus {
 // ─── DOM ──────────────────────────────────────────────────────────────────────
 
 function applyPreferencesToDOM(prefs: AppPreferences) {
-  document.documentElement.classList.toggle('dark', prefs.theme === 'dark')
+  // Respetar 'auto' — si el usuario lo eligió, no sobreescribir con el valor resuelto
+  const current = localStorage.getItem('gandia-theme')
+  if (current !== 'auto') {
+    document.documentElement.classList.toggle('dark', prefs.theme === 'dark')
+    localStorage.setItem('gandia-theme', prefs.theme)
+  }
   document.documentElement.style.setProperty('--font-app', FONT_FAMILIES[prefs.font])
-  localStorage.setItem('gandia-theme', prefs.theme)
-  localStorage.setItem('gandia-font',  prefs.font)
+  localStorage.setItem('gandia-font', prefs.font)
 }
 
 // ─── CONTEXT ──────────────────────────────────────────────────────────────────
@@ -175,9 +180,11 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
             if (!cancelled) clearProfile()
           })
         } else {
+          // eslint-disable-next-line react-hooks/set-state-in-effect
           if (!cancelled) clearProfile()
         }
       } catch {
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         if (!cancelled) clearProfile()
       }
     } else {
@@ -205,6 +212,23 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
       subscription.unsubscribe()
     }
   }, [applyProfile, clearProfile])
+
+  // ─── Escuchar cambios del sistema OS cuando tema es 'auto' ───────────────────
+  useEffect(() => {
+    const mq = window.matchMedia('(prefers-color-scheme: dark)')
+    const handler = (e: MediaQueryListEvent) => {
+      const savedTheme = localStorage.getItem('gandia-theme')
+      if (!savedTheme || savedTheme === 'auto') {
+        if (e.matches) {
+          document.documentElement.classList.add('dark')
+        } else {
+          document.documentElement.classList.remove('dark')
+        }
+      }
+    }
+    mq.addEventListener('change', handler)
+    return () => mq.removeEventListener('change', handler)
+  }, [])
 
   return (
     <UserContext.Provider value={{

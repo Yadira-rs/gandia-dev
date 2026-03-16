@@ -1,265 +1,315 @@
 /**
- * FichaDocumentosWidget — Widget: passport:documentos
+ * FichaDocumentosWidget — con Supabase Storage real
+ * 
  * ARCHIVO → src/artifacts/passport/widgets/FichaDocumentosWidget.tsx
- *
- * Documentos adjuntos de identificación del animal.
- * Certificados, actas, fotografías oficiales, constancias sanitarias.
- * UX de campo: estado de vigencia muy visible, acciones claras.
+ * 
+ * CAMBIOS vs versión mock:
+ *   - useAnimalDocumentos() para cargar documentos reales
+ *   - subirDocumento() para subir a Storage + insertar en BD
+ *   - getDocumentoUrl() para descargar archivos con URL firmada
  */
-import { useState } from 'react'
 
-export type DocEstatus = 'vigente' | 'por-vencer' | 'vencido' | 'pendiente'
-export type DocTipo    = 'certificado' | 'acta' | 'foto' | 'constancia' | 'guia' | 'otro'
+import { useRef, useState } from 'react'
+import {
+  useAnimalDocumentos,
+  subirDocumento,
+  getDocumentoUrl,
+  useRanchoId,
+  getAuthUserId,
+  type DocumentoDB,
+} from '../../../hooks/useAnimales'
+import { useUser } from '../../../context/UserContext'
+import { fmt } from '../.././../pages/Chat/chatUtils'
 
-export interface Documento {
-  id:       string
-  nombre:   string
-  tipo:     DocTipo
-  fuente:   string
-  fecha:    string
-  vigencia?: string
-  estatus:  DocEstatus
-  url?:     string
-  hash?:    string
-}
+// ─── PROPS ────────────────────────────────────────────────────────────────────
+// IMPORTANTE: FichaModulo y FichaAnima deben pasar `animalId` (uuid de BD)
+// además del nombre y arete ya existentes.
 
 interface Props {
-  documentos?:   Documento[]
-  animalNombre?: string
-  animalArete?:  string
-  onSubir?:      () => void
+  animalId:     string          // ← NUEVO: uuid real de la tabla animales
+  animalNombre: string
+  animalArete:  string
 }
 
-const MOCK_DOCS: Documento[] = [
-  {
-    id: 'd1', nombre: 'Certificado de Origen',           tipo: 'certificado', fuente: 'SENASICA',
-    fecha: '15 Mar 2024', vigencia: '15 Mar 2025', estatus: 'vigente',    hash: '3A7F...9C2E',
-  },
-  {
-    id: 'd2', nombre: 'Acta de Herrado',                 tipo: 'acta',        fuente: 'UPP Rancho Morales',
-    fecha: '02 Ene 2024', vigencia: undefined,            estatus: 'vigente',  hash: '8B4D...1F7A',
-  },
-  {
-    id: 'd3', nombre: 'Constancia Sanitaria (Brucelosis)', tipo: 'constancia', fuente: 'MVZ Responsable',
-    fecha: '10 Feb 2025', vigencia: '10 Ago 2025',        estatus: 'por-vencer', hash: '5C9A...4D2B',
-  },
-  {
-    id: 'd4', nombre: 'Fotografía oficial — Costado Izq.', tipo: 'foto',      fuente: 'Sistema Gandia',
-    fecha: '15 Mar 2024', vigencia: undefined,             estatus: 'vigente',  hash: '2E1C...7F8D',
-  },
-  {
-    id: 'd5', nombre: 'Constancia Tuberculosis',          tipo: 'constancia', fuente: 'MVZ Responsable',
-    fecha: '01 Oct 2023', vigencia: '01 Abr 2024',        estatus: 'vencido',
-  },
+// ─── TIPOS DE DOCUMENTO ───────────────────────────────────────────────────────
+
+const TIPOS_DOC: { value: DocumentoDB['tipo']; label: string }[] = [
+  { value: 'factura',      label: 'Factura'             },
+  { value: 'cuvq',         label: 'CUVQ'                },
+  { value: 'reemo',        label: 'Guía REEMO'          },
+  { value: 'resultado_lab',label: 'Resultado laboratorio'},
+  { value: 'vacunacion',   label: 'Vacunación'          },
+  { value: 'foto_oficial', label: 'Foto oficial'        },
+  { value: 'foto_campo',   label: 'Foto campo'          },
+  { value: 'identificacion', label: 'Identificación'   },
+  { value: 'firma_mvz',    label: 'Firma MVZ'           },
+  { value: 'otro',         label: 'Otro'                },
 ]
 
-const DOC_ICON: Record<DocTipo, React.FC<{ className?: string }>> = {
-  certificado: ({ className }) => (
-    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
-      <circle cx="12" cy="8" r="4"/><path d="M9 12l-2 9 5-3 5 3-2-9"/>
-    </svg>
-  ),
-  acta: ({ className }) => (
-    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
-      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-      <polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/>
-    </svg>
-  ),
-  foto: ({ className }) => (
-    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
-      <rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/>
-      <polyline points="21 15 16 10 5 21"/>
-    </svg>
-  ),
-  constancia: ({ className }) => (
-    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
-      <polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>
-    </svg>
-  ),
-  guia: ({ className }) => (
-    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
-      <polygon points="3 11 22 2 13 21 11 13 3 11"/>
-    </svg>
-  ),
-  otro: ({ className }) => (
-    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
-      <path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/>
-      <polyline points="13 2 13 9 20 9"/>
-    </svg>
-  ),
+const TIPO_LABEL: Record<string, string> = Object.fromEntries(TIPOS_DOC.map(t => [t.value, t.label]))
+const TIPO_COLOR: Record<string, string> = {
+  factura:       'text-emerald-500 bg-emerald-50 dark:bg-emerald-950/30',
+  cuvq:          'text-blue-500 bg-blue-50 dark:bg-blue-950/30',
+  reemo:         'text-orange-500 bg-orange-50 dark:bg-orange-950/30',
+  resultado_lab: 'text-purple-500 bg-purple-50 dark:bg-purple-950/30',
+  vacunacion:    'text-[#2FAF8F] bg-[#2FAF8F]/08 dark:bg-[#2FAF8F]/12',
+  foto_oficial:  'text-stone-500 bg-stone-100 dark:bg-stone-800/60',
+  foto_campo:    'text-stone-500 bg-stone-100 dark:bg-stone-800/60',
+  identificacion:'text-blue-500 bg-blue-50 dark:bg-blue-950/30',
+  firma_mvz:     'text-red-500 bg-red-50 dark:bg-red-950/30',
+  otro:          'text-stone-400 bg-stone-100 dark:bg-stone-800/60',
 }
 
-const ESTATUS_STYLE: Record<DocEstatus, {
-  badge: string; dot: string; label: string
-}> = {
-  vigente:    { dot: 'bg-[#2FAF8F]',   badge: 'bg-[#2FAF8F]/10 text-[#2FAF8F] border-[#2FAF8F]/30',                                          label: 'Vigente'    },
-  'por-vencer':{ dot: 'bg-amber-400',  badge: 'bg-amber-50 dark:bg-amber-950/30 text-amber-600 dark:text-amber-400 border-amber-200 dark:border-amber-800/40', label: 'Por vencer' },
-  vencido:    { dot: 'bg-red-400',     badge: 'bg-red-50 dark:bg-red-950/30 text-red-600 dark:text-red-400 border-red-200 dark:border-red-800/40',              label: 'Vencido'    },
-  pendiente:  { dot: 'bg-stone-300 dark:bg-stone-600', badge: 'bg-stone-50 dark:bg-[#141210] text-stone-400 dark:text-stone-500 border-stone-200 dark:border-stone-700/50', label: 'Pendiente'  },
-}
+// ─── WIDGET ───────────────────────────────────────────────────────────────────
 
-const TYPE_LABEL: Record<DocTipo, string> = {
-  certificado: 'Certificado',
-  acta:        'Acta',
-  foto:        'Fotografía',
-  constancia:  'Constancia',
-  guia:        'Guía',
-  otro:        'Documento',
-}
+export default function FichaDocumentosWidget({ animalId, animalNombre, animalArete }: Props) {
+  const { profile }  = useUser()
+  const userId       = profile?.user_id ?? null
+  const { ranchoId } = useRanchoId(userId)
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
-export default function FichaDocumentosWidget({
-  documentos = MOCK_DOCS,
-  animalNombre,
-  animalArete,
-  onSubir,
-}: Props) {
-  const [expanded, setExpanded] = useState<string | null>(null)
+  const { documentos, loading, error, refetch } = useAnimalDocumentos(animalId)
 
-  const vigentes    = documentos.filter(d => d.estatus === 'vigente').length
-  const porVencer   = documentos.filter(d => d.estatus === 'por-vencer').length
-  const vencidos    = documentos.filter(d => d.estatus === 'vencido').length
+  const [uploading,   setUploading]   = useState(false)
+  const [uploadError, setUploadError] = useState<string | null>(null)
+
+  // Form para nuevo documento
+  const [tipoSel,   setTipoSel]   = useState<DocumentoDB['tipo']>('otro')
+  const [emisorSel, setEmisorSel] = useState('')
+  const [fechaDoc,  setFechaDoc]  = useState('')
+  const [filesSel,  setFilesSel]  = useState<File[]>([])
+  const [showForm,  setShowForm]  = useState(false)
+
+  // ── Subir documentos ────────────────────────────────────────────────────
+  const handleSubir = async () => {
+    const authUserId = await getAuthUserId()
+    if (!authUserId || !ranchoId || filesSel.length === 0) return
+    setUploading(true)
+    setUploadError(null)
+
+    for (const file of filesSel) {
+      const { error: err } = await subirDocumento({
+        file,
+        animalId,
+        ranchoId,
+        userId:   authUserId,
+        tipo:     tipoSel,
+        emisor:   emisorSel || undefined,
+        fechaDoc: fechaDoc || undefined,
+      })
+      if (err) { setUploadError(err); break }
+    }
+
+    setUploading(false)
+    setFilesSel([])
+    setShowForm(false)
+    if (fileInputRef.current) fileInputRef.current.value = ''
+    refetch()
+  }
+
+  // ── Descargar documento ─────────────────────────────────────────────────
+  const handleDescargar = async (doc: DocumentoDB) => {
+    const url = await getDocumentoUrl(doc.storage_path)
+    if (!url) return
+    const a   = document.createElement('a')
+    a.href    = url
+    a.download = doc.nombre
+    a.target  = '_blank'
+    a.click()
+  }
+
+  // ── Loading ──
+  if (loading) return (
+    <div className="flex items-center justify-center py-12">
+      <div className="w-5 h-5 border-2 border-[#2FAF8F] border-t-transparent rounded-full animate-spin" />
+    </div>
+  )
 
   return (
-    <div className="flex flex-col gap-3">
+    <div className="flex flex-col gap-4">
 
       {/* ── Header ── */}
       <div className="flex items-center justify-between">
         <div>
-          <p className="text-[13.5px] font-semibold text-stone-800 dark:text-stone-100 leading-tight">Documentos de identificación</p>
-          {(animalNombre || animalArete) && (
-            <p className="text-[11.5px] text-stone-400 dark:text-stone-500 mt-0.5">
-              {animalNombre} {animalArete && <span className="font-mono">{animalArete}</span>}
-            </p>
-          )}
+          <p className="text-[12.5px] font-semibold text-stone-700 dark:text-stone-200">
+            Documentos · {animalNombre}
+          </p>
+          <p className="font-mono text-[10.5px] text-stone-400 dark:text-stone-500 mt-0.5">{animalArete}</p>
         </div>
-        {onSubir && (
-          <button
-            onClick={onSubir}
-            className="flex items-center gap-1.5 h-8 px-3.5 rounded-[8px] bg-[#2FAF8F] hover:bg-[#27a07f] text-white text-[11.5px] font-semibold border-0 cursor-pointer transition-colors active:scale-[0.97]"
-          >
-            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-            Subir
-          </button>
-        )}
+        <button
+          onClick={() => setShowForm(!showForm)}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-[8px] bg-[#2FAF8F] text-white text-[11px] font-semibold hover:bg-[#27a07f] transition-colors border-0 cursor-pointer"
+        >
+          <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+            <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+          </svg>
+          Subir
+        </button>
       </div>
 
-      {/* ── Resumen ── */}
-      {(porVencer > 0 || vencidos > 0) && (
-        <div className={`flex items-center gap-3 px-3.5 py-3 rounded-[10px] border ${
-          vencidos > 0
-            ? 'bg-red-50 dark:bg-red-950/20 border-red-200 dark:border-red-800/40'
-            : 'bg-amber-50 dark:bg-amber-950/20 border-amber-200 dark:border-amber-800/40'
-        }`}>
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={vencidos > 0 ? '#ef4444' : '#f59e0b'} strokeWidth="2" strokeLinecap="round">
-            <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
-            <line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
+      {/* ── Formulario de subida ── */}
+      {showForm && (
+        <div className="flex flex-col gap-3 p-4 rounded-[12px] border border-stone-200/70 dark:border-stone-800 bg-stone-50 dark:bg-stone-900/40">
+          <p className="text-[11.5px] font-semibold text-stone-600 dark:text-stone-300">Nuevo documento</p>
+
+          {/* Tipo */}
+          <div className="flex flex-col gap-1">
+            <label className="text-[10.5px] font-medium text-stone-400 dark:text-stone-500">Tipo de documento</label>
+            <select
+              value={tipoSel}
+              onChange={e => setTipoSel(e.target.value as DocumentoDB['tipo'])}
+              className="px-2.5 py-2 text-[12px] bg-white dark:bg-stone-800/80 border border-stone-200/70 dark:border-stone-700 rounded-[8px] text-stone-700 dark:text-stone-200 outline-none focus:border-[#2FAF8F]/50"
+            >
+              {TIPOS_DOC.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
+            </select>
+          </div>
+
+          {/* Emisor */}
+          <div className="flex flex-col gap-1">
+            <label className="text-[10.5px] font-medium text-stone-400 dark:text-stone-500">Emisor (opcional)</label>
+            <input
+              type="text"
+              placeholder="SENASICA, MVZ García…"
+              value={emisorSel}
+              onChange={e => setEmisorSel(e.target.value)}
+              className="px-2.5 py-2 text-[12px] bg-white dark:bg-stone-800/80 border border-stone-200/70 dark:border-stone-700 rounded-[8px] text-stone-700 dark:text-stone-200 placeholder-stone-300 dark:placeholder-stone-600 outline-none focus:border-[#2FAF8F]/50"
+            />
+          </div>
+
+          {/* Fecha documento */}
+          <div className="flex flex-col gap-1">
+            <label className="text-[10.5px] font-medium text-stone-400 dark:text-stone-500">Fecha del documento (opcional)</label>
+            <input
+              type="date"
+              value={fechaDoc}
+              onChange={e => setFechaDoc(e.target.value)}
+              className="px-2.5 py-2 text-[12px] bg-white dark:bg-stone-800/80 border border-stone-200/70 dark:border-stone-700 rounded-[8px] text-stone-700 dark:text-stone-200 outline-none focus:border-[#2FAF8F]/50"
+            />
+          </div>
+
+          {/* Selector de archivo */}
+          <div
+            className="border-2 border-dashed border-stone-200 dark:border-stone-700 rounded-[10px] p-5 text-center cursor-pointer hover:border-[#2FAF8F]/50 transition-colors"
+            onClick={() => fileInputRef.current?.click()}
+          >
+            <input
+              ref={fileInputRef}
+              type="file"
+              multiple
+              accept=".pdf,.jpg,.jpeg,.png"
+              className="hidden"
+              onChange={e => setFilesSel(Array.from(e.target.files ?? []))}
+            />
+            {filesSel.length > 0 ? (
+              <div className="flex flex-col gap-1">
+                {filesSel.map((f, i) => (
+                  <p key={i} className="text-[11.5px] text-stone-600 dark:text-stone-300 font-medium">
+                    {f.name} <span className="text-stone-400">({fmt(f.size)})</span>
+                  </p>
+                ))}
+              </div>
+            ) : (
+              <div className="flex flex-col items-center gap-2">
+                <svg className="w-6 h-6 text-stone-300 dark:text-stone-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                  <polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>
+                </svg>
+                <p className="text-[11.5px] text-stone-400 dark:text-stone-500">
+                  Click para seleccionar archivos<br/>
+                  <span className="text-[10px]">PDF, JPG, PNG · máx 20 MB</span>
+                </p>
+              </div>
+            )}
+          </div>
+
+          {uploadError && (
+            <p className="text-[11px] text-red-500">{uploadError}</p>
+          )}
+
+          <div className="flex gap-2">
+            <button
+              onClick={() => { setShowForm(false); setFilesSel([]); setUploadError(null) }}
+              className="flex-1 py-2 rounded-[8px] border border-stone-200/70 dark:border-stone-800 text-[11.5px] text-stone-500 hover:text-stone-700 transition-colors bg-transparent cursor-pointer"
+            >
+              Cancelar
+            </button>
+            <button
+              onClick={handleSubir}
+              disabled={uploading || filesSel.length === 0}
+              className="flex-1 py-2 rounded-[8px] bg-[#2FAF8F] text-white text-[11.5px] font-semibold hover:bg-[#27a07f] transition-colors border-0 cursor-pointer disabled:opacity-50 flex items-center justify-center gap-1.5"
+            >
+              {uploading ? (
+                <><div className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" />Subiendo…</>
+              ) : (
+                `Subir ${filesSel.length > 1 ? `${filesSel.length} archivos` : 'archivo'}`
+              )}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* ── Lista de documentos ── */}
+      {error && (
+        <p className="text-[11px] text-red-500 text-center py-4">{error}</p>
+      )}
+
+      {!error && documentos.length === 0 && (
+        <div className="flex flex-col items-center gap-2 py-10 text-center">
+          <svg className="w-8 h-8 text-stone-300 dark:text-stone-700" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/>
           </svg>
-          <p className={`text-[12px] font-semibold ${vencidos > 0 ? 'text-red-600 dark:text-red-400' : 'text-amber-600 dark:text-amber-400'}`}>
-            {vencidos > 0 && `${vencidos} documento${vencidos > 1 ? 's' : ''} vencido${vencidos > 1 ? 's' : ''}`}
-            {vencidos > 0 && porVencer > 0 && ' · '}
-            {porVencer > 0 && `${porVencer} por vencer`}
+          <p className="text-[12px] text-stone-400 dark:text-stone-500">Sin documentos aún</p>
+          <p className="text-[11px] text-stone-300 dark:text-stone-600 max-w-52 leading-relaxed">
+            Sube facturas, CUVQ, resultados de laboratorio y más
           </p>
         </div>
       )}
 
-      {/* ── Lista ── */}
-      <div className="bg-white dark:bg-[#1c1917] border border-stone-200/70 dark:border-stone-800/60 rounded-[14px] overflow-hidden">
-        {documentos.map((doc, i) => {
-          const es  = ESTATUS_STYLE[doc.estatus]
-          const Icon = DOC_ICON[doc.tipo]
-          const isExp = expanded === doc.id
-
-          return (
+      {documentos.length > 0 && (
+        <div className="flex flex-col gap-2">
+          {documentos.map(doc => (
             <div
               key={doc.id}
-              className={i < documentos.length - 1 ? 'border-b border-stone-100 dark:border-stone-800/40' : ''}
+              className="flex items-center gap-3 p-3 rounded-[10px] border border-stone-200/70 dark:border-stone-800 bg-white dark:bg-[#1c1917]"
             >
-              {/* Fila principal */}
-              <div
-                onClick={() => setExpanded(isExp ? null : doc.id)}
-                className={`flex items-center gap-3 px-4 py-3.5 cursor-pointer transition-colors hover:bg-stone-50 dark:hover:bg-stone-800/20 active:bg-stone-100 ${isExp ? 'bg-stone-50 dark:bg-stone-800/20' : ''}`}
-              >
-                {/* Icono tipo */}
-                <div className={`w-9 h-9 rounded-[8px] shrink-0 flex items-center justify-center border ${
-                  doc.estatus === 'vencido'
-                    ? 'bg-red-50 dark:bg-red-950/25 border-red-200 dark:border-red-800/40'
-                    : doc.estatus === 'por-vencer'
-                    ? 'bg-amber-50 dark:bg-amber-950/25 border-amber-200 dark:border-amber-800/40'
-                    : 'bg-stone-50 dark:bg-[#141210] border-stone-200/70 dark:border-stone-800/60'
-                }`}>
-                  <Icon className={`w-4 h-4 ${
-                    doc.estatus === 'vencido'    ? 'text-red-400'   :
-                    doc.estatus === 'por-vencer' ? 'text-amber-400' :
-                    'text-stone-400 dark:text-stone-500'
-                  }`} />
-                </div>
+              {/* Tipo badge */}
+              <span className={`text-[9.5px] font-semibold px-2 py-1 rounded-md shrink-0 ${TIPO_COLOR[doc.tipo] ?? 'text-stone-400 bg-stone-100 dark:bg-stone-800/60'}`}>
+                {TIPO_LABEL[doc.tipo] ?? doc.tipo}
+              </span>
 
-                {/* Info */}
-                <div className="flex-1 min-w-0">
-                  <p className="text-[12.5px] font-semibold text-stone-700 dark:text-stone-200 leading-tight truncate">{doc.nombre}</p>
-                  <p className="text-[11px] text-stone-400 dark:text-stone-500 mt-0.5">
-                    {TYPE_LABEL[doc.tipo]} · {doc.fuente} · {doc.fecha}
-                  </p>
-                </div>
-
-                {/* Estatus */}
-                <span className={`text-[9.5px] font-bold px-2 py-0.5 rounded-[5px] border uppercase tracking-[0.04em] shrink-0 ${es.badge}`}>
-                  {es.label}
-                </span>
-
-                <svg className={`w-4 h-4 text-stone-300 dark:text-stone-600 transition-transform duration-150 shrink-0 ${isExp ? 'rotate-180' : ''}`}
-                  viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-                  <polyline points="6 9 12 15 18 9"/>
-                </svg>
-              </div>
-
-              {/* Detalle expandido */}
-              {isExp && (
-                <div className="px-4 pb-3.5 pt-3 bg-stone-50 dark:bg-stone-800/20 border-t border-stone-100 dark:border-stone-800/40 flex flex-col gap-2.5">
-                  <div className="grid grid-cols-2 gap-x-6 gap-y-2">
-                    {[
-                      { k: 'Fuente',    v: doc.fuente },
-                      { k: 'Emitido',   v: doc.fecha  },
-                      ...(doc.vigencia ? [{ k: 'Vigencia', v: doc.vigencia }] : []),
-                      ...(doc.hash     ? [{ k: 'Hash',     v: doc.hash }] : []),
-                    ].map(({ k, v }) => (
-                      <div key={k}>
-                        <p className="text-[10px] font-semibold text-stone-400 dark:text-stone-500 uppercase tracking-[0.06em] mb-0.5">{k}</p>
-                        <p className="text-[11.5px] font-mono text-stone-600 dark:text-stone-300">{v}</p>
-                      </div>
-                    ))}
-                  </div>
-                  {doc.url && (
-                    <button className="w-full h-9 flex items-center justify-center gap-2 rounded-[8px] bg-[#2FAF8F] hover:bg-[#27a07f] text-white text-[12px] font-semibold border-0 cursor-pointer transition-colors active:scale-[0.98]">
-                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
-                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-                        <polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
-                      </svg>
-                      Ver documento
-                    </button>
+              {/* Info */}
+              <div className="flex-1 min-w-0">
+                <p className="text-[12px] font-medium text-stone-700 dark:text-stone-200 truncate">{doc.nombre}</p>
+                <div className="flex items-center gap-2 mt-0.5">
+                  {doc.emisor && (
+                    <p className="text-[10px] text-stone-400 dark:text-stone-500 truncate">{doc.emisor}</p>
+                  )}
+                  {doc.fecha_documento && (
+                    <p className="text-[10px] text-stone-300 dark:text-stone-600">
+                      {new Date(doc.fecha_documento + 'T00:00:00').toLocaleDateString('es-MX', { day: '2-digit', month: 'short', year: 'numeric' })}
+                    </p>
+                  )}
+                  {doc.tamano_bytes && (
+                    <p className="text-[10px] text-stone-300 dark:text-stone-600">{fmt(doc.tamano_bytes)}</p>
                   )}
                 </div>
-              )}
+              </div>
+
+              {/* Descargar */}
+              <button
+                onClick={() => handleDescargar(doc)}
+                title="Descargar documento"
+                className="w-7 h-7 flex items-center justify-center rounded-[7px] text-stone-400 hover:text-[#2FAF8F] hover:bg-stone-50 dark:hover:bg-stone-800/60 transition-all bg-transparent border-0 cursor-pointer shrink-0"
+              >
+                <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                  <polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
+                </svg>
+              </button>
             </div>
-          )
-        })}
-
-        {documentos.length === 0 && (
-          <div className="flex flex-col items-center justify-center gap-2.5 py-10">
-            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.25" strokeLinecap="round" className="text-stone-300 dark:text-stone-700">
-              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-              <polyline points="14 2 14 8 20 8"/>
-            </svg>
-            <p className="text-[12.5px] text-stone-400 dark:text-stone-500">Sin documentos adjuntos</p>
-          </div>
-        )}
-      </div>
-
-      {/* Footer */}
-      <div className="flex items-center justify-between px-1">
-        <p className="text-[11px] text-stone-400 dark:text-stone-500">{vigentes} vigentes · {documentos.length} total</p>
-        <p className="text-[10.5px] text-stone-300 dark:text-stone-600 font-mono">Gandia · Evidencia verificable</p>
-      </div>
+          ))}
+        </div>
+      )}
     </div>
   )
 }

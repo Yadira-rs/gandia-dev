@@ -103,8 +103,18 @@ const COPILO_ACTION_MAP: Record<string, { widgetId: string; domain: ArtifactDoma
   create_passport: { widgetId: 'passport:card',          domain: 'passport'   },
   filter_eligible: { widgetId: 'passport:card',          domain: 'passport'   },
   // sanidad
-  check_risk:      { widgetId: 'sanidad:gusano',         domain: 'sanidad'    },
-  view_protocol:   { widgetId: 'sanidad:gusano',         domain: 'sanidad'    },
+  check_risk:           { widgetId: 'sanidad:gusano',           domain: 'sanidad'      },
+  view_protocol:        { widgetId: 'sanidad:gusano',           domain: 'sanidad'      },
+  // vinculacion
+  nueva_vinculacion:    { widgetId: 'vinculacion:nueva',        domain: 'vinculacion'  },
+  ver_pendientes:       { widgetId: 'vinculacion:pendientes',   domain: 'vinculacion'  },
+  ver_activas:          { widgetId: 'vinculacion:lista',        domain: 'vinculacion'  },
+  ver_historial_vinc:   { widgetId: 'vinculacion:historial',    domain: 'vinculacion'  },
+  // exportacion
+  nueva_solicitud:      { widgetId: 'exportacion:solicitud',    domain: 'exportacion'  },
+  escanear_aretes:      { widgetId: 'exportacion:scanner',      domain: 'exportacion'  },
+  validar_aretes:       { widgetId: 'exportacion:validacion',   domain: 'exportacion'  },
+  exportar_excel:       { widgetId: 'exportacion:export',       domain: 'exportacion'  },
 }
 
 // ─── HOOK ─────────────────────────────────────────────────────────────────────

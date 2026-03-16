@@ -19,55 +19,67 @@ import {
 } from './mockData'
 
 // ── Ficha Ganadera ─────────────────────────────────────────────────────────────
-import FichaCard             from '../../../artifacts/Ficha/widgets/FichaCard'
-import FichaPerfilesWidget   from '../../../artifacts/Ficha/widgets/FichaPerfilesWidget'
+import FichaCard from '../../../artifacts/Ficha/widgets/FichaCard'
+import FichaPerfilesWidget from '../../../artifacts/Ficha/widgets/FichaPerfilesWidget'
 import FichaDocumentosWidget from '../../../artifacts/Ficha/widgets/FichaDocumentosWidget'
-import FichaHuellaWidget     from '../../../artifacts/Ficha/widgets/FichaHuellaWidget'
-import FichaNuevoWidget      from '../../../artifacts/Ficha/widgets/FichaNuevoWidget'
+import FichaHuellaWidget from '../../../artifacts/Ficha/widgets/FichaHuellaWidget'
+import FichaNuevoWidget from '../../../artifacts/Ficha/widgets/FichaNuevoWidget'
 
 // ── Monitoring widgets ────────────────────────────────────────────────────────
-import MapaVistaGeneralWidget   from '../../../artifacts/monitoring/widgets/MapaVistaGeneralWidget'
-import MapaCorralDetalleWidget  from '../../../artifacts/monitoring/widgets/MapaCorralDetalleWidget'
-import SensorConteoLiveWidget   from '../../../artifacts/monitoring/widgets/SensorConteoLiveWidget'
-import SensorCalibracionWidget  from '../../../artifacts/monitoring/widgets/SensorCalibracionWidget'
-import AnomaliaFeedWidget       from '../../../artifacts/monitoring/widgets/AnomaliaFeedWidget'
-import AnomaliaDetalleWidget    from '../../../artifacts/monitoring/widgets/AnomaliaDetalleWidget'
+import MapaVistaGeneralWidget from '../../../artifacts/monitoring/widgets/MapaVistaGeneralWidget'
+import MapaCorralDetalleWidget from '../../../artifacts/monitoring/widgets/MapaCorralDetalleWidget'
+import SensorConteoLiveWidget from '../../../artifacts/monitoring/widgets/SensorConteoLiveWidget'
+import SensorCalibracionWidget from '../../../artifacts/monitoring/widgets/SensorCalibracionWidget'
+import AnomaliaFeedWidget from '../../../artifacts/monitoring/widgets/AnomaliaFeedWidget'
+import AnomaliaDetalleWidget from '../../../artifacts/monitoring/widgets/AnomaliaDetalleWidget'
 import AnomaliaConfigUmbralWidget from '../../../artifacts/monitoring/widgets/AnomaliaConfigUmbralWidget'
-import CamaraListaWidget        from '../../../artifacts/monitoring/widgets/CamaraListaWidget'
-import CamaraFeedWidget         from '../../../artifacts/monitoring/widgets/CamaraFeedWidget'
-import CamaraConfigWidget       from '../../../artifacts/monitoring/widgets/CamaraConfigWidget'
-import CamaraAgregarWidget      from '../../../artifacts/monitoring/widgets/CamaraAgregarWidget'
-import ConfigCamarasWidget      from '../../../artifacts/monitoring/widgets/ConfigCamarasWidget'
-import ConfigCorralesWidget     from '../../../artifacts/monitoring/widgets/ConfigCorralesWidget'
+import CamaraListaWidget from '../../../artifacts/monitoring/widgets/CamaraListaWidget'
+import CamaraFeedWidget from '../../../artifacts/monitoring/widgets/CamaraFeedWidget'
+import CamaraConfigWidget from '../../../artifacts/monitoring/widgets/CamaraConfigWidget'
+import CamaraAgregarWidget from '../../../artifacts/monitoring/widgets/CamaraAgregarWidget'
+import ConfigCamarasWidget from '../../../artifacts/monitoring/widgets/ConfigCamarasWidget'
+import ConfigCorralesWidget from '../../../artifacts/monitoring/widgets/ConfigCorralesWidget'
 
 // ── Sanidad ───────────────────────────────────────────────────────────────────
 import GusanoWidget from '../../../artifacts/sanidad/widgets/GusanoWidget'
 
 // ── Gemelo Digital ────────────────────────────────────────────────────────────
-import TwinsTimelineWidget     from '../../../artifacts/twins/widgets/TwinsTimelineWidget'
-import TwinsFeedWidget         from '../../../artifacts/twins/widgets/TwinsFeedWidget'
+import TwinsTimelineWidget from '../../../artifacts/twins/widgets/TwinsTimelineWidget'
+import TwinsFeedWidget from '../../../artifacts/twins/widgets/TwinsFeedWidget'
 import TwinsAlimentacionWidget from '../../../artifacts/twins/widgets/TwinsAlimentacionWidget'
 
 // ── Biometría ─────────────────────────────────────────────────────────────────
-import BiometriaCapturaWidget      from '../../../artifacts/biometria/widgets/BiometriaCapturaWidget'
-import BiometriaHistorialWidget    from '../../../artifacts/biometria/widgets/BiometriaHistorialWidget'
+import BiometriaCapturaWidget from '../../../artifacts/biometria/widgets/BiometriaCapturaWidget'
+import BiometriaHistorialWidget from '../../../artifacts/biometria/widgets/BiometriaHistorialWidget'
 import BiometriaEstadisticasWidget from '../../../artifacts/biometria/widgets/BiometriaEstadisticasWidget'
-import BiometriaConfigWidget       from '../../../artifacts/biometria/widgets/BiometriaConfigWidget'
-import BiometriaRegistrarWidget    from '../../../artifacts/biometria/widgets/BiometriaRegistrarWidget'
+import BiometriaConfigWidget from '../../../artifacts/biometria/widgets/BiometriaConfigWidget'
+import BiometriaRegistrarWidget from '../../../artifacts/biometria/widgets/BiometriaRegistrarWidget'
 import { MOCK_REGISTROS_BIOMETRIA } from './mockData'
 
 // ── Certificación ─────────────────────────────────────────────────────────────
-import CertificationCardWidget         from '../../../artifacts/certification/widgets/CertificationCardWidget'
+import CertificationCardWidget from '../../../artifacts/certification/widgets/CertificationCardWidget'
 import CertificationElegibilidadWidget from '../../../artifacts/certification/widgets/CertificationElegibilidadWidget'
-import CertificationChecklistWidget    from '../../../artifacts/certification/widgets/CertificationChecklistWidget'
-import CertificationDocumentosWidget   from '../../../artifacts/certification/widgets/CertificationDocumentosWidget'
+import CertificationChecklistWidget from '../../../artifacts/certification/widgets/CertificationChecklistWidget'
+import CertificationDocumentosWidget from '../../../artifacts/certification/widgets/CertificationDocumentosWidget'
 import CertificationVencimientosWidget from '../../../artifacts/certification/widgets/CertificationVencimientosWidget'
 
 // ── Verificación ──────────────────────────────────────────────────────────────
-import VerificationColaWidget            from '../../../artifacts/verification/widgets/VerificationColaWidget'
-import VerificationItemWidget            from '../../../artifacts/verification/widgets/VerificationItemWidget'
-import VerificationHistorialWidget       from '../../../artifacts/verification/widgets/VerificationHistorialWidget'
+import VerificationColaWidget from '../../../artifacts/verification/widgets/VerificationColaWidget'
+import VerificationItemWidget from '../../../artifacts/verification/widgets/VerificationItemWidget'
+import VerificationHistorialWidget from '../../../artifacts/verification/widgets/VerificationHistorialWidget'
 import VerificationInconsistenciasWidget from '../../../artifacts/verification/widgets/VerificationInconsistenciasWidget'
+
+// ── Exportación ───────────────────────────────────────────────────────────────
+import ExportacionSolicitudWidget from '../../../artifacts/exportacion/widgets/ExportacionSolicitudWidget'
+import ExportacionTablaWidget from '../../../artifacts/exportacion/widgets/ExportacionTablaWidget'
+import ExportacionValidacionWidget from '../../../artifacts/exportacion/widgets/ExportacionValidacionWidget'
+import ExportacionScannerWidget from '../../../artifacts/exportacion/widgets/ExportacionScannerWidget'
+
+// ── Vinculación ───────────────────────────────────────────────────────────────
+import VinculacionListaWidget from '../../../artifacts/vinculacion/widgets/VinculacionListaWidget'
+import VinculacionPendientesWidget from '../../../artifacts/vinculacion/widgets/VinculacionPendientesWidget'
+import VinculacionNuevaWidget from '../../../artifacts/vinculacion/widgets/VinculacionNuevaWidget'
+import VinculacionHistorialWidget from '../../../artifacts/vinculacion/widgets/VinculacionHistorialWidget'
 import {
   MOCK_CERT_CARDS,
   MOCK_ELEGIBILIDAD,
@@ -78,6 +90,9 @@ import {
   MOCK_VERIFICATION_ITEM,
   MOCK_VERIFICATION_HISTORIAL,
   MOCK_VERIFICATION_INCONSISTENCIAS,
+  MOCK_VINCULACIONES,
+  MOCK_VINCULACIONES_PENDIENTES,
+  MOCK_VINCULACIONES_HISTORIAL,
 } from './mockData'
 
 export interface WidgetCallbacks {
@@ -116,6 +131,16 @@ const EXPANDABLE_WIDGETS = new Set([
   'verification:item',
   'verification:historial',
   'verification:inconsistencias',
+  // Exportación
+  'exportacion:solicitud',
+  'exportacion:tabla',
+  'exportacion:validacion',
+  'exportacion:scanner',
+  // Vinculación
+  'vinculacion:lista',
+  'vinculacion:pendientes',
+  'vinculacion:nueva',
+  'vinculacion:historial',
 ])
 
 export function renderWidget(
@@ -128,24 +153,50 @@ export function renderWidget(
 
   if (EXPANDABLE_WIDGETS.has(widgetId)) {
     return (
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
         {node}
-        <button
-          onClick={onExpand}
-          style={{
-            alignSelf:    'flex-end',
-            padding:      '6px 14px',
-            borderRadius: 9,
-            border:       'none',
-            background:   '#2FAF8F',
-            color:        'white',
-            fontSize:     11,
-            fontWeight:   600,
-            cursor:       'pointer',
-          }}
-        >
-          Ver módulo completo →
-        </button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <div style={{ flex: 1, height: '0.2px', background: 'rgba(231,229,228,0.5)' }} />
+          <button
+            onClick={onExpand}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 6,
+              padding: '7px 14px',
+              borderRadius: 10,
+              border: '1px solid rgba(231,229,228,0.9)',
+              background: 'white',
+              color: '#78716c',
+              fontSize: 12,
+              fontWeight: 500,
+              cursor: 'pointer',
+              transition: 'all 150ms ease',
+            }}
+            onMouseEnter={e => {
+              const b = e.currentTarget as HTMLButtonElement
+              b.style.color = '#44403c'
+              b.style.borderColor = 'rgba(168,162,158,0.6)'
+              b.style.background = '#f5f5f4'
+              const ico = b.querySelector('svg') as SVGElement | null
+              if (ico) ico.style.transform = 'scale(1.25) translate(1px,-1px)'
+            }}
+            onMouseLeave={e => {
+              const b = e.currentTarget as HTMLButtonElement
+              b.style.color = '#78716c'
+              b.style.borderColor = 'rgba(231,229,228,0.9)'
+              b.style.background = 'white'
+              const ico = b.querySelector('svg') as SVGElement | null
+              if (ico) ico.style.transform = 'scale(1) translate(0,0)'
+            }}
+          >
+            Ver módulo completo
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ transition: 'transform 200ms ease' }}>
+              <polyline points="15 3 21 3 21 9" /><polyline points="9 21 3 21 3 15" />
+              <line x1="21" y1="3" x2="14" y2="10" /><line x1="3" y1="21" x2="10" y2="14" />
+            </svg>
+          </button>
+        </div>
       </div>
     )
   }
@@ -161,7 +212,6 @@ function getWidgetNode(widgetId: string, onExpand: () => void): React.ReactNode 
       return (
         <FichaCard
           data={MOCK_PASSPORT}
-          onExpand={onExpand}
           onHuella={onExpand}
         />
       )
@@ -173,7 +223,7 @@ function getWidgetNode(widgetId: string, onExpand: () => void): React.ReactNode 
       return <FichaDocumentosWidget onSubir={onExpand} />
 
     case 'passport:biometria':
-      return <FichaHuellaWidget onCapturar={onExpand} onVerHistorial={onExpand} />
+      return <FichaHuellaWidget onVerHistorial={onExpand} />
 
     case 'passport:nuevo':
       return <FichaNuevoWidget />
@@ -282,6 +332,32 @@ function getWidgetNode(widgetId: string, onExpand: () => void): React.ReactNode 
 
     case 'verification:inconsistencias':
       return <VerificationInconsistenciasWidget inconsistencias={MOCK_VERIFICATION_INCONSISTENCIAS} />
+
+    // ── Exportación ──
+    case 'exportacion:solicitud':
+      return <ExportacionSolicitudWidget />
+
+    case 'exportacion:tabla':
+      return <ExportacionTablaWidget />
+
+    case 'exportacion:validacion':
+      return <ExportacionValidacionWidget />
+
+    case 'exportacion:scanner':
+      return <ExportacionScannerWidget />
+
+    // ── Vinculación ──
+    case 'vinculacion:lista':
+      return <VinculacionListaWidget vinculaciones={MOCK_VINCULACIONES} />
+
+    case 'vinculacion:pendientes':
+      return <VinculacionPendientesWidget pendientes={MOCK_VINCULACIONES_PENDIENTES} />
+
+    case 'vinculacion:nueva':
+      return <VinculacionNuevaWidget />
+
+    case 'vinculacion:historial':
+      return <VinculacionHistorialWidget historial={MOCK_VINCULACIONES_HISTORIAL} />
 
     default:
       return null

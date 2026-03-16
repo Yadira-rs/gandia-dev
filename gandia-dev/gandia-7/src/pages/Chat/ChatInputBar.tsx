@@ -105,6 +105,9 @@ interface ChatInputBarProps {
   onNewChat:     () => void
   onProcessFiles:(files: File[]) => void
   onNavigateVoz: () => void
+  // Dictation
+  dictationActive:   boolean
+  onDictationStop:   () => void
 }
 
 // ─── ChatInputBar ─────────────────────────────────────────────────────────────
@@ -116,6 +119,7 @@ export function ChatInputBar({
   mode, model, modeOpen, modelOpen,
   onSetMode, onSetModel, onSetModeOpen, onSetModelOpen,
   onSend, onStop, onNewChat, onProcessFiles, onNavigateVoz,
+  dictationActive, onDictationStop,
 }: ChatInputBarProps) {
   const textareaRef  = useRef<HTMLTextAreaElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -164,14 +168,70 @@ export function ChatInputBar({
     <>
       <style>{`
         .ch-textarea::-webkit-scrollbar { width: 6px; }
+        @keyframes dict-bar { 0%,100%{transform:scaleY(.4)} 50%{transform:scaleY(1)} }
+        .dict-bar { animation: dict-bar 1s ease-in-out infinite; transform-origin: center; }
+        .dict-bar:nth-child(1) { animation-delay: 0ms;   }
+        .dict-bar:nth-child(2) { animation-delay: 120ms; }
+        .dict-bar:nth-child(3) { animation-delay: 240ms; }
+        .dict-bar:nth-child(4) { animation-delay: 360ms; }
+        .dict-bar:nth-child(5) { animation-delay: 180ms; }
+        @keyframes dict-in { from{opacity:0;transform:translateY(6px)} to{opacity:1;transform:translateY(0)} }
+        .dict-in { animation: dict-in 220ms cubic-bezier(.16,1,.3,1) both; }
         .ch-textarea::-webkit-scrollbar-track { background: transparent; }
         .ch-textarea::-webkit-scrollbar-thumb { background: rgba(120,113,108,0.25); border-radius: 99px; }
         .ch-textarea::-webkit-scrollbar-thumb:hover { background: rgba(120,113,108,0.45); }
         .dark .ch-textarea::-webkit-scrollbar-thumb { background: rgba(168,162,158,0.15); }
         .dark .ch-textarea::-webkit-scrollbar-thumb:hover { background: rgba(168,162,158,0.30); }
       `}</style>
-    <div className="px-4 lg:px-6 pb-6 pt-3 shrink-0">
+    <div className="px-4 lg:pl-10 lg:pr-6 pb-6 shrink-0">
       <div className="max-w-170 mx-auto">
+
+        {/* ── Dictation banner ─────────────────────────────────── */}
+        {dictationActive && (
+          <div className="dict-in mb-2.5">
+            <div className="relative flex items-center gap-3 px-4 py-3 rounded-2xl overflow-hidden
+              bg-white dark:bg-[#141210]
+              border border-[#2FAF8F]/30 dark:border-[#2FAF8F]/20
+              shadow-[0_0_0_1px_rgba(47,175,143,0.08),0_4px_20px_rgba(47,175,143,0.10)]
+              dark:shadow-[0_0_0_1px_rgba(47,175,143,0.06),0_4px_20px_rgba(47,175,143,0.08)]">
+
+              {/* Glow background */}
+              <div className="absolute inset-0 bg-linear-to-r from-[#2FAF8F]/4 to-transparent pointer-events-none" />
+
+              {/* Waveform */}
+              <div className="flex items-center gap-0.75 shrink-0">
+                {[1,2,3,4,5].map(i => (
+                  <span key={i} className="dict-bar inline-block w-0.75 h-4 rounded-full bg-[#2FAF8F]" />
+                ))}
+              </div>
+
+              {/* Text */}
+              <div className="flex-1 min-w-0">
+                <p className="text-[12.5px] font-semibold tracking-[-0.01em] text-stone-800 dark:text-stone-100 leading-none mb-0.5">
+                  Modo escritura por voz
+                </p>
+                <p className="text-[11px] text-stone-400 dark:text-stone-500 leading-none">
+                  Di tu mensaje · <span className="text-[#2FAF8F]">"enviar"</span> para mandar · <span className="text-stone-400 dark:text-stone-500">"cancelar"</span> para salir
+                </p>
+              </div>
+
+              {/* Stop button */}
+              <button
+                onClick={onDictationStop}
+                className="shrink-0 w-7 h-7 flex items-center justify-center rounded-xl
+                  text-stone-400 dark:text-stone-500
+                  hover:text-stone-600 dark:hover:text-stone-300
+                  hover:bg-stone-100 dark:hover:bg-stone-800/60
+                  transition-all active:scale-95"
+                title="Salir del dictado"
+              >
+                <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                  <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+                </svg>
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* Hidden file input */}
         <input

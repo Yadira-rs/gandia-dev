@@ -72,7 +72,7 @@ const SECTIONS: { id: Section; label: string; desc: string; icon: React.ReactNod
 
 // ─── MAIN COMPONENT ───────────────────────────────────────────────────────────
 export default function Configuraciones() {
-  const { profile } = useUser()
+  const { profile, refreshProfile } = useUser()
   const [active,     setActive]     = useState<Section>('profile')
   const [loading,    setLoading]    = useState(true)
   const [hasChanges, setHasChanges] = useState(false)
@@ -93,6 +93,9 @@ export default function Configuraciones() {
   // ── Meta state (appearance + assistant + accessibility) ──
   const [meta, setMeta] = useState<MetaData>(DEFAULT_META)
 
+  // ── Auth method state ──
+  const [authMethod, setAuthMethod] = useState<string>('')
+
   // ── Password state ──
   const [pwCurrent,  setPwCurrent]  = useState('')
   const [pwNew,      setPwNew]      = useState('')
@@ -105,7 +108,7 @@ export default function Configuraciones() {
   const [font, setFontState] = useState<AppPreferences['font']>('geist')
 
   // ── Session state ──
-  const [sessionInfo, setSessionInfo] = useState<{ browser: string; ip: string; since: string } | null>(null)
+  const [sessionInfo, setSessionInfo] = useState<{ browser: string; os: string; since: string } | null>(null)
 
   // ── Seed font from UserContext when profile loads ─────────────────────────
   useEffect(() => {
@@ -128,12 +131,37 @@ export default function Configuraciones() {
           return
         }
 
-        // Session info
+        // Auth method — leer de user_profiles y de identities de Supabase
+        const { data: upAuth } = await supabase
+          .from('user_profiles')
+          .select('auth_method')
+          .eq('user_id', authUser.id)
+          .maybeSingle()
+        const method = upAuth?.auth_method || authUser.app_metadata?.provider || 'email'
+        setAuthMethod(method)
+
+        // Session info — browser detection in correct precedence order
+        const ua = navigator.userAgent
+        const browser =
+          ua.includes('Edg/')       ? 'Edge'    :
+          ua.includes('OPR/')       ? 'Opera'   :
+          ua.includes('Brave')      ? 'Brave'   :
+          ua.includes('YaBrowser')  ? 'Yandex'  :
+          ua.includes('SamsungBrowser') ? 'Samsung Browser' :
+          ua.includes('Firefox')    ? 'Firefox' :
+          ua.includes('Chrome/')    ? 'Chrome'  :
+          ua.includes('Safari/')    ? 'Safari'  : 'Navegador'
+
+        const os =
+          /iPhone|iPad|iPod/.test(ua)            ? 'iOS'     :
+          ua.includes('Android')                  ? 'Android' :
+          ua.includes('Win')                      ? 'Windows' :
+          ua.includes('Mac')                      ? 'macOS'   :
+          ua.includes('Linux')                    ? 'Linux'   : ''
+
         setSessionInfo({
-          browser: navigator.userAgent.includes('Chrome') ? 'Chrome' :
-                   navigator.userAgent.includes('Safari') ? 'Safari' :
-                   navigator.userAgent.includes('Firefox') ? 'Firefox' : 'Navegador',
-          ip:    'Sesión activa',
+          browser,
+          os,
           since: new Date(authUser.last_sign_in_at ?? '').toLocaleDateString('es-MX', {
             day: 'numeric', month: 'short', year: 'numeric',
           }),
@@ -195,20 +223,28 @@ export default function Configuraciones() {
 
         // Notifications
         const np = profile?.notifications_preferences as Partial<NotifPrefs> | null
-        if (np) setNotif(prev => ({ ...prev, ...np }))
+        if (np) {
+          const merged = { ...DEFAULT_NOTIF, ...np }
+          setNotif(merged)
+          localStorage.setItem('gandia-notif-prefs', JSON.stringify(merged))
+        }
 
         // Metadata
         const mt = profile?.metadata as Partial<MetaData> | null
         if (mt) {
-          setMeta({
+          const merged = {
             theme:         mt.theme         ?? DEFAULT_META.theme,
             language:      mt.language      ?? DEFAULT_META.language,
             dateFormat:    mt.dateFormat    ?? DEFAULT_META.dateFormat,
             units:         mt.units         ?? DEFAULT_META.units,
             assistant:     { ...DEFAULT_META.assistant,     ...(mt.assistant     ?? {}) },
             accessibility: { ...DEFAULT_META.accessibility, ...(mt.accessibility ?? {}) },
-          })
-          applyTheme(mt.theme ?? DEFAULT_META.theme)
+          }
+          setMeta(merged)
+          applyTheme(merged.theme)
+          applyAccessibility({ ...DEFAULT_META.accessibility, ...(mt.accessibility ?? {}) })
+          // Persistir prefs del asistente para useChat
+          localStorage.setItem('gandia-assistant-prefs', JSON.stringify(merged.assistant))
         }
 
         // Preferencias de onboarding (font)
@@ -228,13 +264,33 @@ export default function Configuraciones() {
   // ─── THEME APPLY ──────────────────────────────────────────────────────────
   const applyTheme = (t: 'light' | 'dark' | 'auto') => {
     localStorage.setItem('gandia-theme', t)
-    if (t === 'auto') {
-      const dark = window.matchMedia('(prefers-color-scheme: dark)').matches
-      document.documentElement.classList.toggle('dark', dark)
+    const root = document.documentElement
+    const isDark =
+      t === 'dark' ? true :
+      t === 'light' ? false :
+      window.matchMedia('(prefers-color-scheme: dark)').matches
+    if (isDark) {
+      root.classList.add('dark')
     } else {
-      document.documentElement.classList.toggle('dark', t === 'dark')
+      root.classList.remove('dark')
     }
   }
+
+  // ─── Escuchar cambios del sistema cuando tema es 'auto' ─────────────────────
+  useEffect(() => {
+    const mq = window.matchMedia('(prefers-color-scheme: dark)')
+    const handler = (e: MediaQueryListEvent) => {
+      if (meta.theme === 'auto') {
+        if (e.matches) {
+          document.documentElement.classList.add('dark')
+        } else {
+          document.documentElement.classList.remove('dark')
+        }
+      }
+    }
+    mq.addEventListener('change', handler)
+    return () => mq.removeEventListener('change', handler)
+  }, [meta.theme])
 
   // ─── FONT APPLY ───────────────────────────────────────────────────────────
   const FONT_FAMILIES: Record<AppPreferences['font'], string> = {
@@ -250,6 +306,19 @@ export default function Configuraciones() {
 
   const setFont = (f: AppPreferences['font']) => {
     setFontState(f); applyFont(f); mark()
+  }
+
+  // ─── ACCESSIBILITY APPLY ─────────────────────────────────────────────────
+  const FONT_SIZES = [12, 14, 16, 18, 20]
+  const applyAccessibility = (a: MetaData['accessibility']) => {
+    const root = document.documentElement
+    // Font size → CSS var usada por la app
+    root.style.setProperty('--font-size-base', `${FONT_SIZES[a.fontSizeIdx ?? 2]}px`)
+    // High contrast → clase en <html>
+    root.classList.toggle('high-contrast', !!a.highContrast)
+    // Reduce motion → clase en <html>
+    root.classList.toggle('reduce-motion', !!a.reduceMotion)
+    localStorage.setItem('gandia-accessibility', JSON.stringify(a))
   }
 
   // ─── MARK CHANGES ─────────────────────────────────────────────────────────
@@ -280,7 +349,7 @@ export default function Configuraciones() {
           personal_data:             { ...currentPd, phone },
           notifications_preferences: notif,
           metadata:                  meta,
-          preferences:               { theme: meta.theme === 'auto' ? 'dark' : meta.theme, font },
+          preferences:               { theme: meta.theme === 'auto' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : meta.theme, font },
         })
         .eq('user_id', session.user.id)
         .select('user_id')
@@ -301,7 +370,7 @@ export default function Configuraciones() {
             personal_data:             { ...currentPd2, phone },
             notifications_preferences: notif,
             metadata:                  meta,
-            preferences:               { theme: meta.theme === 'auto' ? 'dark' : meta.theme, font },
+            preferences:               { theme: meta.theme === 'auto' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : meta.theme, font },
           })
           .eq('id', session.user.id)
         upErr = upErr2
@@ -309,7 +378,16 @@ export default function Configuraciones() {
 
       if (upErr) throw upErr
 
+      // Guardar prefs de notificaciones en localStorage para acceso inmediato
+      localStorage.setItem('gandia-notif-prefs', JSON.stringify(notif))
+      // Guardar prefs del asistente para useChat y Chat.tsx
+      localStorage.setItem('gandia-assistant-prefs', JSON.stringify(meta.assistant))
       applyTheme(meta.theme)
+      applyAccessibility(meta.accessibility)
+      // Activar/desactivar voz en caliente sin recargar página
+      window.dispatchEvent(new CustomEvent('gandia:voice-toggle', { detail: { enabled: meta.accessibility.voiceNav } }))
+      // Sincronizar UserContext para que no sobreescriba el tema al recargar preferencias
+      await refreshProfile()
       setHasChanges(false)
       setSaved(true)
       setTimeout(() => setSaved(false), 2400)
@@ -323,19 +401,29 @@ export default function Configuraciones() {
   const discard = () => setHasChanges(false)
 
   // ─── CHANGE PASSWORD ──────────────────────────────────────────────────────
+  const isOAuth = authMethod && authMethod !== 'email' && authMethod !== 'password'
+
   const changePassword = async () => {
     setPwError('')
     setPwSuccess('')
-    if (!pwNew) { setPwError('Ingresa una nueva contraseña'); return }
+    if (!pwNew)     { setPwError('Ingresa una contraseña'); return }
     if (pwNew !== pwConfirm) { setPwError('Las contraseñas no coinciden'); return }
-    if (pwNew.length < 8) { setPwError('Mínimo 8 caracteres'); return }
+    if (pwNew.length < 8)    { setPwError('Mínimo 8 caracteres'); return }
+    if (!isOAuth && !pwCurrent) { setPwError('Ingresa tu contraseña actual'); return }
+    if (!isOAuth && pwNew === pwCurrent) { setPwError('La nueva contraseña debe ser diferente a la actual'); return }
     setPwSaving(true)
     try {
-      const { error } = await supabase.auth.updateUser({ password: pwNew })
-      if (error) throw error
-      setPwSuccess('Contraseña actualizada correctamente')
+      if (!isOAuth) {
+        // Verificar contraseña actual
+        const { error: signInErr } = await supabase.auth.signInWithPassword({ email, password: pwCurrent })
+        if (signInErr) { setPwError('La contraseña actual es incorrecta'); return }
+      }
+      const { error: updateErr } = await supabase.auth.updateUser({ password: pwNew })
+      if (updateErr) throw updateErr
+      setPwSuccess(isOAuth ? 'Contraseña configurada. Ahora puedes iniciar sesión con email.' : 'Contraseña actualizada correctamente')
       setPwCurrent(''); setPwNew(''); setPwConfirm('')
-      setTimeout(() => setPwSuccess(''), 3000)
+      if (isOAuth) setAuthMethod('email')  // ahora tiene ambos métodos
+      setTimeout(() => setPwSuccess(''), 4000)
     } catch (e: unknown) {
       setPwError(e instanceof Error ? e.message : 'Error al cambiar contraseña')
     } finally {
@@ -386,12 +474,10 @@ export default function Configuraciones() {
         .dark .cfg-sc::-webkit-scrollbar-thumb { background: #3c3836; }
         .cfg-sc { scrollbar-width: thin; scrollbar-color: #e7e5e4 transparent; }
         .dark .cfg-sc { scrollbar-color: #3c3836 transparent; }
-        .nav-scroll { overflow-x: auto; padding-bottom: 6px; }
-        .nav-scroll::-webkit-scrollbar { height: 3px; }
-        .nav-scroll::-webkit-scrollbar-thumb { background: #d6d3d1; border-radius: 999px; }
-        .dark .nav-scroll::-webkit-scrollbar-thumb { background: #44403c; }
-        @media (hover: none) { .nav-scroll::-webkit-scrollbar { display: none; } .nav-scroll { scrollbar-width: none; padding-bottom: 0; } }
-        @media (hover: hover) { .nav-scroll { scrollbar-width: thin; scrollbar-color: #d6d3d1 transparent; } .dark .nav-scroll { scrollbar-color: #44403c transparent; } }
+        /* Mobile tab row */
+        .cfg-tabs { overflow-x: auto; }
+        .cfg-tabs::-webkit-scrollbar { display: none; }
+        .cfg-tabs { scrollbar-width: none; }
         @keyframes cfg-in { from{opacity:0;transform:translateY(7px)} to{opacity:1;transform:translateY(0)} }
         .cfg-in { animation: cfg-in 340ms cubic-bezier(.16,1,.3,1) both; }
         @keyframes cfg-bar { from{transform:translateY(100%)} to{transform:translateY(0)} }
@@ -400,34 +486,57 @@ export default function Configuraciones() {
         .cfg-toast { animation: cfg-toast 2.4s cubic-bezier(.16,1,.3,1) both; }
       `}</style>
 
-      <div className="cfg h-full w-full flex flex-col bg-[#fafaf9] dark:bg-[#0c0a09] overflow-hidden">
+      {/* AppLayout ya provee flex-1 overflow-y-auto en <main> — no wrappear scroll aquí */}
+      <div className="cfg min-h-full w-full bg-[#fafaf9] dark:bg-[#0c0a09]">
 
-        <div className="flex-1 min-h-0">
-          <div className="cfg-sc h-full overflow-y-auto">
-            <div className="w-full max-w-[820px] mx-auto px-5 sm:px-8 lg:px-10 pb-32">
+        {/* ── MOBILE TAB ROW (solo en < md) ── */}
+        <div className="md:hidden sticky top-0 z-10 border-b border-stone-200/70 dark:border-stone-800/60 bg-white/95 dark:bg-[#141210]/95 backdrop-blur-xl">
+          <div className="cfg-tabs flex">
+            {SECTIONS.map((s) => (
+              <button key={s.id} onClick={() => setActive(s.id)}
+                className={`relative flex flex-col items-center gap-1 pt-3 pb-2.5 px-3 shrink-0 transition-colors ${
+                  active === s.id
+                    ? 'text-stone-900 dark:text-stone-50'
+                    : 'text-stone-400 dark:text-stone-500'
+                }`}>
+                <span className={active === s.id ? 'text-[#2FAF8F]' : ''}>{s.icon}</span>
+                <span className="text-[10.5px] font-medium whitespace-nowrap">{s.label}</span>
+                {active === s.id && (
+                  <span className="absolute bottom-0 left-2 right-2 h-[2px] rounded-full bg-[#2FAF8F]" />
+                )}
+              </button>
+            ))}
+          </div>
+        </div>
 
-              {/* ── NAV ── */}
-              <div className="sticky top-4 z-10 flex justify-center pt-4 pb-6">
-                <div className="nav-scroll max-w-full">
-                  <div className="inline-flex items-center gap-0.5 bg-white/90 dark:bg-[#1a1815]/90 backdrop-blur-xl border border-stone-200/80 dark:border-stone-700/50 rounded-2xl p-1 shadow-[0_4px_20px_rgba(0,0,0,0.08)] dark:shadow-[0_4px_24px_rgba(0,0,0,0.35)]">
-                    {SECTIONS.map((s) => (
-                      <button key={s.id} onClick={() => setActive(s.id)}
-                        className={`flex items-center gap-1.5 px-3 py-2 text-[12px] font-medium rounded-xl transition-all duration-150 whitespace-nowrap ${
-                          active === s.id
-                            ? 'bg-[#2FAF8F]/10 dark:bg-[#2FAF8F]/20 text-stone-900 dark:text-stone-50'
-                            : 'text-stone-400 dark:text-stone-500 hover:text-stone-700 dark:hover:text-stone-300 hover:bg-stone-100/70 dark:hover:bg-stone-800/50'
-                        }`}>
-                        <span className={active === s.id ? 'text-[#2FAF8F]' : ''}>{s.icon}</span>
-                        {s.label}
-                      </button>
-                    ))}
-                  </div>
-                </div>
+        {/* ── LAYOUT: card izquierda (desktop) + contenido ── */}
+        <div className="flex items-start gap-0 md:gap-5 max-w-[960px] mx-auto px-4 md:px-6 lg:px-8 py-5 md:py-7 pb-28">
+
+          {/* Card nav izquierda — solo desktop, sticky dentro del scroll de AppLayout */}
+          <div className="hidden md:block w-[176px] shrink-0 self-start sticky top-6">
+            <div className="bg-white dark:bg-[#141210] rounded-2xl border border-stone-200/70 dark:border-stone-800/60 shadow-[0_2px_12px_rgba(0,0,0,0.05)] dark:shadow-[0_2px_16px_rgba(0,0,0,0.20)] overflow-hidden transition-shadow duration-300 hover:shadow-[0_4px_20px_rgba(0,0,0,0.08)] dark:hover:shadow-[0_4px_24px_rgba(0,0,0,0.30)]">
+              <div className="p-1.5">
+                {SECTIONS.map((s) => (
+                  <button key={s.id} onClick={() => setActive(s.id)}
+                    className={`w-full flex items-center gap-2.5 px-3 py-[9px] rounded-xl text-[12.5px] font-medium transition-all duration-150 ${
+                      active === s.id
+                        ? 'bg-stone-100 dark:bg-stone-800/60 text-stone-900 dark:text-stone-50'
+                        : 'text-stone-500 dark:text-stone-400 hover:text-stone-700 dark:hover:text-stone-300 hover:bg-stone-50 dark:hover:bg-stone-800/30'
+                    }`}>
+                    <span className={`shrink-0 ${active === s.id ? 'text-[#2FAF8F]' : ''}`}>{s.icon}</span>
+                    {s.label}
+                  </button>
+                ))}
               </div>
+            </div>
+          </div>
+
+          {/* Contenido principal */}
+          <div className="flex-1 min-w-0">
 
               {/* Section header */}
-              <div className="cfg-in mb-7">
-                <h1 className="text-[16px] font-semibold tracking-[-0.022em] text-stone-900 dark:text-stone-50">
+              <div className="cfg-in mb-6">
+                <h1 className="text-[15px] font-semibold tracking-[-0.022em] text-stone-900 dark:text-stone-50">
                   {SECTIONS.find(s => s.id === active)?.label}
                 </h1>
                 <p className="text-[11.5px] text-stone-400 dark:text-stone-500 mt-0.5">
@@ -621,18 +730,62 @@ export default function Configuraciones() {
               {/* ════ SEGURIDAD ════ */}
               {active === 'security' && (
                 <div className="space-y-5 cfg-in">
-                  <CfgCard title="Cambiar contraseña">
+
+                  {/* ── Método de acceso ── */}
+                  <CfgCard title="Método de acceso">
+                    <div className="px-5 py-4 flex items-center gap-3">
+                      <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${
+                        authMethod === 'google' ? 'bg-white border border-stone-200/70 dark:border-stone-700/50 shadow-sm' :
+                        authMethod === 'apple'  ? 'bg-black' :
+                        authMethod === 'azure'  ? 'bg-[#0078d4]' :
+                        'bg-stone-100 dark:bg-stone-800/60'
+                      }`}>
+                        {authMethod === 'google' && (
+                          <svg className="w-5 h-5" viewBox="0 0 24 24"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>
+                        )}
+                        {authMethod === 'apple' && (
+                          <svg className="w-5 h-5 text-white" viewBox="0 0 24 24" fill="currentColor"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/></svg>
+                        )}
+                        {(authMethod === 'email' || authMethod === 'password' || !authMethod) && (
+                          <svg className="w-4 h-4 text-stone-400 dark:text-stone-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M2 8l10 6 10-6"/></svg>
+                        )}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-[13px] font-semibold text-stone-700 dark:text-stone-200 leading-none mb-0.5">
+                          {authMethod === 'google' ? 'Google' :
+                           authMethod === 'apple'  ? 'Apple' :
+                           authMethod === 'azure'  ? 'Microsoft' :
+                           'Correo y contraseña'}
+                        </p>
+                        <p className="text-[11.5px] text-stone-400 dark:text-stone-500">
+                          {isOAuth
+                            ? `Iniciaste sesión con ${authMethod === 'google' ? 'Google' : authMethod === 'apple' ? 'Apple' : 'Microsoft'} · ${email}`
+                            : email}
+                        </p>
+                      </div>
+                    </div>
+                  </CfgCard>
+
+                  {/* ── Contraseña ── */}
+                  <CfgCard title={isOAuth ? 'Agregar contraseña' : 'Cambiar contraseña'}>
+                    {isOAuth && (
+                      <div className="px-5 pt-4 pb-2">
+                        <p className="text-[12px] text-stone-400 dark:text-stone-500 leading-relaxed">
+                          Agrega una contraseña para poder iniciar sesión también con tu correo, además de con {authMethod === 'google' ? 'Google' : authMethod === 'apple' ? 'Apple' : 'Microsoft'}.
+                        </p>
+                      </div>
+                    )}
                     <div className="px-5 py-4 space-y-3">
-                      <PwInput label="Contraseña actual"   value={pwCurrent}  onChange={setPwCurrent} />
-                      <PwInput label="Nueva contraseña"    value={pwNew}      onChange={setPwNew} />
-                      <PwInput label="Confirmar contraseña" value={pwConfirm}  onChange={setPwConfirm} />
+                      {!isOAuth && <PwInput label="Contraseña actual" value={pwCurrent} onChange={setPwCurrent} />}
+                      <PwInput label={isOAuth ? 'Nueva contraseña' : 'Nueva contraseña'} value={pwNew} onChange={setPwNew} />
+                      <PwInput label="Confirmar contraseña" value={pwConfirm} onChange={setPwConfirm} />
                       {pwError   && <p className="text-[11.5px] text-rose-500">{pwError}</p>}
                       {pwSuccess && <p className="text-[11.5px] text-[#2FAF8F]">{pwSuccess}</p>}
                       <button onClick={changePassword} disabled={pwSaving}
                         className="w-full h-9 rounded-xl text-[12.5px] font-semibold text-white bg-[#1c1917] dark:bg-[#f5f5f4] dark:text-[#1c1917] hover:bg-stone-800 dark:hover:bg-white active:scale-[0.97] transition-all disabled:opacity-50 flex items-center justify-center gap-2">
                         {pwSaving
-                          ? <><div className="w-3.5 h-3.5 border-2 border-current border-t-transparent rounded-full animate-spin" />Actualizando…</>
-                          : 'Actualizar contraseña'
+                          ? <><div className="w-3.5 h-3.5 border-2 border-current border-t-transparent rounded-full animate-spin" />Guardando…</>
+                          : isOAuth ? 'Agregar contraseña' : 'Actualizar contraseña'
                         }
                       </button>
                     </div>
@@ -647,7 +800,7 @@ export default function Configuraciones() {
                           </div>
                           <div className="flex-1 min-w-0">
                             <p className="text-[12.5px] font-semibold text-stone-700 dark:text-stone-200 leading-none mb-0.5">
-                              {sessionInfo.browser}
+                              {sessionInfo.browser}{sessionInfo.os ? ` · ${sessionInfo.os}` : ''}
                             </p>
                             <div className="flex items-center gap-1.5">
                               <span className="w-1.5 h-1.5 rounded-full bg-[#2FAF8F] animate-pulse shrink-0" />
@@ -746,7 +899,26 @@ export default function Configuraciones() {
 
                   <CfgCard title="Navegación">
                     <CfgToggle title="Atajos de teclado"  desc="Navegación rápida con el teclado"  checked={meta.accessibility.keyboardShortcuts} onChange={v => setAccess('keyboardShortcuts', v)} />
-                    <CfgToggle title="Navegación por voz" desc="Controla la interfaz con comandos" checked={meta.accessibility.voiceNav}          onChange={v => setAccess('voiceNav', v)} last />
+                    {(() => {
+                      const voiceSupported = !!(
+                        typeof window !== 'undefined' &&
+                        ((window as unknown as Record<string, unknown>).SpeechRecognition ||
+                         (window as unknown as Record<string, unknown>).webkitSpeechRecognition)
+                      )
+                      return voiceSupported
+                        ? <CfgToggle title="Navegación por voz" desc="Controla la interfaz con comandos de voz" checked={meta.accessibility.voiceNav} onChange={v => setAccess('voiceNav', v)} last />
+                        : (
+                          <div className="flex items-center justify-between px-5 py-4 gap-4 opacity-50 select-none">
+                            <div className="flex-1 min-w-0">
+                              <p className="text-[13px] font-medium text-stone-700 dark:text-stone-200 leading-none mb-0.5">Navegación por voz</p>
+                              <p className="text-[11.5px] text-stone-400 dark:text-stone-500">Controla la interfaz con comandos de voz</p>
+                            </div>
+                            <span className="text-[10.5px] font-semibold px-2 py-0.5 rounded-lg bg-stone-100 dark:bg-stone-800 text-stone-400 dark:text-stone-500 shrink-0">
+                              No disponible en este navegador
+                            </span>
+                          </div>
+                        )
+                    })()}
                   </CfgCard>
                   <SaveBtn onClick={save} loading={saving} />
                 </div>
@@ -759,7 +931,6 @@ export default function Configuraciones() {
                 </div>
               )}
 
-            </div>
           </div>
         </div>
 

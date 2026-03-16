@@ -12,6 +12,8 @@ import { ThinkingBlock } from './ThinkingBlock'
 import type { ChatModel } from '../../lib/chatService'
 import type { WidgetArtifact, ArtifactDomain } from '../../artifacts/artifactTypes'
 import { domainToAnima } from '../../artifacts/artifactTypes'
+import { supabase } from '../../lib/supabaseClient'
+import { useDictation } from './useDictation'
 
 // ─── Greetings ────────────────────────────────────────────────────────────────
 const GREETINGS = [
@@ -93,6 +95,68 @@ function QuickIcon({ icon }: { icon: string }) {
   return <svg {...s}><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
 }
 
+// ─── PinnedBar ────────────────────────────────────────────────────────────────
+function PinnedBar({ messages, onUnpin }: { messages: import('./chatTypes').UIMessage[]; onUnpin: (id: string) => void }) {
+  const [open, setOpen] = useState(false)
+  const pinned = messages.filter(m => m.pinned).slice(0, 5)
+  if (pinned.length === 0) return null
+
+  const scrollToMsg = (id: string) => {
+    const el = document.querySelector(`[data-msg-id="${id}"]`)
+    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+  }
+  return (
+    <div className="border-b border-[#2FAF8F]/15 dark:border-[#2FAF8F]/10" style={{ background: 'linear-gradient(to bottom, rgba(47,175,143,0.06), rgba(47,175,143,0.02))', boxShadow: '0 2px 12px rgba(47,175,143,0.06)' }}>
+      <button
+        onClick={() => setOpen(p => !p)}
+        className="w-full flex items-center gap-2 px-4 py-2 text-left hover:bg-stone-50 dark:hover:bg-stone-800/40 transition-colors"
+      >
+        <svg className="w-3 h-3 text-[#2FAF8F] shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/>
+        </svg>
+        <span className="text-[11.5px] font-semibold text-stone-500 dark:text-stone-400 flex-1">
+          {pinned.length} destacado{pinned.length > 1 ? 's' : ''}
+        </span>
+        <svg
+          className={`w-3 h-3 text-stone-300 dark:text-stone-600 transition-transform duration-200 ${open ? 'rotate-180' : ''}`}
+          viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"
+        >
+          <polyline points="6 9 12 15 18 9"/>
+        </svg>
+      </button>
+      {open && (
+        <div className="flex flex-col divide-y divide-stone-100 dark:divide-stone-800/60 px-4 pb-2">
+          {pinned.map(m => (
+            <div key={m.id} className="flex items-start gap-3 py-2.5">
+              <div className="w-px self-stretch bg-[#2FAF8F]/40 shrink-0" />
+              <button
+                onClick={() => scrollToMsg(m.id)}
+                className="flex-1 text-left text-[12.5px] text-stone-600 dark:text-stone-300 leading-[1.6] line-clamp-2 min-w-0 hover:text-stone-800 dark:hover:text-stone-100 transition-colors"
+              >
+                {m.content}
+              </button>
+              <div className="flex items-center gap-2 shrink-0 ml-1">
+                <span className="text-[10.5px] text-stone-300 dark:text-stone-600">
+                  {new Date(m.ts).toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' })}
+                </span>
+                <button
+                  onClick={() => onUnpin(m.id)}
+                  title="Quitar destacado"
+                  className="w-5 h-5 flex items-center justify-center rounded-md text-stone-300 dark:text-stone-600 hover:text-rose-400 dark:hover:text-rose-400 hover:bg-stone-100 dark:hover:bg-stone-800 transition-all"
+                >
+                  <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                    <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+                  </svg>
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
 // ─── Chat ─────────────────────────────────────────────────────────────────────
 export default function Chat() {
   const navigate = useNavigate()
@@ -116,10 +180,24 @@ export default function Chat() {
 
   // ── User ────────────────────────────────────────────────────────────────────
   const { profile } = useUser()
+
+  // Leer prefs del asistente desde localStorage
+  const assistantPrefs = (() => {
+    try {
+      const raw = localStorage.getItem('gandia-assistant-prefs')
+      return raw ? { suggestions: true, history: true, ...JSON.parse(raw) } : { suggestions: true, history: true }
+    } catch { return { suggestions: true, history: true } }
+  })()
   const pd = (profile?.personal_data as Record<string, string> | null) ?? {}
   const firstName = (pd.fullName || pd.full_name || pd.nombre_completo || pd.nombre || profile?.email?.split('@')[0] || '').split(' ')[0]
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  const greeting = useMemo(() => GREETINGS[Math.floor(Math.random() * GREETINGS.length)](firstName || 'tú'), [])
+  // Fijar el índice del saludo una vez (no cambia al navegar)
+  const greetingIdxRef = useRef(Math.floor(Math.random() * GREETINGS.length))
+  // Recalcular solo cuando firstName pasa de vacío a tener valor
+  const greeting = useMemo(
+    () => GREETINGS[greetingIdxRef.current](firstName || 'tú'),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [firstName || 'tú']
+  )
 
   // ── Artifacts ───────────────────────────────────────────────────────────────
   // pushMessage is defined after useChat, so we use a ref to avoid circular dep
@@ -160,7 +238,7 @@ export default function Chat() {
     addToast, handleCopy,
     processFiles,
     handleStop, doNewChat, handleNewChat,
-    handleSend, handleEditSave, handleRegenerate, handlePin,
+    handleSend, handleSendWith, handleEditSave, handleRegenerate, handlePin,
     isOnline,
   } = useChat(handleArtifactText)
 
@@ -209,6 +287,19 @@ export default function Chat() {
     setMessages(prev => prev.map((m, i) => i === idx ? { ...m, thoughtsExpanded: !m.thoughtsExpanded } : m))
   }, [setMessages])
 
+  // ── Feedback real → message_feedback table ──────────────────────────────────
+  const handleFeedback = useCallback(async (msgId: string, kind: 'up' | 'down') => {
+    try {
+      await supabase.from('message_feedback').upsert({
+        message_id: msgId,
+        feedback:   kind,
+        created_at: new Date().toISOString(),
+      }, { onConflict: 'message_id' })
+    } catch {
+      // silencioso — el feedback no debe interrumpir el flujo
+    }
+  }, [])
+
   // ── Keyboard shortcuts ────────────────────────────────────────────────────────
   useEffect(() => {
     const MODES: import('../../lib/chatService').ChatMode[] = ['asistente', 'noticias', 'investigacion']
@@ -226,6 +317,60 @@ export default function Chat() {
     window.addEventListener('keydown', handler)
     return () => window.removeEventListener('keydown', handler)
   }, [handleNewChat, setMode])
+
+  // ── Dictation ────────────────────────────────────────────────────────────────
+  const dictation = useDictation(
+    () => {},  // commit handled directly below via event
+    () => {},  // cancel handled directly below via event
+  )
+
+  // Sync transcript + interim into input
+  useEffect(() => {
+    if (!dictation.active) return
+    const full = dictation.interim
+      ? (dictation.transcript + ' ' + dictation.interim).trim()
+      : dictation.transcript
+    setMessage(full)
+  }, [dictation.active, dictation.transcript, dictation.interim, setMessage])
+
+  // COMMIT — escuchar directo, sin pasar por callbacks de useDictation
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const text = (e as CustomEvent<{text: string}>).detail.text
+      if (!text) return
+      setMessage(text)
+      handleSendWith(text)
+    }
+    window.addEventListener('gandia:dictation-commit', handler)
+    return () => window.removeEventListener('gandia:dictation-commit', handler)
+  }, [handleSendWith, setMessage])
+
+  // CANCEL — limpiar input
+  useEffect(() => {
+    const handler = () => setMessage('')
+    window.addEventListener('gandia:dictation-cancelled', handler)
+    return () => window.removeEventListener('gandia:dictation-cancelled', handler)
+  }, [setMessage])
+
+  // ── Voice command listener ───────────────────────────────────────────────────
+  // AppLayout despacha 'gandia:voice-cmd' cuando el usuario habla un comando de chat.
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const cmd = (e as CustomEvent<string>).detail
+      if (!cmd) return
+      if (cmd === 'new_chat') {
+        handleNewChat()
+      } else if (cmd === 'stop') {
+        handleStop()
+      } else if (cmd.startsWith('search:')) {
+        const term = cmd.slice(7)
+        setMessage(term)
+        handleSendWith(term)
+      }
+    }
+    window.addEventListener('gandia:voice-cmd', handler)
+    return () => window.removeEventListener('gandia:voice-cmd', handler)
+  }, [handleNewChat, handleStop, handleSendWith, setMessage])
 
   // ─────────────────────────────────────────────────────────────────────────────
   // RENDER
@@ -354,7 +499,10 @@ export default function Chat() {
         <div className="flex flex-1 min-h-0">
 
           {/* ── Chat pane ──────────────────────────────────────────── */}
-          <div className={`flex flex-col min-w-0 transition-all duration-300 ${artifact?.kind === 'module' ? 'hidden md:flex md:w-[42%]' : 'w-full'}`}>
+          <div className={`relative flex flex-col min-w-0 transition-all duration-300 ${artifact?.kind === 'module' ? 'hidden md:flex md:w-[42%]' : 'w-full'}`}>
+
+            {/* Pinned bar — flujo normal, encima del scroll */}
+            <PinnedBar messages={messages} onUnpin={handlePin} />
 
             {/* Scroll to bottom pill */}
             {!isAtBottom && hasNewMsg && (
@@ -378,20 +526,22 @@ export default function Chat() {
                         {greeting}
                       </h1>
                     </div>
-                    <RotatingPhrase onSelect={setMessage} />
-                    <div className="ch-card flex flex-wrap justify-center gap-2 mt-7" style={{ animationDelay: '300ms' }}>
-                      {QUICK_ACTIONS_BY_MODE[mode].map((qa, i) => (
-                        <button
-                          key={qa.icon}
-                          onClick={() => setMessage(`${qa.label}: `)}
-                          className="flex items-center gap-1.5 h-8 px-3.5 rounded-full border border-stone-200/80 dark:border-stone-700/50 bg-white dark:bg-[#141210] text-[12px] font-medium text-stone-500 dark:text-stone-400 hover:text-stone-800 dark:hover:text-stone-100 hover:border-stone-300 dark:hover:border-stone-600 hover:shadow-[0_2px_10px_rgba(0,0,0,0.06)] transition-all duration-150"
-                          style={{ animationDelay: `${i * 40 + 320}ms` }}
-                        >
-                          <span className="text-stone-300 dark:text-stone-600"><QuickIcon icon={qa.icon} /></span>
-                          {qa.label}
-                        </button>
-                      ))}
-                    </div>
+                    {assistantPrefs.suggestions && <RotatingPhrase onSelect={setMessage} />}
+                    {assistantPrefs.suggestions && (
+                      <div className="ch-card flex flex-wrap justify-center gap-2 mt-7" style={{ animationDelay: '300ms' }}>
+                        {QUICK_ACTIONS_BY_MODE[mode].map((qa, i) => (
+                          <button
+                            key={qa.icon}
+                            onClick={() => setMessage(`${qa.label}: `)}
+                            className="flex items-center gap-1.5 h-8 px-3.5 rounded-full border border-stone-200/80 dark:border-stone-700/50 bg-white dark:bg-[#141210] text-[12px] font-medium text-stone-500 dark:text-stone-400 hover:text-stone-800 dark:hover:text-stone-100 hover:border-stone-300 dark:hover:border-stone-600 hover:shadow-[0_2px_10px_rgba(0,0,0,0.06)] transition-all duration-150"
+                            style={{ animationDelay: `${i * 40 + 320}ms` }}
+                          >
+                            <span className="text-stone-300 dark:text-stone-600"><QuickIcon icon={qa.icon} /></span>
+                            {qa.label}
+                          </button>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 </div>
               ) : (
@@ -411,6 +561,7 @@ export default function Chat() {
                       onCopy={handleCopy}
                       onRegenerate={handleRegenerate}
                       onPin={handlePin}
+                      onFeedback={handleFeedback}
                       onLightbox={setLightboxUrl}
                       onAddToast={addToast}
                       onCloseArtifact={closeArtifact}
@@ -429,7 +580,7 @@ export default function Chat() {
                             <svg className="w-3.5 h-3.5 ch-spin text-[#2FAF8F]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
                             Subiendo archivos…
                           </div>
-                        ) : !showThinking && !isStreaming ? (
+                        ) : !showThinking && !isStreaming && !(isSimulating && simSteps.length > 0) ? (
                           <div className="gl-wrap py-1">
                             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#2FAF8F" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
                               <g className="gl-b"><path d="M2 17l10 5 10-5"/></g>
@@ -460,6 +611,9 @@ export default function Chat() {
               )}
             </div>
 
+            {/* Gradient — overlapa el scroll sin ocupar espacio */}
+            
+
             {/* Input bar */}
             <ChatInputBar
               message={message}
@@ -488,6 +642,8 @@ export default function Chat() {
               onNewChat={handleNewChat}
               onProcessFiles={processFiles}
               onNavigateVoz={() => navigate('/voz')}
+              dictationActive={dictation.active}
+              onDictationStop={dictation.stop}
             />
           </div>
 

@@ -1,9 +1,10 @@
-﻿import { useState, useRef, useEffect } from 'react'
+﻿import { useState, useRef, useEffect, useCallback } from 'react'
 import { Outlet, useNavigate, useLocation } from 'react-router-dom'
 import NotificacionesPanel from '../pages/Notificaciones/Notificaciones'
 import { supabase } from '../lib/supabaseClient'
 import { useNotifications } from '../context/NotificationsContext'
 import { useUser } from '../context/UserContext'
+import { useVoiceNav, type VoiceChatCmd } from '../hooks/useVoiceNav'
 
 // ─── Derived user display from UserContext ───────────────────────────────────
 const ROLE_NAMES: Record<string, string> = {
@@ -67,6 +68,28 @@ function AppLayout() {
   const location    = useLocation()
   const { profile, profileReady } = useUser()
   const { unreadCount } = useNotifications()
+
+  // ─── Voz ─────────────────────────────────────────────────────────────────
+  const voiceNavEnabled = (() => {
+    try {
+      const raw = localStorage.getItem('gandia-accessibility')
+      return raw ? (JSON.parse(raw) as { voiceNav?: boolean }).voiceNav ?? false : false
+    } catch { return false }
+  })()
+  // onChatCmd: cuando el usuario está en /chat, los comandos de chat se despachan
+  // a través de un event personalizado que Chat.tsx escucha.
+  const handleVoiceChatCmd = useCallback((cmd: VoiceChatCmd) => {
+    window.dispatchEvent(new CustomEvent('gandia:voice-cmd', { detail: cmd }))
+  }, [])
+  const {
+    listening: voiceListening, supported: voiceSupported,
+    paused: voicePaused, dismissed: voiceDismissed,
+    pendingAction: voicePending,
+    pendingLogout: voiceAwaitLogout,
+    lastCmd: voiceLastCmd, error: voiceError,
+    togglePause: voiceTogglePause,
+    dismiss: voiceDismiss,
+  } = useVoiceNav({ enabled: voiceNavEnabled, onChatCmd: handleVoiceChatCmd })
 
   // Derivar datos de display desde el perfil del contexto
   const pd  = (profile?.personal_data  as Record<string, string> | null) ?? {}
@@ -163,6 +186,18 @@ function AppLayout() {
     return () => document.removeEventListener('keydown', fn)
   }, [navigate])
 
+  // Voice → notificaciones open/close events
+  useEffect(() => {
+    const open  = () => setNotificacionesOpen(true)
+    const close = () => setNotificacionesOpen(false)
+    window.addEventListener('gandia:notif-open',  open)
+    window.addEventListener('gandia:notif-close', close)
+    return () => {
+      window.removeEventListener('gandia:notif-open',  open)
+      window.removeEventListener('gandia:notif-close', close)
+    }
+  }, [])
+
   return (
     <>
       {/* ── CSS ── */}
@@ -206,11 +241,126 @@ function AppLayout() {
           outline-offset: 2px;
           border-radius: 8px;
         }
+
+        /* Main content scrollbar */
+        main::-webkit-scrollbar { width: 3px; }
+        main::-webkit-scrollbar-track { background: transparent; }
+        main::-webkit-scrollbar-thumb { background: #e7e5e4; border-radius: 999px; }
+        .dark main::-webkit-scrollbar-thumb { background: #3c3836; }
+        main { scrollbar-width: thin; scrollbar-color: #e7e5e4 transparent; }
+        .dark main { scrollbar-color: #3c3836 transparent; }
       `}</style>
 
       <div className="flex h-screen bg-[#fafaf9] dark:bg-[#0c0a09] overflow-hidden">
 
-        {/* ─── Mobile overlay ──────────────────────────────── */}
+        {/* ─── Voice nav indicator ─────────────────────────── */}
+        {voiceNavEnabled && voiceSupported && (
+          <div className="fixed bottom-20 right-4 z-50 flex flex-col items-end gap-2">
+
+            {/* ── PANEL COMPLETO — visible cuando no está dismissed ── */}
+            {!voiceDismissed && (
+              <div className="flex flex-col items-end gap-2 pointer-events-none">
+
+                {/* Confirmación logout */}
+                {voiceAwaitLogout && (
+                  <div className="g-fade flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl bg-rose-500 shadow-lg pointer-events-auto">
+                    <svg className="w-3.5 h-3.5 text-white shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                      <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/>
+                    </svg>
+                    <span className="text-[11.5px] font-medium text-white">Di "confirmar" para cerrar sesión</span>
+                  </div>
+                )}
+
+                {/* Navegación pendiente */}
+                {voicePending && !voiceAwaitLogout && (
+                  <div className="g-fade flex items-center gap-2 px-3 py-2 rounded-xl bg-[#1c1917] dark:bg-stone-100 shadow-lg">
+                    <div className="w-2.5 h-2.5 border-[1.5px] border-[#2FAF8F] border-t-transparent rounded-full animate-spin shrink-0" />
+                    <span className="text-[11.5px] font-medium text-white dark:text-stone-900">{voicePending}</span>
+                    <span className="text-[10px] text-stone-400 dark:text-stone-500 ml-0.5">· di "cancela"</span>
+                  </div>
+                )}
+
+                {/* Último comando */}
+                {voiceLastCmd && !voicePending && !voiceAwaitLogout && (
+                  <div className="g-fade flex items-center gap-2 px-3 py-2 rounded-xl bg-[#1c1917] dark:bg-stone-100 shadow-lg">
+                    <svg className="w-3 h-3 text-[#2FAF8F] shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                      <path d="M12 2a3 3 0 0 1 3 3v7a3 3 0 0 1-6 0V5a3 3 0 0 1 3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="22"/>
+                    </svg>
+                    <span className="text-[11.5px] font-medium text-white dark:text-stone-900 max-w-[180px] truncate">{voiceLastCmd}</span>
+                  </div>
+                )}
+
+                {/* Error */}
+                {voiceError && (
+                  <div className="g-fade flex items-center gap-2 px-3 py-2 rounded-xl bg-rose-500 shadow-lg pointer-events-auto">
+                    <span className="text-[11.5px] font-medium text-white max-w-[200px]">{voiceError}</span>
+                  </div>
+                )}
+
+                {/* Barra de controles — mic + X */}
+                <div className="flex items-center gap-1.5 pointer-events-auto">
+                  {/* Botón mic / pausa */}
+                  <button
+                    onClick={voiceTogglePause}
+                    title={voicePaused ? 'Reanudar voz' : 'Pausar voz'}
+                    className={`flex items-center gap-2 px-3 py-2 rounded-xl shadow-lg transition-all active:scale-[0.97] ${
+                      voicePaused
+                        ? 'bg-white dark:bg-[#1c1917] text-stone-400 dark:text-stone-500 border border-stone-200/60 dark:border-stone-700/50 opacity-70'
+                        : voiceListening
+                          ? 'bg-[#2FAF8F] text-white'
+                          : 'bg-white dark:bg-[#1c1917] text-stone-400 dark:text-stone-500 border border-stone-200/60 dark:border-stone-700/50'
+                    }`}
+                  >
+                    <span className={`relative flex w-2 h-2 shrink-0 ${voiceListening && !voicePaused ? '' : 'opacity-40'}`}>
+                      {voiceListening && !voicePaused && (
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75" />
+                      )}
+                      <span className="relative inline-flex rounded-full w-2 h-2 bg-current" />
+                    </span>
+                    <svg className="w-3.5 h-3.5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round">
+                      {voicePaused
+                        ? <><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></>
+                        : <><path d="M12 2a3 3 0 0 1 3 3v7a3 3 0 0 1-6 0V5a3 3 0 0 1 3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="22"/></>
+                      }
+                    </svg>
+                    <span className="text-[11px] font-medium">
+                      {voicePaused ? (<><span className='sm:hidden'>Inactivo</span><span className='hidden sm:inline'>Inactivo · di hey Gandia</span></>) : voiceListening ? 'Escuchando' : 'Iniciando…'}
+                    </span>
+                  </button>
+
+                  {/* X — oculta el panel, mic sigue activo */}
+                  <button
+                    onClick={voiceDismiss}
+                    title='Ocultar panel · di "hey Gandia" para volver'
+                    className="w-7 h-7 flex items-center justify-center rounded-xl bg-white dark:bg-[#1c1917] border border-stone-200/60 dark:border-stone-700/50 text-stone-400 dark:text-stone-500 hover:text-stone-600 dark:hover:text-stone-300 shadow-lg transition-all active:scale-[0.95]"
+                  >
+                    <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                      <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+                    </svg>
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* ── PUNTO MÍNIMO — cuando está dismissed pero mic activo ── */}
+            {voiceDismissed && (
+              <button
+                onClick={() => window.dispatchEvent(new CustomEvent('gandia:voice-wake'))}
+                title='Mostrar controles · o di "hey Gandia"'
+                className="w-6 h-6 flex items-center justify-center rounded-full bg-white dark:bg-[#1c1917] border border-stone-200/40 dark:border-stone-700/40 shadow-md transition-all hover:scale-110 active:scale-95"
+              >
+                <span className={`relative flex w-2 h-2 ${voiceListening && !voicePaused ? '' : 'opacity-30'}`}>
+                  {voiceListening && !voicePaused && (
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#2FAF8F] opacity-60" />
+                  )}
+                  <span className={`relative inline-flex rounded-full w-2 h-2 ${voiceListening && !voicePaused ? 'bg-[#2FAF8F]' : 'bg-stone-300 dark:bg-stone-600'}`} />
+                </span>
+              </button>
+            )}
+
+          </div>
+        )}
+
         {mobileMenuOpen && (
           <div
             className="g-fade fixed inset-0 bg-black/20 backdrop-blur-[2px] z-40 lg:hidden"
