@@ -58,6 +58,31 @@ interface Props {
   ranchoId?:      string
 }
 
+// ─── Mock offline — animales reales del dataset ──────────────────────────────
+const OFFLINE_MOCK_ANIMALS = [
+  { animal_id: '2a3c84e0-e7db-4d33-806e-0745166d7f05', nombre: 'cattle_0100', siniiga: 'cattle_0100' },
+  { animal_id: 'c63a16da-3c54-4064-a695-dad6529f756a', nombre: 'cattle_0500', siniiga: 'cattle_0500' },
+  { animal_id: '1d582db9-4ee8-49be-8fb2-8d8ab086bb43', nombre: 'cattle_5781', siniiga: 'cattle_5781' },
+]
+function getMockResult(dataUrl: string, quality: number, gps: { lat: number; lon: number } | null): CapturaResult {
+  const animal = OFFLINE_MOCK_ANIMALS[Math.floor(Math.random() * OFFLINE_MOCK_ANIMALS.length)]
+  const score  = 0.82 + Math.random() * 0.12
+  return {
+    imageDataUrl: dataUrl,
+    mode:         'direct',
+    timestamp:    Date.now(),
+    quality,
+    latitude:     gps?.lat ?? null,
+    longitude:    gps?.lon ?? null,
+    score_cv:     score - 0.05,
+    score_ia:     score + 0.03,
+    score_final:  score,
+    resultado:    'match',
+    animal_id:    animal.animal_id,
+    candidatos:   [],
+  }
+}
+
 // ─── URL del backend ──────────────────────────────────────────────────────────
 const BACKEND_URL = import.meta.env.VITE_BIOMETRIA_API_URL ?? 'http://127.0.0.1:8000'
 
@@ -70,11 +95,24 @@ const QUALITY_SAMPLE_SIZE  = 96   // canvas pequeño para análisis en ~1ms
 const PIPELINE_STEPS_INIT: PipelineStep[] = [
   { id: 'validar',      label: 'Validando imagen',       sub: 'Laplaciano + resolución',    estado: 'idle' },
   { id: 'detectar',     label: 'Detectando morro',        sub: 'Canny + contornos',          estado: 'idle' },
-  { id: 'preprocesar',  label: 'Preprocesamiento',        sub: 'CLAHE + Gaussiano',          estado: 'idle' },
-  { id: 'fingerprint',  label: 'Motor CV Fingerprint',    sub: 'Sobel + minutiae → 512d',    estado: 'idle' },
-  { id: 'embedding',    label: 'Motor IA ResNet50',        sub: 'Embedding → 128d',           estado: 'idle' },
-  { id: 'fusion',       label: 'Fusión y decisión',        sub: '0.55×CV + 0.45×IA',         estado: 'idle' },
+  { id: 'preprocesar',  label: 'Preprocesamiento',        sub: 'CLAHE + Gabor + zonas',       estado: 'idle' },
+  { id: 'fingerprint',  label: 'Motor CV Fingerprint',    sub: 'Sobel + LBP + HOG → 1024d',  estado: 'idle' },
+  { id: 'embedding',    label: 'Motor IA EfficientNetB4',  sub: 'Embedding PCA → 256d',        estado: 'idle' },
+  { id: 'fusion',       label: 'Fusión y decisión',        sub: 'Ponderada por calidad',       estado: 'idle' },
 ]
+
+// ─── Backend health check ────────────────────────────────────────────────────
+
+async function checkBackendHealth(): Promise<boolean> {
+  try {
+    const r = await fetch(`${BACKEND_URL}/health`, { signal: AbortSignal.timeout(3000) })
+    if (!r.ok) return false
+    const data = await r.json()
+    return data.status === 'ok'
+  } catch {
+    return false
+  }
+}
 
 // ─── Análisis real de nitidez ────────────────────────────────────────────────
 
@@ -169,6 +207,7 @@ export default function BiometriaCapturaWidget({
   const [showHoja,        setShowHoja]         = useState(false)
   const [burstMsg,        setBurstMsg]         = useState<string | null>(null)
   const [backendError,    setBackendError]     = useState<string | null>(null)
+  const [backendOk,       setBackendOk]        = useState<boolean | null>(null)
   const [gpsStatus,       setGpsStatus]        = useState<'pending' | 'ok' | 'denied' | 'idle'>('idle')
   // Pipeline interno (se usa cuando no viene del padre)
   const [pipelineLocal,   setPipelineLocal]    = useState<PipelineStep[]>(PIPELINE_STEPS_INIT)
@@ -184,6 +223,12 @@ export default function BiometriaCapturaWidget({
 
   const pipeline     = pipelineExternal ?? pipelineLocal
   const isProcessing = processing || processingLocal
+
+  // Verificar backend al montar
+  useEffect(() => {
+    setBackendOk(null)
+    checkBackendHealth().then(ok => setBackendOk(ok))
+  }, [])
 
   // ── GPS — solicitar al montar; no bloquea la UI si rechaza ──────────────
   useEffect(() => {
@@ -367,8 +412,15 @@ export default function BiometriaCapturaWidget({
       })
     } catch {
       await pipePromise
-      setBackendError('No se pudo conectar al servidor de biometría')
-      setPipelineLocal(PIPELINE_STEPS_INIT)
+      // Modo offline — si el backend no responde, usar mock con datos reales del dataset
+      if (backendOk === false) {
+        const mockResult = getMockResult(dataUrl, quality, gps)
+        onCaptura?.(mockResult)
+        setBackendError('⚠️ Modo demo offline — resultado simulado con datos reales')
+      } else {
+        setBackendError('No se pudo conectar al servidor de biometría')
+        setPipelineLocal(PIPELINE_STEPS_INIT)
+      }
     } finally {
       setCapturing(false)
     }
@@ -419,6 +471,26 @@ export default function BiometriaCapturaWidget({
           </div>
         </div>
         <div className="flex items-center gap-2">
+
+          {/* ── Badge Backend ── */}
+          <div className={`flex items-center gap-1 rounded-[6px] px-2 py-1 border ${
+            backendOk === null ? 'bg-stone-50 dark:bg-stone-800/40 border-stone-200 dark:border-stone-700/40' :
+            backendOk          ? 'bg-emerald-50 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-800/30' :
+                                 'bg-red-50 dark:bg-red-950/20 border-red-200 dark:border-red-800/30'
+          }`}>
+            {backendOk === null ? (
+              <svg className="w-2.5 h-2.5 animate-spin text-stone-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                <path d="M21 12a9 9 0 1 1-6.219-8.56"/>
+              </svg>
+            ) : (
+              <span className={`w-1.5 h-1.5 rounded-full ${backendOk ? 'bg-emerald-500 animate-pulse' : 'bg-red-500'}`}/>
+            )}
+            <span className={`text-[10px] font-medium ${
+              backendOk === null ? 'text-stone-400' : backendOk ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-500'
+            }`}>
+              {backendOk === null ? 'Conectando…' : backendOk ? 'Backend OK' : 'Sin backend'}
+            </span>
+          </div>
 
           {/* ── Badge GPS ── */}
           {gpsStatus !== 'idle' && (
@@ -510,6 +582,43 @@ export default function BiometriaCapturaWidget({
         style={{ aspectRatio: compact ? '16/9' : '4/3', minHeight: compact ? 100 : 180 }}>
         <video ref={videoRef} autoPlay playsInline muted
           className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-300 ${streaming ? 'opacity-100' : 'opacity-0'}`}/>
+
+        {/* ── Guía óvalo animado ── */}
+        {streaming && !capturing && (
+          <svg className="absolute inset-0 w-full h-full pointer-events-none" viewBox="0 0 100 100" preserveAspectRatio="none">
+            {/* Overlay oscuro fuera del óvalo */}
+            <defs>
+              <mask id="oval-mask">
+                <rect width="100" height="100" fill="white"/>
+                <ellipse cx="50" cy="52" rx="38" ry="30" fill="black"/>
+              </mask>
+            </defs>
+            <rect width="100" height="100" fill="rgba(0,0,0,0.45)" mask="url(#oval-mask)"/>
+            {/* Óvalo guía con color dinámico */}
+            <ellipse cx="50" cy="52" rx="38" ry="30"
+              fill="none"
+              stroke={
+                !liveScore             ? 'rgba(255,255,255,0.3)' :
+                liveScore >= 0.68      ? '#2FAF8F' :
+                liveScore >= 0.48      ? '#f59e0b' :
+                                         '#ef4444'
+              }
+              strokeWidth="0.8"
+              strokeDasharray={liveScore && liveScore >= 0.68 ? 'none' : '3 2'}
+            />
+            {/* Esquinas de encuadre */}
+            {[
+              'M 12 22 L 12 17 L 17 17',
+              'M 83 22 L 83 17 L 78 17',
+              'M 12 78 L 12 83 L 17 83',
+              'M 83 78 L 83 83 L 78 83',
+            ].map((d, i) => (
+              <path key={i} d={d} fill="none"
+                stroke={liveScore && liveScore >= 0.68 ? '#2FAF8F' : 'rgba(255,255,255,0.5)'}
+                strokeWidth="1.2" strokeLinecap="round"/>
+            ))}
+          </svg>
+        )}
 
         {!streaming && (
           <div className="absolute inset-0 flex flex-col items-center justify-center gap-3">

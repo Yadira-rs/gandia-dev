@@ -60,10 +60,10 @@ export default function BiometriaConfigWidget({ onGuardar }: Props) {
             <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
           </svg>
           <div className="min-w-0">
-            <p className="text-[13px] font-semibold text-stone-800 dark:text-stone-100 leading-tight">Motor Biométrico v2.1</p>
+            <p className="text-[13px] font-semibold text-stone-800 dark:text-stone-100 leading-tight">Motor Biométrico v3.0</p>
             <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
               <span className="w-1.5 h-1.5 rounded-full bg-[#2FAF8F] animate-pulse shrink-0"/>
-              <p className="text-[11.5px] text-stone-400 dark:text-stone-500">Fingerprint CV + ResNet50 · Fusión 55/45</p>
+              <p className="text-[11.5px] text-stone-400 dark:text-stone-500">EfficientNetB4 + Descriptor 1024-dim · Fusión ponderada por calidad</p>
               {ranchoId && (
                 <span className="text-[10px] font-medium text-[#2FAF8F] bg-[#2FAF8F]/08 dark:bg-[#2FAF8F]/12 border border-[#2FAF8F]/20 px-1.5 py-0.5 rounded-[5px]">
                   Config guardada localmente

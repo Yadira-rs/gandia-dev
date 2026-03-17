@@ -294,7 +294,9 @@ function RegistroRow({ registro: r, onClick, hasBorder, highlight }: {
 
       <div className="text-right shrink-0">
         {r.score > 0 && (
-          <p className={`text-[13px] font-bold leading-tight tabular-nums ${cfg.textColor}`}>
+          <p className={`text-[13px] font-bold leading-tight tabular-nums ${
+            r.score >= 0.80 ? 'text-[#2FAF8F]' : r.score >= 0.50 ? 'text-amber-500' : 'text-red-400'
+          }`}>
             {Math.round(r.score * 100)}%
           </p>
         )}

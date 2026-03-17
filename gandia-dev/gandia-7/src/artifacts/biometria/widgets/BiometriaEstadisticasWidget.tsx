@@ -19,14 +19,32 @@ interface EmbeddingRow {
   created_at: string
 }
 
+interface Metricas {
+  accuracy:    number
+  fnmr:        number
+  fmr:         number
+  eer:         number
+  n_animales:  number
+  genuine_avg: number
+}
+
 export default function BiometriaEstadisticasWidget({ registros = [] }: Props) {
   const { profile }  = useUser()
   const userId       = profile?.user_id ?? null
   const { ranchoId } = useRanchoId(userId)
 
-  const [embeddings, setEmbeddings] = useState<EmbeddingRow[]>([])
-  const [loading,    setLoading]    = useState(false)
-  const [error,      setError]      = useState<string | null>(null)
+  const [embeddings,  setEmbeddings]  = useState<EmbeddingRow[]>([])
+  const [loading,     setLoading]     = useState(false)
+  const [error,       setError]       = useState<string | null>(null)
+  const [metricas,    setMetricas]    = useState<Metricas | null>(null)
+
+  // Cargar métricas desde metricas.json si el backend las expone
+  useEffect(() => {
+    fetch(`${import.meta.env.VITE_BIOMETRIA_API_URL ?? 'http://127.0.0.1:8000'}/metricas`)
+      .then(r => r.ok ? r.json() : null)
+      .then(d => { if (d) setMetricas(d) })
+      .catch(() => {/* métricas opcionales */})
+  }, [])
 
   const fetchData = useCallback(async () => {
     if (!ranchoId) return
@@ -94,6 +112,17 @@ export default function BiometriaEstadisticasWidget({ registros = [] }: Props) {
 
   return (
     <div className="flex flex-col gap-4">
+
+      {/* ── Motor info ── */}
+      <div className="bg-[#2FAF8F]/08 dark:bg-[#2FAF8F]/12 border border-[#2FAF8F]/20 rounded-[10px] px-3.5 py-2.5 flex items-center gap-2.5">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#2FAF8F" strokeWidth="1.75" strokeLinecap="round">
+          <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+        </svg>
+        <div>
+          <p className="text-[11.5px] font-semibold text-[#2FAF8F]">Motor NosePrint v3.0</p>
+          <p className="text-[10.5px] text-stone-400 dark:text-stone-500">EfficientNetB4 · Descriptor 1024-dim · PCA 256 · Fusión ponderada</p>
+        </div>
+      </div>
 
       {/* ── Encabezado ── */}
       <div className="flex items-center justify-between">
@@ -207,6 +236,31 @@ export default function BiometriaEstadisticasWidget({ registros = [] }: Props) {
         <div className="flex flex-col items-center gap-2 py-6 text-center">
           <p className="text-[12px] text-stone-400 dark:text-stone-500">
             Las estadísticas aparecen en cuanto haya huellas registradas
+          </p>
+        </div>
+      )}
+
+      {/* ── Métricas biométricas ── */}
+      {metricas && (
+        <div className="bg-white dark:bg-[#1c1917] border border-stone-200/60 dark:border-stone-800/50 rounded-[12px] p-4">
+          <p className="text-[11px] font-medium text-stone-400 dark:text-stone-500 uppercase tracking-[0.06em] mb-3">
+            Métricas biométricas — {metricas.n_animales} animales
+          </p>
+          <div className="grid grid-cols-2 gap-2">
+            {[
+              { label: 'Accuracy',  value: `${(metricas.accuracy*100).toFixed(1)}%`,   color: metricas.accuracy >= 0.90 ? 'text-[#2FAF8F]' : 'text-amber-500' },
+              { label: 'EER',       value: `${(metricas.eer*100).toFixed(1)}%`,         color: metricas.eer <= 0.05 ? 'text-[#2FAF8F]' : 'text-amber-500' },
+              { label: 'FMR',       value: `${(metricas.fmr*100).toFixed(1)}%`,         color: metricas.fmr <= 0.02 ? 'text-[#2FAF8F]' : 'text-amber-500' },
+              { label: 'FNMR',      value: `${(metricas.fnmr*100).toFixed(1)}%`,        color: metricas.fnmr <= 0.05 ? 'text-[#2FAF8F]' : 'text-amber-500' },
+            ].map((m, i) => (
+              <div key={i} className="bg-stone-50 dark:bg-[#141210] rounded-[8px] px-3 py-2.5 border border-stone-100 dark:border-stone-800/40">
+                <p className={`text-[20px] font-extrabold leading-none tabular-nums ${m.color}`}>{m.value}</p>
+                <p className="text-[10.5px] text-stone-400 dark:text-stone-500 mt-1">{m.label}</p>
+              </div>
+            ))}
+          </div>
+          <p className="text-[10.5px] text-stone-400 dark:text-stone-500 mt-2">
+            Score genuino avg: {(metricas.genuine_avg*100).toFixed(1)}%
           </p>
         </div>
       )}
