@@ -1,6 +1,6 @@
 """
 download_models.py — Pre-descarga modelos en tiempo de build.
-Railway ejecuta esto durante el build para que no descargue al arrancar.
+Railway ejecuta esto durante el build para que no descargue al arrancar..
 """
 import torch
 from torchvision import models
