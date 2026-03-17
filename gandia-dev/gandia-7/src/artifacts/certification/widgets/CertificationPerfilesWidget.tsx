@@ -1,213 +1,303 @@
-import { useState, useEffect } from 'react'
-
 /**
- * CertificationPerfilesWidget — European Document v5
- * Drop-in replacement. Mismos tipos y exports.
+ * CertificationPerfilesWidget
+ * v2 — anillo de score, KPIs con proporción, filas expandidas, barras de progreso visibles.
  */
-
-export type CertEstado = 'listo' | 'casi' | 'bloqueado'
+export type CertEstado = "listo" | "casi" | "bloqueado";
 
 export interface CertAnimalItem {
-  arete:        string
-  nombre?:      string
-  lote:         string
-  corral?:      string
-  estado:       CertEstado
-  score:        number
-  tipoCert:     string
-  diasVence?:   number
-  bloqueantes?: number
-  pendientes?:  number
+  arete: string;
+  nombre?: string;
+  lote: string;
+  corral?: string;
+  estado: CertEstado;
+  score: number;
+  tipoCert: string;
+  diasVence?: number;
+  bloqueantes?: number;
+  pendientes?: number;
 }
 
 interface Props {
-  animales:  CertAnimalItem[]
-  selected?: CertAnimalItem | null
-  onSelect:  (item: CertAnimalItem) => void
+  animales: CertAnimalItem[];
+  selected?: CertAnimalItem | null;
+  onSelect: (item: CertAnimalItem) => void;
 }
 
-// Status: left border only — no colored text
-const STATUS: Record<CertEstado, { label: string; border: string }> = {
-  listo:     { label: 'Listo',     border: '#2A7A5A' },
-  casi:      { label: 'Casi',      border: '#8A6800' },
-  bloqueado: { label: 'Bloqueado', border: '#8C1A1A' },
+// ─── Config de estado ──────────────────────────────────────────────────────────
+
+const EST: Record<
+  CertEstado,
+  { label: string; color: string; bg: string; text: string }
+> = {
+  listo: { label: "Listo", color: "#2FAF8F", bg: "#2FAF8F18", text: "#1a8c6e" },
+  casi: { label: "Casi", color: "#d97706", bg: "#fef3c7", text: "#92400e" },
+  bloqueado: {
+    label: "Bloqueado",
+    color: "#e11d48",
+    bg: "#ffe4e6",
+    text: "#9f1239",
+  },
+};
+
+const PROG_COLOR = (score: number) =>
+  score >= 80 ? "#2FAF8F" : score >= 50 ? "#d97706" : "#e11d48";
+
+// ─── Score ring SVG ───────────────────────────────────────────────────────────
+
+const CIRCUMFERENCE = 2 * Math.PI * 18; // r=18 → 113.1
+
+function ScoreRing({ score, color }: { score: number; color: string }) {
+  const offset = CIRCUMFERENCE * (1 - score / 100);
+  return (
+    <svg width="44" height="44" viewBox="0 0 44 44">
+      <circle
+        cx="22"
+        cy="22"
+        r="18"
+        fill="none"
+        stroke="currentColor"
+        className="text-stone-100 dark:text-stone-800"
+        strokeWidth="4"
+      />
+      <circle
+        cx="22"
+        cy="22"
+        r="18"
+        fill="none"
+        stroke={color}
+        strokeWidth="4"
+        strokeDasharray={CIRCUMFERENCE}
+        strokeDashoffset={offset}
+        strokeLinecap="round"
+        transform="rotate(-90 22 22)"
+        style={{ transition: "stroke-dashoffset 0.6s ease" }}
+      />
+      <text
+        x="22"
+        y="26"
+        textAnchor="middle"
+        fontSize="11"
+        fontWeight="500"
+        fill={color}
+        fontFamily="sans-serif"
+      >
+        {score}
+      </text>
+    </svg>
+  );
 }
 
-function useDark() {
-  const [d, setD] = useState(() => typeof document !== 'undefined' && document.documentElement.classList.contains('dark'))
-  useEffect(() => {
-    const obs = new MutationObserver(() => setD(document.documentElement.classList.contains('dark')))
-    obs.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] })
-    return () => obs.disconnect()
-  }, [])
-  return d
-}
+// ─── Componente ───────────────────────────────────────────────────────────────
 
-export default function CertificationPerfilesWidget({ animales, selected, onSelect }: Props) {
-  const dark = useDark()
-  const tk = dark
-    ? { bg:'#0E0D0C', card:'#1C1917', b:'#2A2724', blt:'#221F1D', tx:'#F4F2EF', txMd:'#A19D97', txSm:'#58534E', acc:'#2FAF8F' }
-    : { bg:'#FAFAF9', card:'#FFFFFF', b:'#E7E5E4', blt:'#F5F5F4', tx:'#1C1917', txMd:'#57534E', txSm:'#A8A29E', acc:'#2FAF8F' }
+export default function CertificationPerfilesWidget({
+  animales,
+  selected,
+  onSelect,
+}: Props) {
+  const listos = animales.filter((a) => a.estado === "listo").length;
+  const casi = animales.filter((a) => a.estado === "casi").length;
+  const bloq = animales.filter((a) => a.estado === "bloqueado").length;
+  const total = animales.length;
 
-  const listos = animales.filter(a => a.estado === 'listo').length
-  const casi   = animales.filter(a => a.estado === 'casi').length
-  const bloq   = animales.filter(a => a.estado === 'bloqueado').length
+  const kpis = [
+    { n: listos, label: "Listos", color: "#2FAF8F" },
+    { n: casi, label: "Casi listos", color: "#d97706" },
+    { n: bloq, label: "Bloqueados", color: "#e11d48" },
+  ];
+
+  const renderAlerta = (item: CertAnimalItem) => {
+    if ((item.bloqueantes ?? 0) > 0) {
+      return (
+        <span
+          className="inline-flex items-center text-[10px] font-medium px-2 py-0.5 rounded-full animate-pulse"
+          style={{ background: "#ffe4e6", color: "#9f1239" }}
+        >
+          {item.bloqueantes} bloq.
+        </span>
+      );
+    }
+    if (item.diasVence !== undefined) {
+      if (item.diasVence < 0)
+        return (
+          <span
+            className="inline-flex items-center text-[10px] font-medium px-2 py-0.5 rounded-full animate-pulse"
+            style={{ background: "#ffe4e6", color: "#9f1239" }}
+          >
+            Vencido
+          </span>
+        );
+      if (item.diasVence <= 30)
+        return (
+          <span
+            className="inline-flex items-center text-[10px] font-medium px-2 py-0.5 rounded-full animate-pulse"
+            style={{ background: "#fef3c7", color: "#92400e" }}
+          >
+            {item.diasVence} días
+          </span>
+        );
+      return (
+        <span className="text-[10px] text-stone-400 dark:text-stone-500">
+          {item.diasVence} días
+        </span>
+      );
+    }
+    return null;
+  };
 
   return (
-    <>
-      <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600;700&family=Sora:wght@400;500;600&display=swap');
-
-        .cperf5 * { box-sizing:border-box; margin:0; padding:0; }
-        .cperf5 {
-          font-family:'Sora',ui-sans-serif,sans-serif; font-size:13px;
-          color:var(--tx); background:var(--card); -webkit-font-smoothing:antialiased;
-          border:1px solid var(--b); border-radius:2px; overflow:hidden; position:relative;
-        }
-        .cperf5::after {
-          content:''; position:absolute; inset:0; pointer-events:none; z-index:10;
-          background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='200' height='200' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E");
-        }
-        .cperf5 > * { position:relative; z-index:1; }
-        .cperf5-serif { font-family:'Cormorant Garamond',Georgia,serif; }
-        .cperf5-mono  { font-family:ui-monospace,'Cascadia Code',monospace; }
-        .cperf5-lbl   { font-size:9px; font-weight:600; letter-spacing:.11em; text-transform:uppercase; color:var(--tx-sm); }
-
-        /* KPI strip — diagonal hatch */
-        .cperf5-kpi {
-          display:flex;
-          background-color:var(--bg);
-          background-image:repeating-linear-gradient(
-            -45deg, transparent, transparent 5px,
-            rgba(0,0,0,.022) 5px, rgba(0,0,0,.022) 6px
-          );
-          border-bottom:1px solid var(--b);
-        }
-
-        /* Table header */
-        .cperf5-th {
-          display:grid; grid-template-columns:38px 1fr 70px 12px;
-          gap:0 10px; padding:6px 18px 5px;
-          background:var(--bg); border-bottom:1px solid var(--blt);
-        }
-
-        /* Row button */
-        .cperf5-row {
-          width:100%; display:grid; grid-template-columns:38px 1fr 70px 12px;
-          gap:0 10px; align-items:center; padding:11px 18px;
-          border:none; background:transparent; cursor:pointer;
-          transition:background .1s; text-align:left; font-family:'Sora',sans-serif;
-          color:var(--tx);
-        }
-        .cperf5-row:hover  { background:var(--bg); }
-        .cperf5-row.active { background:var(--bg); }
-
-        .cperf5-score {
-          width:32px; height:32px; margin:0 auto;
-          border:1px solid var(--blt); border-radius:2px;
-          display:flex; align-items:center; justify-content:center;
-          background:var(--bg);
-        }
-        .cperf5-tag {
-          display:inline-block; font-size:9px; font-weight:600;
-          letter-spacing:.06em; text-transform:uppercase;
-          border:1px solid var(--blt); border-radius:1px;
-          padding:1px 5px; color:var(--tx-sm); background:var(--bg);
-        }
-      `}</style>
-
-      <div className="cperf5" style={{ '--bg':tk.bg,'--card':tk.card,'--b':tk.b,'--blt':tk.blt,'--tx':tk.tx,'--tx-md':tk.txMd,'--tx-sm':tk.txSm,'--acc':tk.acc } as React.CSSProperties}>
-
-        {/* ── KPI strip ── */}
-        <div className="cperf5-kpi">
-          {[
-            { n: listos, label: 'Listos'     },
-            { n: casi,   label: 'Casi listos' },
-            { n: bloq,   label: 'Bloqueados'  },
-          ].map((s, i) => (
-            <div key={i} style={{
-              flex:1, textAlign:'center', padding:'16px 8px',
-              borderRight: i < 2 ? '1px solid var(--b)' : 'none',
-            }}>
-              <p className="cperf5-serif" style={{ fontSize:32, fontWeight:600, lineHeight:1, color:'var(--tx)', marginBottom:4, letterSpacing:'-.02em' }}>
-                {s.n}
-              </p>
-              <p className="cperf5-lbl">{s.label}</p>
+    <div className="flex flex-col">
+      {/* ── KPIs ── */}
+      <div className="grid grid-cols-3 gap-2.5 mb-6">
+        {kpis.map((k) => (
+          <div
+            key={k.label}
+            className="relative bg-white dark:bg-[#1c1917] border border-stone-200/60 dark:border-stone-800/50 rounded-[12px] px-4 pt-5 pb-3.5 overflow-hidden"
+          >
+            {/* Acento top */}
+            <div
+              className="absolute top-0 left-0 right-0 h-[3px]"
+              style={{ background: k.color }}
+            />
+            <p
+              className="text-[36px] font-medium leading-none tabular-nums mb-1.5"
+              style={{ color: k.color }}
+            >
+              {k.n}
+            </p>
+            <p className="text-[11px] text-stone-400 dark:text-stone-500 mb-2.5">
+              {k.label}
+            </p>
+            {/* Barra de proporción */}
+            <div className="h-[4px] bg-stone-100 dark:bg-stone-800/50 rounded-full overflow-hidden">
+              <div
+                className="h-full rounded-full transition-all duration-700"
+                style={{
+                  width: `${total > 0 ? (k.n / total) * 100 : 0}%`,
+                  background: k.color,
+                }}
+              />
             </div>
-          ))}
-        </div>
+            <p className="text-[10px] text-stone-300 dark:text-stone-600 mt-1.5">
+              {total > 0 ? Math.round((k.n / total) * 100) : 0}% del total
+            </p>
+          </div>
+        ))}
+      </div>
 
-        {/* ── Table header ── */}
-        <div className="cperf5-th">
-          {['', 'Animal / Cert.', 'Estado', ''].map((h, i) => (
-            <p key={i} className="cperf5-lbl">{h}</p>
-          ))}
-        </div>
+      {/* ── Header lista ── */}
+      <div className="flex items-center justify-between mb-2.5 px-0.5">
+        <p className="text-[10.5px] text-stone-400 dark:text-stone-500 tracking-[0.04em]">
+          {total} animal{total !== 1 ? "es" : ""} · expedientes
+        </p>
+      </div>
 
-        {/* ── Rows ── */}
-        {animales.map((item, idx) => {
-          const s        = STATUS[item.estado]
-          const isActive = selected?.arete === item.arete
+      {/* ── Lista ── */}
+      <div className="flex flex-col gap-2">
+        {animales.map((item) => {
+          const est = EST[item.estado];
+          const progColor = PROG_COLOR(item.score);
+          const isActive = selected?.arete === item.arete;
 
           return (
-            <div key={item.arete} style={{ borderBottom: idx < animales.length - 1 ? '1px solid var(--blt)' : 'none', borderLeft:`2px solid ${s.border}` }}>
-              <button
-                className={`cperf5-row${isActive ? ' active' : ''}`}
-                onClick={() => onSelect(item)}
-              >
-                {/* Score */}
-                <div className="cperf5-score">
-                  <span className="cperf5-mono" style={{ fontSize:12, fontWeight:700, color:'var(--tx-md)' }}>
-                    {item.score}
-                  </span>
-                </div>
+            <button
+              key={item.arete}
+              type="button"
+              onClick={() => onSelect(item)}
+              className={`w-full text-left grid gap-3 p-4 rounded-[12px] border cursor-pointer transition-all
+                ${
+                  isActive
+                    ? "border-stone-300 dark:border-stone-600 bg-stone-50 dark:bg-[#1a1917]"
+                    : "border-stone-200/60 dark:border-stone-800/50 bg-white dark:bg-[#1c1917] hover:border-stone-300 dark:hover:border-stone-700 hover:bg-stone-50/80 dark:hover:bg-[#1a1917]/80"
+                }`}
+              style={{
+                gridTemplateColumns: "64px 1fr auto 20px",
+                alignItems: "center",
+              }}
+            >
+              {/* Score ring */}
+              <div className="flex flex-col items-center gap-1">
+                <ScoreRing score={item.score} color={progColor} />
+                <span className="text-[10px] text-stone-400 dark:text-stone-500">
+                  score
+                </span>
+              </div>
 
-                {/* Info */}
-                <div style={{ minWidth:0 }}>
-                  <div style={{ display:'flex', gap:7, alignItems:'center', marginBottom:2 }}>
-                    <span className="cperf5-mono" style={{ fontSize:12.5, fontWeight:600, color:'var(--tx)' }}>
-                      {item.arete}
+              {/* Info */}
+              <div className="min-w-0">
+                <p className="font-mono text-[13px] font-semibold text-stone-800 dark:text-stone-100 mb-0.5">
+                  {item.arete}
+                </p>
+                {item.nombre ? (
+                  <p className="text-[12px] text-stone-500 dark:text-stone-400 mb-1">
+                    {item.nombre}
+                  </p>
+                ) : (
+                  <p className="text-[12px] text-stone-300 dark:text-stone-600 italic mb-1">
+                    Sin nombre
+                  </p>
+                )}
+                <p className="text-[11px] text-stone-400 dark:text-stone-500 mb-2.5">
+                  {item.tipoCert}
+                  {(item.lote || item.corral) && (
+                    <span className="font-mono text-[10px] text-stone-300 dark:text-stone-600 bg-stone-100 dark:bg-stone-800/50 rounded px-1.5 py-0.5 ml-1.5">
+                      {[item.lote, item.corral].filter(Boolean).join(" · ")}
                     </span>
-                    {item.nombre && (
-                      <span style={{ fontSize:11.5, color:'var(--tx-sm)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
-                        {item.nombre}
-                      </span>
-                    )}
-                  </div>
-                  <p style={{ fontSize:11, color:'var(--tx-sm)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
-                    {item.tipoCert}
-                    {item.lote && <span style={{ color:'var(--b)' }}> · {item.lote}</span>}
-                  </p>
-                </div>
-
-                {/* Estado */}
+                  )}
+                </p>
+                {/* Barra de progreso */}
                 <div>
-                  <p style={{ fontSize:11, fontWeight:500, color:'var(--tx-md)', marginBottom:3, whiteSpace:'nowrap' }}>
-                    {s.label}
-                  </p>
-                  <div style={{ display:'flex', gap:4, flexWrap:'wrap' }}>
-                    {item.diasVence !== undefined && item.diasVence <= 30 && (
-                      <span className="cperf5-tag">
-                        {item.diasVence <= 0 ? 'Vencido' : `${item.diasVence}d`}
-                      </span>
-                    )}
-                    {(item.bloqueantes ?? 0) > 0 && (
-                      <span className="cperf5-tag">
-                        {item.bloqueantes} bloq.
-                      </span>
-                    )}
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-[10px] text-stone-400 dark:text-stone-500">
+                      Expediente
+                    </span>
+                    <span
+                      className="text-[10px] font-medium"
+                      style={{ color: progColor }}
+                    >
+                      {item.score}%
+                    </span>
+                  </div>
+                  <div className="h-[6px] bg-stone-100 dark:bg-stone-800/50 rounded-full overflow-hidden">
+                    <div
+                      className="h-full rounded-full transition-all duration-700"
+                      style={{ width: `${item.score}%`, background: progColor }}
+                    />
                   </div>
                 </div>
+              </div>
 
-                {/* Chevron */}
-                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="var(--blt)" strokeWidth="2.5" strokeLinecap="round">
-                  <polyline points="9 18 15 12 9 6" />
-                </svg>
-              </button>
-            </div>
-          )
+              {/* Estado + alerta */}
+              <div className="flex flex-col items-end gap-1.5">
+                <span
+                  className="inline-flex items-center gap-1 text-[11px] font-medium px-2.5 py-1 rounded-full"
+                  style={{ background: est.bg, color: est.text }}
+                >
+                  <span
+                    className="w-[5px] h-[5px] rounded-full shrink-0"
+                    style={{ background: est.color }}
+                  />
+                  {est.label}
+                </span>
+                {renderAlerta(item)}
+              </div>
+
+              {/* Chevron */}
+              <svg
+                width="14"
+                height="14"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.5"
+                strokeLinecap="round"
+                className="text-stone-300 dark:text-stone-600 shrink-0"
+              >
+                <polyline points="9 18 15 12 9 6" />
+              </svg>
+            </button>
+          );
         })}
       </div>
-    </>
-  )
+    </div>
+  );
 }
