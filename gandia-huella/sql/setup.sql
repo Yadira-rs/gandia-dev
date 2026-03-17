@@ -1,41 +1,59 @@
 -- ============================================================
--- setup.sql — Ejecutar en el SQL Editor de Supabase
--- Habilita pgvector y crea la columna + función de búsqueda
+-- setup.sql — NosePrint Bovino v3.0
+-- Ejecutar en el SQL Editor de Supabase
+-- ============================================================
+-- NOTA: Este script asume que la tabla biometria_embeddings
+-- ya existe con sus columnas base (id, animal_id, rancho_id,
+-- subido_por, imagen_path, activo, created_at).
+-- Solo agrega/actualiza lo relacionado con biometría vectorial.
 -- ============================================================
 
 -- 1. Habilitar extensión pgvector
 CREATE EXTENSION IF NOT EXISTS vector;
 
--- 2. Agregar columna embedding_vector a biometria_embeddings
---    (si la tabla ya existe sin esa columna)
+-- 2. Agregar columnas biométricas si no existen
 ALTER TABLE biometria_embeddings
-  ADD COLUMN IF NOT EXISTS embedding_vector VECTOR(128),
   ADD COLUMN IF NOT EXISTS fp_features      JSONB,
-  ADD COLUMN IF NOT EXISTS embedding_raw    JSONB,  -- vector 2048 crudo para re-entrenar PCA
+  ADD COLUMN IF NOT EXISTS embedding_raw    JSONB,
   ADD COLUMN IF NOT EXISTS calidad          DECIMAL(4,3),
-  ADD COLUMN IF NOT EXISTS modo             VARCHAR(20) DEFAULT 'direct',
-  ADD COLUMN IF NOT EXISTS activo           BOOLEAN DEFAULT TRUE;
+  ADD COLUMN IF NOT EXISTS modo             VARCHAR(20) DEFAULT 'direct';
 
--- 3. Índice IVFFlat para búsqueda aproximada eficiente
+-- 3. Cambiar columna embedding_vector a VECTOR(256)
+--    Si ya existe como VECTOR(128), eliminar primero el índice viejo
+DROP INDEX IF EXISTS idx_biometria_emb_vector;
+DROP INDEX IF EXISTS biometria_embeddings_embedding_vector_idx;
+
+-- Agregar columna si no existe (primera vez)
+ALTER TABLE biometria_embeddings
+  ADD COLUMN IF NOT EXISTS embedding_vector VECTOR(256);
+
+-- Si ya existía como VECTOR(128), cambiar la dimensión
+-- (comentar si es primera vez / descomentar si ya tenías 128)
+-- ALTER TABLE biometria_embeddings
+--   ALTER COLUMN embedding_vector TYPE vector(256)
+--   USING embedding_vector::text::vector(256);
+
+-- 4. Índice IVFFlat optimizado para 256 dims
 --    (crear DESPUÉS de tener al menos 100 registros)
-CREATE INDEX IF NOT EXISTS idx_biometria_emb_vector
+CREATE INDEX IF NOT EXISTS biometria_embeddings_embedding_vector_idx
   ON biometria_embeddings
   USING ivfflat (embedding_vector vector_cosine_ops)
-  WITH (lists = 50);
+  WITH (lists = 100);
 
--- 4. Función RPC para búsqueda por similitud coseno desde el backend
-CREATE OR REPLACE FUNCTION search_embeddings_by_rancho(
-  query_vector VECTOR(128),
-  p_rancho_id  UUID,
-  p_top_k      INT DEFAULT 5
+-- 5. RPC de búsqueda por similitud coseno
+CREATE OR REPLACE FUNCTION public.search_embeddings_by_rancho(
+  query_vector vector(256),
+  p_rancho_id  uuid,
+  p_top_k      integer DEFAULT 10
 )
-RETURNS TABLE (
-  animal_id UUID,
-  distance  FLOAT,
-  nombre    TEXT,
-  siniiga   TEXT
+RETURNS TABLE(
+  animal_id uuid,
+  distance  double precision,
+  nombre    text,
+  siniiga   text
 )
-LANGUAGE SQL STABLE
+LANGUAGE sql
+STABLE
 AS $$
   SELECT
     be.animal_id,
@@ -45,11 +63,18 @@ AS $$
   FROM biometria_embeddings be
   LEFT JOIN animales a ON a.id = be.animal_id
   WHERE be.rancho_id = p_rancho_id
-    AND be.activo = TRUE
+    AND be.activo    = TRUE
     AND be.embedding_vector IS NOT NULL
   ORDER BY be.embedding_vector <=> query_vector
   LIMIT p_top_k;
 $$;
 
--- 5. RLS: el service_role key del backend puede leer/escribir sin restricción.
---    Las políticas existentes de la app frontend (anon key) no se tocan.
+-- 6. Verificar que todo quedó correcto
+SELECT
+  column_name,
+  data_type,
+  udt_name
+FROM information_schema.columns
+WHERE table_name = 'biometria_embeddings'
+  AND column_name IN ('embedding_vector', 'fp_features', 'embedding_raw', 'calidad', 'modo')
+ORDER BY column_name;
