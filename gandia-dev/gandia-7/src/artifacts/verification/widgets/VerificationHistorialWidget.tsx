@@ -1,10 +1,7 @@
 /**
- * VerificationHistorialWidget — verification:historial
- * v3 · Filtro resultado · Observación expandible · Firma institucional
+ * VerificationHistorialWidget
+ * v2 — header impactante, KPIs tintados, timeline expresivo, metadatos en grid, observaciones legibles.
  */
-
-import { useState } from 'react'
-
 export interface ItemHistorial {
   id:           number
   ts:           string
@@ -33,226 +30,212 @@ const DOMINIO_LABEL: Record<string, string> = {
   pasaporte:     'Pasaporte',
 }
 
-function groupByDate(items: ItemHistorial[]): { label: string; items: ItemHistorial[] }[] {
-  const map = new Map<string, ItemHistorial[]>()
-  for (const item of items) {
-    const label =
-      item.ts === 'hoy' || item.ts === 'ayer' || item.ts.includes('ago')
-        ? item.ts
-        : item.tsFormal.split(' ').slice(0, 3).join(' ')
-    if (!map.has(label)) map.set(label, [])
-    map.get(label)!.push(item)
-  }
-  return Array.from(map.entries()).map(([label, items]) => ({ label, items }))
+const CIRCUMFERENCE = 2 * Math.PI * 22
+
+function Ring({ pct, color }: { pct: number; color: string }) {
+  const offset = CIRCUMFERENCE * (1 - pct / 100)
+  return (
+    <svg width="56" height="56" viewBox="0 0 56 56">
+      <circle cx="28" cy="28" r="22" fill="none"
+        stroke="currentColor" className="text-stone-100 dark:text-stone-800"
+        strokeWidth="5" />
+      <circle cx="28" cy="28" r="22" fill="none"
+        stroke={color} strokeWidth="5"
+        strokeDasharray={CIRCUMFERENCE}
+        strokeDashoffset={offset}
+        strokeLinecap="round"
+        transform="rotate(-90 28 28)"
+        style={{ transition: 'stroke-dashoffset 0.7s ease' }}
+      />
+      <text x="28" y="32" textAnchor="middle" fontSize="11" fontWeight="500"
+        fill={color} fontFamily="sans-serif">
+        {pct}%
+      </text>
+    </svg>
+  )
 }
 
-type FilterH = 'todas' | 'verificado' | 'rechazado'
+// ─── Componente ───────────────────────────────────────────────────────────────
 
 export default function VerificationHistorialWidget({ historial }: Props) {
-  const [filter,   setFilter]   = useState<FilterH>('todas')
-  const [expanded, setExpanded] = useState<Set<number>>(new Set())
-
   const verificados = historial.filter(i => i.resultado === 'verificado').length
   const rechazados  = historial.filter(i => i.resultado === 'rechazado').length
-
-  const filtered = historial.filter(i =>
-    filter === 'todas' ? true : i.resultado === filter
-  )
-  const groups = groupByDate(filtered)
-
-  const toggleExpand = (id: number) =>
-    setExpanded(prev => {
-      const next = new Set(prev)
-      if (next.has(id)) { next.delete(id) } else { next.add(id) }
-      return next
-    })
+  const total       = historial.length
+  const pctAprobado = total > 0 ? Math.round((verificados / total) * 100) : 0
+  const headerColor = rechazados === 0 ? '#2FAF8F' : rechazados / total > 0.5 ? '#e11d48' : '#d97706'
+  const headerBg    = rechazados === 0 ? '#2FAF8F18' : rechazados / total > 0.5 ? '#ffe4e6' : '#fef3c7'
+  const headerText  = rechazados === 0 ? '#1a8c6e'   : rechazados / total > 0.5 ? '#9f1239' : '#92400e'
 
   return (
-    <div className="flex flex-col gap-0 select-none">
+    <div className="flex flex-col h-full">
 
-      {/* ── Header ───────────────────────────────────────────────────── */}
-      <div className="flex items-end justify-between pb-4">
-        <div className="flex items-end gap-3">
-          <span className="text-[30px] font-semibold tracking-tight text-stone-800 dark:text-stone-100 leading-none tabular-nums">
-            {historial.length}
-          </span>
-          <div className="flex items-center gap-2.5 pb-[3px]">
-            {verificados > 0 && (
-              <div className="flex items-center gap-1.5">
-                <span className="w-[5px] h-[5px] rounded-full bg-[#2FAF8F] shrink-0" />
-                <span className="text-[10.5px] text-stone-400 dark:text-stone-500 tabular-nums">{verificados}v</span>
-              </div>
-            )}
-            {rechazados > 0 && (
-              <div className="flex items-center gap-1.5">
-                <span className="w-[5px] h-[5px] rounded-full bg-red-400 shrink-0" />
-                <span className="text-[10.5px] text-stone-400 dark:text-stone-500 tabular-nums">{rechazados}r</span>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Filtro resultado */}
-        <div className="flex items-center gap-[2px] pb-[3px]">
-          {(['todas', 'verificado', 'rechazado'] as FilterH[]).map(f => (
-            <button
-              key={f}
-              onClick={() => setFilter(f)}
-              className={`h-[24px] px-3 rounded-full text-[11.5px] font-medium cursor-pointer border-0 transition-all duration-150 ${
-                filter === f
-                  ? 'bg-stone-100 dark:bg-stone-800 text-stone-700 dark:text-stone-200'
-                  : 'bg-transparent text-stone-300 dark:text-stone-600 hover:text-stone-500 dark:hover:text-stone-400'
-              }`}
+      {/* ── Header ── */}
+      <div className="bg-white dark:bg-[#1c1917] border border-stone-200/60 dark:border-stone-800/50 rounded-[16px] overflow-hidden mb-3.5 shrink-0">
+        <div className="h-[5px] w-full" style={{ background: headerColor }} />
+        <div className="flex items-stretch">
+          <div className="flex-1 px-5 pt-[18px] pb-4">
+            <p className="text-[10px] text-stone-400 dark:text-stone-500 tracking-[0.07em] uppercase mb-2.5">
+              Historial de verificación
+            </p>
+            <div className="flex items-flex-end gap-2 mb-2">
+              <span className="text-[56px] font-medium leading-none tabular-nums" style={{ color: headerColor }}>
+                {total}
+              </span>
+              <span className="text-[16px] text-stone-300 dark:text-stone-600 self-end mb-2">revisiones</span>
+            </div>
+            <p className="text-[11px] text-stone-400 dark:text-stone-500 mb-3">
+              acciones procesadas por verificación humana
+            </p>
+            <div
+              className="inline-flex items-center gap-1.5 text-[11px] font-medium px-2.5 py-1 rounded-full"
+              style={{ background: headerBg, color: headerText }}
             >
-              {f === 'todas' ? 'Todas' : f === 'verificado' ? '✓' : '✕'}
-            </button>
-          ))}
+              <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: headerColor }} />
+              {verificados} verificada{verificados !== 1 ? 's' : ''} · {rechazados} rechazada{rechazados !== 1 ? 's' : ''}
+            </div>
+          </div>
+          <div className="w-[86px] flex flex-col items-center justify-center gap-1.5 px-4 border-l border-stone-100 dark:border-stone-800/40 bg-stone-50/70 dark:bg-stone-900/30">
+            <Ring pct={pctAprobado} color={headerColor} />
+            <span className="text-[10px] text-stone-400 dark:text-stone-500">aprobadas</span>
+          </div>
         </div>
       </div>
 
-      {/* ── Progress bar ─────────────────────────────────────────────── */}
-      {historial.length > 0 && (
-        <div className="flex gap-[2px] mb-4 h-[2px] rounded-full overflow-hidden">
-          <div className="bg-[#2FAF8F]/45" style={{ flex: verificados }} />
-          {rechazados > 0 && <div className="bg-red-400/45" style={{ flex: rechazados }} />}
-        </div>
-      )}
+      {/* ── KPIs ── */}
+      <div className="grid grid-cols-2 gap-2 mb-4 shrink-0">
+        {[
+          { n: verificados, label: 'Verificadas', color: '#2FAF8F', bg: '#f0fdf4', text: '#166534', track: '#bbf7d0', pct: total > 0 ? (verificados / total) * 100 : 0 },
+          { n: rechazados,  label: 'Rechazadas',  color: '#e11d48', bg: '#fff5f5', text: '#9f1239', track: '#fecdd3', pct: total > 0 ? (rechazados  / total) * 100 : 0 },
+        ].map(k => (
+          <div key={k.label} className="relative rounded-[12px] px-3.5 pt-5 pb-3 overflow-hidden"
+            style={{ background: k.bg }}>
+            <div className="absolute top-0 left-0 right-0 h-[3px]" style={{ background: k.color }} />
+            <p className="text-[28px] font-medium leading-none tabular-nums mb-1" style={{ color: k.text }}>{k.n}</p>
+            <p className="text-[10.5px] mb-2" style={{ color: k.text }}>{k.label}</p>
+            <div className="h-[3px] rounded-full overflow-hidden" style={{ background: k.track }}>
+              <div className="h-full rounded-full transition-all duration-700"
+                style={{ width: `${k.pct}%`, background: k.color }} />
+            </div>
+          </div>
+        ))}
+      </div>
 
-      {/* ── Divisor ──────────────────────────────────────────────────── */}
-      <div className="h-px bg-stone-100 dark:bg-stone-800/60 mb-4" />
+      {/* ── Timeline ── */}
+      <p className="text-[10px] text-stone-400 dark:text-stone-500 tracking-[0.07em] uppercase mb-3 px-0.5 shrink-0">
+        Línea de tiempo
+      </p>
 
-      {/* ── Timeline ─────────────────────────────────────────────────── */}
-      <style>{`
-        .hist-scroll::-webkit-scrollbar { width: 3px }
-        .hist-scroll::-webkit-scrollbar-track { background: transparent }
-        .hist-scroll::-webkit-scrollbar-thumb { background: rgba(120,113,108,0.18); border-radius: 99px }
-        .hist-scroll::-webkit-scrollbar-thumb:hover { background: rgba(120,113,108,0.38) }
-        .dark .hist-scroll::-webkit-scrollbar-thumb { background: rgba(168,162,158,0.12) }
-        .dark .hist-scroll::-webkit-scrollbar-thumb:hover { background: rgba(168,162,158,0.28) }
-        .hist-scroll { scrollbar-width: thin; scrollbar-color: rgba(120,113,108,0.18) transparent }
-      `}</style>
-      {filtered.length === 0 ? (
-        <div className="flex flex-col items-center justify-center gap-2 py-12">
-          <p className="text-[11px] text-stone-300 dark:text-stone-600 tracking-wide">Sin registros</p>
-        </div>
-      ) : (
-        <div className="hist-scroll overflow-y-auto max-h-[420px] pr-3 -mr-1 flex flex-col gap-6">
-          {groups.map(({ label, items: groupItems }) => (
-            <div key={label}>
+      <div className="flex-1 min-h-0 overflow-y-auto
+        [&::-webkit-scrollbar]:w-[3px]
+        [&::-webkit-scrollbar-track]:bg-transparent
+        [&::-webkit-scrollbar-thumb]:bg-stone-200
+        [&::-webkit-scrollbar-thumb]:dark:bg-stone-700/80
+        [&::-webkit-scrollbar-thumb]:rounded-full">
 
-              {/* Etiqueta de fecha */}
-              <div className="flex items-center gap-2 mb-3">
-                <span className="text-[9.5px] font-mono uppercase tracking-[0.09em] text-stone-300 dark:text-stone-600 select-none whitespace-nowrap">
-                  {label}
-                </span>
-                <div className="flex-1 h-px bg-stone-100 dark:bg-stone-800/60" />
-              </div>
+        {historial.length === 0 ? (
+          <div className="flex flex-col items-center justify-center gap-2 py-12">
+            <p className="text-[12px] text-stone-300 dark:text-stone-600">Sin verificaciones aún</p>
+          </div>
+        ) : (
+          <div className="relative">
+            {/* Línea vertical */}
+            {historial.length > 1 && (
+              <div className="absolute left-[19px] top-6 bottom-6 w-px bg-stone-100 dark:bg-stone-800/60" />
+            )}
 
-              {/* Items */}
-              <div className="relative flex flex-col gap-0">
-                {groupItems.length > 1 && (
-                  <div className="absolute left-[9px] top-[18px] bottom-5 w-px bg-stone-100 dark:bg-stone-800/40" />
-                )}
+            <div className="flex flex-col gap-0">
+              {historial.map(item => {
+                const esVerif = item.resultado === 'verificado'
+                const resColor = esVerif ? '#2FAF8F' : '#e11d48'
+                const resBg    = esVerif ? '#2FAF8F18' : '#e11d4812'
+                const resPillBg = esVerif ? '#2FAF8F18' : '#ffe4e6'
+                const resPillText = esVerif ? '#1a8c6e' : '#9f1239'
+                const domLbl   = DOMINIO_LABEL[item.dominio] ?? item.dominio
 
-                {groupItems.map(item => {
-                  const ok  = item.resultado === 'verificado'
-                  const exp = expanded.has(item.id)
-                  return (
-                    <div key={item.id} className="relative flex gap-3.5 pb-4">
+                return (
+                  <div key={item.id} className="relative flex gap-3.5 pb-5 last:pb-0">
 
-                      {/* Nodo timeline */}
-                      <div className="shrink-0 z-10 mt-0.5">
-                        <div className={`w-[19px] h-[19px] rounded-full flex items-center justify-center border ${
-                          ok
-                            ? 'border-[#2FAF8F]/35 bg-white dark:bg-stone-900'
-                            : 'border-red-300/40 dark:border-red-800/40 bg-white dark:bg-stone-900'
-                        }`}>
-                          {ok
-                            ? <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="#2FAF8F" strokeWidth="3" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>
-                            : <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="#ef4444" strokeWidth="3" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-                          }
-                        </div>
-                      </div>
-
-                      {/* Contenido */}
-                      <div className="flex-1 min-w-0 pt-0.5">
-
-                        {/* Acción + timestamp */}
-                        <div className="flex items-start justify-between gap-2 mb-1.5">
-                          <p className="text-[13.5px] font-medium text-stone-700 dark:text-stone-200 leading-snug">
-                            {item.accion}
-                          </p>
-                          <span className="text-[11px] font-mono text-stone-300 dark:text-stone-600 shrink-0 mt-0.5">
-                            {item.ts}
-                          </span>
-                        </div>
-
-                        {/* Meta */}
-                        <div className="flex items-center gap-1.5 flex-wrap mb-2.5">
-                          <span className="text-[11.5px] text-stone-400 dark:text-stone-500">
-                            {DOMINIO_LABEL[item.dominio] ?? item.dominio}
-                          </span>
-                          <span className="text-stone-200 dark:text-stone-700 text-[10px]">·</span>
-                          <span className="text-[11.5px] font-mono text-stone-400 dark:text-stone-500">
-                            {item.origen === 'ia' ? 'IA' : 'USR'}: {item.actor}
-                          </span>
-                          {item.animal && (
-                            <>
-                              <span className="text-stone-200 dark:text-stone-700 text-[10px]">·</span>
-                              <span className="text-[11.5px] text-stone-400 dark:text-stone-500">{item.animal}</span>
-                            </>
-                          )}
-                        </div>
-
-                        {/* Firma verificador */}
-                        <div className="flex items-center gap-2 py-1.5 border-t border-stone-100 dark:border-stone-800/40">
-                          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" className="text-stone-300 dark:text-stone-600 shrink-0">
-                            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
-                            <circle cx="12" cy="7" r="4"/>
+                    {/* Ícono */}
+                    <div className="shrink-0 z-10">
+                      <div
+                        className="w-[38px] h-[38px] rounded-full flex items-center justify-center border-2"
+                        style={{ background: resBg, borderColor: resColor }}
+                      >
+                        {esVerif ? (
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={resColor} strokeWidth="2.5" strokeLinecap="round">
+                            <polyline points="20 6 9 17 4 12"/>
                           </svg>
-                          <span className="text-[11.5px] font-medium text-stone-500 dark:text-stone-400">
-                            {item.verificador}
-                          </span>
-                          <span className="text-stone-200 dark:text-stone-700 text-[10px]">·</span>
-                          <span className="text-[11px] font-mono text-stone-300 dark:text-stone-600">
-                            {item.tsFormal}
-                          </span>
-
-                          {/* Toggle nota */}
-                          {item.observacion && (
-                            <button
-                              onClick={() => toggleExpand(item.id)}
-                              className="ml-auto flex items-center gap-1 text-[11px] text-stone-300 dark:text-stone-600 hover:text-stone-500 dark:hover:text-stone-400 cursor-pointer border-0 bg-transparent p-0 transition-colors duration-150"
-                            >
-                              <svg
-                                width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                                strokeWidth="2.5" strokeLinecap="round"
-                                className={`transition-transform duration-200 ${exp ? 'rotate-180' : ''}`}
-                              >
-                                <polyline points="6 9 12 15 18 9"/>
-                              </svg>
-                              nota
-                            </button>
-                          )}
-                        </div>
-
-                        {/* Observación expandible */}
-                        {item.observacion && exp && (
-                          <div className="mt-2 pl-3 border-l border-stone-200 dark:border-stone-700/50">
-                            <p className="text-[12px] text-stone-400 dark:text-stone-500 leading-relaxed italic">
-                              "{item.observacion}"
-                            </p>
-                          </div>
+                        ) : (
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={resColor} strokeWidth="2.5" strokeLinecap="round">
+                            <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+                          </svg>
                         )}
                       </div>
                     </div>
-                  )
-                })}
-              </div>
+
+                    {/* Cuerpo */}
+                    <div className="flex-1 min-w-0 pt-1.5">
+
+                      {/* Top — pill + timestamp */}
+                      <div className="flex items-center justify-between gap-2 mb-2">
+                        <span
+                          className="inline-flex items-center gap-1 text-[11px] font-medium px-2.5 py-1 rounded-full"
+                          style={{ background: resPillBg, color: resPillText }}
+                        >
+                          <span className="w-[5px] h-[5px] rounded-full shrink-0" style={{ background: resColor }} />
+                          {esVerif ? 'Verificado' : 'Rechazado'}
+                        </span>
+                        <span className="text-[10px] text-stone-300 dark:text-stone-600 whitespace-nowrap">{item.ts}</span>
+                      </div>
+
+                      {/* Acción */}
+                      <p className="text-[13px] font-medium text-stone-800 dark:text-stone-100 leading-snug mb-2.5">
+                        {item.accion}
+                      </p>
+
+                      {/* Metadatos en grid */}
+                      <div className="grid grid-cols-2 gap-x-3 gap-y-2 px-3 py-2.5 bg-stone-50/70 dark:bg-stone-900/30 border border-stone-100 dark:border-stone-800/40 rounded-[8px] mb-2.5">
+                        {[
+                          { label: 'Dominio',     value: domLbl,                               mono: false },
+                          { label: 'Origen',      value: item.origen === 'ia' ? 'IA' : 'Usuario', mono: false },
+                          { label: 'Verificador', value: item.verificador,                     mono: false },
+                          { label: 'Animal',      value: item.animal ? `${item.animal}${item.arete ? ` · ${item.arete}` : ''}` : '—', mono: true },
+                        ].map(m => (
+                          <div key={m.label}>
+                            <p className="text-[10px] text-stone-400 dark:text-stone-500 mb-0.5">{m.label}</p>
+                            <p className={`text-[11.5px] font-medium text-stone-600 dark:text-stone-300 ${m.mono ? 'font-mono font-normal' : ''}`}>
+                              {m.value}
+                            </p>
+                          </div>
+                        ))}
+                      </div>
+
+                      {/* Observación */}
+                      {item.observacion && (
+                        <div
+                          className="px-3 py-2.5 rounded-[8px] border-l-[3px]"
+                          style={{
+                            background:   esVerif ? '#f0fdf4' : '#fff5f5',
+                            borderColor:  resColor,
+                          }}
+                        >
+                          <p className={`text-[11.5px] leading-relaxed italic ${
+                            esVerif ? 'text-[#166534]' : 'text-[#9f1239]'
+                          }`}>
+                            {item.observacion}
+                          </p>
+                        </div>
+                      )}
+
+                    </div>
+                  </div>
+                )
+              })}
             </div>
-          ))}
-        </div>
-      )}
+          </div>
+        )}
+      </div>
+
     </div>
   )
 }
