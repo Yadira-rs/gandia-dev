@@ -3,129 +3,274 @@
  * ARCHIVO → src/artifacts/twins/widgets/TwinsTimelineWidget.tsx
  *
  * Timeline vertical completo: movilizaciones, vacunaciones, pesajes, auditorías, tratamientos.
- * Sin emojis. Producción: reemplazar EventoTimeline[] por query Supabase.
+ * Sin emojis. Conectado a Supabase via useTwinsData.ts
  */
-import { useState } from 'react'
+import { useState } from "react";
 
 // ─── TIPOS ────────────────────────────────────────────────────────────────────
 
-export type EventoTipo = 'movilizacion' | 'vacunacion' | 'pesaje' | 'auditoria' | 'tratamiento'
-export type EventoCert = 'completa' | 'parcial' | 'pendiente'
+export type EventoTipo =
+  | "movilizacion"
+  | "vacunacion"
+  | "pesaje"
+  | "auditoria"
+  | "tratamiento";
+export type EventoCert = "completa" | "parcial" | "pendiente";
 
 export interface EventoTimeline {
-  id:         number
-  fecha:      string
-  tipo:       EventoTipo
-  titulo:     string
-  detalle?:   string
-  valor?:     string
-  cert:       EventoCert
-  ubicacion?: string
+  id: number;
+  fecha: string;
+  tipo: EventoTipo;
+  titulo: string;
+  detalle?: string;
+  valor?: string;
+  cert: EventoCert;
+  ubicacion?: string;
 }
 
 // Alias backward-compat con mockData existente
-export type Movilizacion = EventoTimeline
+export type Movilizacion = EventoTimeline;
 
 interface Props {
-  eventos:          EventoTimeline[]
-  ubicacionActual?: string
+  eventos: EventoTimeline[];
+  ubicacionActual?: string;
 }
 
 // ─── CONFIG ───────────────────────────────────────────────────────────────────
 
 const CERT_CFG: Record<EventoCert, { label: string; badge: string }> = {
-  completa:  { label: 'Certificado', badge: 'text-[#2FAF8F] border-[#2FAF8F]/25'                                             },
-  parcial:   { label: 'Parcial',     badge: 'text-amber-500 dark:text-amber-400 border-amber-300/50 dark:border-amber-700/40' },
-  pendiente: { label: 'Pendiente',   badge: 'text-stone-400 dark:text-stone-500 border-stone-200 dark:border-stone-700/50'   },
-}
+  completa: {
+    label: "Certificado",
+    badge: "text-[#2FAF8F] border-[#2FAF8F]/25",
+  },
+  parcial: {
+    label: "Parcial",
+    badge:
+      "text-amber-500 dark:text-amber-400 border-amber-300/50 dark:border-amber-700/40",
+  },
+  pendiente: {
+    label: "Pendiente",
+    badge:
+      "text-stone-400 dark:text-stone-500 border-stone-200 dark:border-stone-700/50",
+  },
+};
 
 const TIPO_CFG: Record<EventoTipo, { label: string; nodeColor: string }> = {
-  movilizacion: { label: 'Movilización', nodeColor: 'text-indigo-500 dark:text-indigo-400' },
-  vacunacion:   { label: 'Vacunación',   nodeColor: 'text-violet-500 dark:text-violet-400' },
-  pesaje:       { label: 'Pesaje',       nodeColor: 'text-[#2FAF8F]'                        },
-  auditoria:    { label: 'Auditoría',    nodeColor: 'text-amber-500 dark:text-amber-400'   },
-  tratamiento:  { label: 'Tratamiento',  nodeColor: 'text-rose-500 dark:text-rose-400'     },
-}
+  movilizacion: {
+    label: "Movilización",
+    nodeColor: "text-indigo-500 dark:text-indigo-400",
+  },
+  vacunacion: {
+    label: "Vacunación",
+    nodeColor: "text-violet-500 dark:text-violet-400",
+  },
+  pesaje: { label: "Pesaje", nodeColor: "text-[#2FAF8F]" },
+  auditoria: {
+    label: "Auditoría",
+    nodeColor: "text-amber-500 dark:text-amber-400",
+  },
+  tratamiento: {
+    label: "Tratamiento",
+    nodeColor: "text-rose-500 dark:text-rose-400",
+  },
+};
 
 // ─── ÍCONOS ───────────────────────────────────────────────────────────────────
 
 function IcoMovilizacion() {
-  return <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+  return (
+    <svg
+      width="13"
+      height="13"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M5 12h14" />
+      <path d="m12 5 7 7-7 7" />
+    </svg>
+  );
 }
 function IcoVacunacion() {
-  return <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m18 2 4 4"/><path d="m17 7 3-3"/><path d="M19 9 8.7 19.3c-1 1-2.5 1-3.4 0l-.6-.6c-1-1-1-2.5 0-3.4L15 5"/><path d="m9 11 4 4"/><path d="m5 19-3 3"/></svg>
+  return (
+    <svg
+      width="13"
+      height="13"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="m18 2 4 4" />
+      <path d="m17 7 3-3" />
+      <path d="M19 9 8.7 19.3c-1 1-2.5 1-3.4 0l-.6-.6c-1-1-1-2.5 0-3.4L15 5" />
+      <path d="m9 11 4 4" />
+      <path d="m5 19-3 3" />
+    </svg>
+  );
 }
 function IcoPesaje() {
-  return <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
+  return (
+    <svg
+      width="13"
+      height="13"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z" />
+      <line x1="3" y1="6" x2="21" y2="6" />
+      <path d="M16 10a4 4 0 0 1-8 0" />
+    </svg>
+  );
 }
 function IcoAuditoria() {
-  return <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+  return (
+    <svg
+      width="13"
+      height="13"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+      <polyline points="14 2 14 8 20 8" />
+      <line x1="16" y1="13" x2="8" y2="13" />
+      <line x1="16" y1="17" x2="8" y2="17" />
+    </svg>
+  );
 }
 function IcoTratamiento() {
-  return <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/></svg>
+  return (
+    <svg
+      width="13"
+      height="13"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z" />
+    </svg>
+  );
 }
 
 function NodeIcon({ tipo }: { tipo: EventoTipo }) {
-  const cfg = TIPO_CFG[tipo]
+  const cfg = TIPO_CFG[tipo];
   return (
-    <div className={`w-7 h-7 rounded-full flex items-center justify-center shrink-0 ${cfg.nodeColor}`}>
-      {tipo === 'movilizacion' && <IcoMovilizacion />}
-      {tipo === 'vacunacion'   && <IcoVacunacion   />}
-      {tipo === 'pesaje'       && <IcoPesaje        />}
-      {tipo === 'auditoria'    && <IcoAuditoria     />}
-      {tipo === 'tratamiento'  && <IcoTratamiento   />}
+    <div
+      className={`w-7 h-7 rounded-full flex items-center justify-center shrink-0 ${cfg.nodeColor}`}
+    >
+      {tipo === "movilizacion" && <IcoMovilizacion />}
+      {tipo === "vacunacion" && <IcoVacunacion />}
+      {tipo === "pesaje" && <IcoPesaje />}
+      {tipo === "auditoria" && <IcoAuditoria />}
+      {tipo === "tratamiento" && <IcoTratamiento />}
     </div>
-  )
+  );
 }
 
 // ─── COMPONENTE ───────────────────────────────────────────────────────────────
 
-const FILTROS: { key: EventoTipo | 'todos'; label: string }[] = [
-  { key: 'todos',        label: 'Todos'        },
-  { key: 'movilizacion', label: 'Movilización' },
-  { key: 'pesaje',       label: 'Pesaje'       },
-  { key: 'vacunacion',   label: 'Vacunación'   },
-  { key: 'auditoria',    label: 'Auditoría'    },
-  { key: 'tratamiento',  label: 'Tratamiento'  },
-]
+const FILTROS: { key: EventoTipo | "todos"; label: string }[] = [
+  { key: "todos", label: "Todos" },
+  { key: "movilizacion", label: "Movilización" },
+  { key: "pesaje", label: "Pesaje" },
+  { key: "vacunacion", label: "Vacunación" },
+  { key: "auditoria", label: "Auditoría" },
+  { key: "tratamiento", label: "Tratamiento" },
+];
 
-export default function TwinsTimelineWidget({ eventos, ubicacionActual }: Props) {
-  const [expanded,   setExpanded]   = useState<number | null>(null)
-  const [filtroTipo, setFiltroTipo] = useState<EventoTipo | 'todos'>('todos')
+export default function TwinsTimelineWidget({
+  eventos,
+  ubicacionActual,
+}: Props) {
+  const [expanded, setExpanded] = useState<number | null>(null);
+  const [filtroTipo, setFiltroTipo] = useState<EventoTipo | "todos">("todos");
 
-  const tiposPresentes = new Set(eventos.map(e => e.tipo))
-  const filtrados = filtroTipo === 'todos' ? eventos : eventos.filter(e => e.tipo === filtroTipo)
-  const totalCerts      = eventos.filter(e => e.cert === 'completa').length
-  const totalPendientes = eventos.filter(e => e.cert !== 'completa').length
+  const tiposPresentes = new Set(eventos.map((e) => e.tipo));
+  const filtrados =
+    filtroTipo === "todos"
+      ? eventos
+      : eventos.filter((e) => e.tipo === filtroTipo);
+  const totalCerts = eventos.filter((e) => e.cert === "completa").length;
+  const totalPendientes = eventos.filter((e) => e.cert !== "completa").length;
 
   return (
     <div className="flex flex-col gap-4">
-
       {/* Stats */}
       <div className="grid grid-cols-4 gap-2">
         {[
-          { label: 'Eventos',      value: eventos.length,  color: 'text-stone-800 dark:text-stone-100', small: false },
-          { label: 'Certificados', value: totalCerts,      color: 'text-[#2FAF8F]',                     small: false },
-          { label: 'Pendientes',   value: totalPendientes, color: totalPendientes > 0 ? 'text-amber-500 dark:text-amber-400' : 'text-stone-400', small: false },
-          { label: 'Ubicación',    value: ubicacionActual ?? '—', color: 'text-stone-700 dark:text-stone-200', small: true  },
+          {
+            label: "Eventos",
+            value: eventos.length,
+            color: "text-stone-800 dark:text-stone-100",
+            small: false,
+          },
+          {
+            label: "Certificados",
+            value: totalCerts,
+            color: "text-[#2FAF8F]",
+            small: false,
+          },
+          {
+            label: "Pendientes",
+            value: totalPendientes,
+            color:
+              totalPendientes > 0
+                ? "text-amber-500 dark:text-amber-400"
+                : "text-stone-400",
+            small: false,
+          },
+          {
+            label: "Ubicación",
+            value: ubicacionActual ?? "—",
+            color: "text-stone-700 dark:text-stone-200",
+            small: true,
+          },
         ].map((s, i) => (
-          <div key={i} className="bg-white dark:bg-[#1c1917] border border-stone-200/60 dark:border-stone-800/50 rounded-[10px] px-2.5 py-2.5 text-center">
-            <p className={`font-bold leading-none tabular-nums mt-0.5 ${s.small ? 'text-[13px]' : 'text-[19px]'} ${s.color}`}>{s.value}</p>
-            <p className="text-[10px] text-stone-400 dark:text-stone-500 mt-1 uppercase tracking-wide">{s.label}</p>
+          <div
+            key={i}
+            className="bg-white dark:bg-[#1c1917] border border-stone-200/60 dark:border-stone-800/50 rounded-[10px] px-2.5 py-2.5 text-center"
+          >
+            <p
+              className={`font-bold leading-none tabular-nums mt-0.5 ${s.small ? "text-[13px]" : "text-[19px]"} ${s.color}`}
+            >
+              {s.value}
+            </p>
+            <p className="text-[10px] text-stone-400 dark:text-stone-500 mt-1 uppercase tracking-wide">
+              {s.label}
+            </p>
           </div>
         ))}
       </div>
 
       {/* Filtros */}
       <div className="flex gap-1.5 flex-wrap">
-        {FILTROS.filter(t => t.key === 'todos' || tiposPresentes.has(t.key as EventoTipo)).map(t => (
+        {FILTROS.filter(
+          (t) => t.key === "todos" || tiposPresentes.has(t.key as EventoTipo),
+        ).map((t) => (
           <button
             key={t.key}
-            onClick={() => setFiltroTipo(t.key as EventoTipo | 'todos')}
+            onClick={() => setFiltroTipo(t.key as EventoTipo | "todos")}
             className={`px-2.5 py-1 rounded-[7px] text-[11px] font-medium transition-all cursor-pointer border
-              ${filtroTipo === t.key
-                ? 'bg-stone-800 dark:bg-stone-100 text-white dark:text-stone-900 border-transparent'
-                : 'bg-white dark:bg-[#1c1917] text-stone-500 dark:text-stone-400 border-stone-200 dark:border-stone-800/50 hover:border-stone-300 dark:hover:border-stone-700'
+              ${
+                filtroTipo === t.key
+                  ? "bg-stone-800 dark:bg-stone-100 text-white dark:text-stone-900 border-transparent"
+                  : "bg-white dark:bg-[#1c1917] text-stone-500 dark:text-stone-400 border-stone-200 dark:border-stone-800/50 hover:border-stone-300 dark:hover:border-stone-700"
               }`}
           >
             {t.label}
@@ -135,15 +280,17 @@ export default function TwinsTimelineWidget({ eventos, ubicacionActual }: Props)
 
       {/* Timeline */}
       {filtrados.length === 0 ? (
-        <div className="py-8 text-center text-[12px] text-stone-400 dark:text-stone-500">Sin eventos de este tipo</div>
+        <div className="py-8 text-center text-[12px] text-stone-400 dark:text-stone-500">
+          Sin eventos de este tipo
+        </div>
       ) : (
         <div className="relative">
           <div className="absolute left-[13px] top-4 bottom-4 w-px bg-stone-100 dark:bg-stone-800/50" />
           <div className="flex flex-col gap-2.5">
-            {filtrados.map(ev => {
-              const cert  = CERT_CFG[ev.cert]
-              const tipo  = TIPO_CFG[ev.tipo]
-              const isOpen = expanded === ev.id
+            {filtrados.map((ev) => {
+              const cert = CERT_CFG[ev.cert];
+              const tipo = TIPO_CFG[ev.tipo];
+              const isOpen = expanded === ev.id;
 
               return (
                 <div key={ev.id} className="flex gap-3">
@@ -155,32 +302,62 @@ export default function TwinsTimelineWidget({ eventos, ubicacionActual }: Props)
                     onClick={() => setExpanded(isOpen ? null : ev.id)}
                     className={`flex-1 min-w-0 rounded-[10px] overflow-hidden cursor-pointer transition-all
                       bg-white dark:bg-[#1c1917]
-                      ${ev.cert !== 'completa'
-                        ? 'border border-l-[3px] border-amber-200 dark:border-amber-800/40 border-l-amber-400 dark:border-l-amber-600'
-                        : 'border border-stone-200/60 dark:border-stone-800/50'
+                      ${
+                        ev.cert !== "completa"
+                          ? "border border-l-[3px] border-amber-200 dark:border-amber-800/40 border-l-amber-400 dark:border-l-amber-600"
+                          : "border border-stone-200/60 dark:border-stone-800/50"
                       }
                       hover:shadow-sm`}
                   >
                     <div className="flex items-start justify-between gap-2 px-3.5 py-2.5">
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-1.5 mb-0.5">
-                          <span className={`text-[10px] font-bold uppercase tracking-[0.07em] ${tipo.nodeColor}`}>{tipo.label}</span>
-                          <span className="text-stone-200 dark:text-stone-700">·</span>
-                          <span className="font-mono text-[10px] text-stone-400 dark:text-stone-500">{ev.fecha}</span>
+                          <span
+                            className={`text-[10px] font-bold uppercase tracking-[0.07em] ${tipo.nodeColor}`}
+                          >
+                            {tipo.label}
+                          </span>
+                          <span className="text-stone-200 dark:text-stone-700">
+                            ·
+                          </span>
+                          <span className="font-mono text-[10px] text-stone-400 dark:text-stone-500">
+                            {ev.fecha}
+                          </span>
                         </div>
-                        <p className="text-[13px] font-semibold text-stone-800 dark:text-stone-100 leading-snug">{ev.titulo}</p>
+                        <p className="text-[13px] font-semibold text-stone-800 dark:text-stone-100 leading-snug">
+                          {ev.titulo}
+                        </p>
                         {(ev.valor || ev.ubicacion) && (
                           <div className="flex items-center gap-2 mt-0.5 flex-wrap">
-                            {ev.valor    && <span className="font-mono text-[11px] text-stone-500 dark:text-stone-400">{ev.valor}</span>}
-                            {ev.ubicacion && <span className="text-[11px] text-stone-400 dark:text-stone-500">{ev.ubicacion}</span>}
+                            {ev.valor && (
+                              <span className="font-mono text-[11px] text-stone-500 dark:text-stone-400">
+                                {ev.valor}
+                              </span>
+                            )}
+                            {ev.ubicacion && (
+                              <span className="text-[11px] text-stone-400 dark:text-stone-500">
+                                {ev.ubicacion}
+                              </span>
+                            )}
                           </div>
                         )}
                       </div>
                       <div className="flex items-center gap-2 shrink-0 pt-0.5">
-                        <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded-[5px] border whitespace-nowrap ${cert.badge}`}>{cert.label}</span>
+                        <span
+                          className={`text-[10px] font-medium px-1.5 py-0.5 rounded-[5px] border whitespace-nowrap ${cert.badge}`}
+                        >
+                          {cert.label}
+                        </span>
                         {ev.detalle && (
-                          <svg className={`w-3 h-3 text-stone-300 dark:text-stone-600 transition-transform duration-150 shrink-0 ${isOpen ? 'rotate-180' : ''}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
-                            <polyline points="6 9 12 15 18 9"/>
+                          <svg
+                            className={`w-3 h-3 text-stone-300 dark:text-stone-600 transition-transform duration-150 shrink-0 ${isOpen ? "rotate-180" : ""}`}
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2.5"
+                            strokeLinecap="round"
+                          >
+                            <polyline points="6 9 12 15 18 9" />
                           </svg>
                         )}
                       </div>
@@ -188,17 +365,18 @@ export default function TwinsTimelineWidget({ eventos, ubicacionActual }: Props)
 
                     {isOpen && ev.detalle && (
                       <div className="px-3.5 py-2.5 border-t border-stone-100 dark:border-stone-800/40 bg-stone-50/60 dark:bg-stone-800/20">
-                        <p className="text-[12px] text-stone-500 dark:text-stone-400 leading-relaxed">{ev.detalle}</p>
+                        <p className="text-[12px] text-stone-500 dark:text-stone-400 leading-relaxed">
+                          {ev.detalle}
+                        </p>
                       </div>
                     )}
                   </div>
                 </div>
-              )
+              );
             })}
           </div>
         </div>
       )}
-
     </div>
-  )
+  );
 }

@@ -1,157 +1,28 @@
 /**
  * GemelosModulo.tsx
- * Nivel Módulo del dominio Gemelo Digital (twins).
- *
  * ARCHIVO → src/artifacts/twins/GemelosModulo.tsx
  *
- * Tabs: Perfiles · Timeline · Alimentación · Auditorías
+ * ✅ Conectado a Supabase via useTwinsData.ts
+ * Cada widget recibe exactamente los datos que espera.
  */
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 
 import TwinsPerfilesWidget,     { type AnimalListItem }    from './widgets/TwinsPerfilesWidget'
-import TwinsTimelineWidget,     { type EventoTimeline }    from './widgets/TwinsTimelineWidget'
-import TwinsFeedWidget,         { type Auditoria }         from './widgets/TwinsFeedWidget'
-import TwinsAlimentacionWidget, { type DatosAlimentacion } from './widgets/TwinsAlimentacionWidget'
+import TwinsTimelineWidget                                 from './widgets/TwinsTimelineWidget'
+import TwinsFeedWidget                                     from './widgets/TwinsFeedWidget'
+import TwinsAlimentacionWidget                             from './widgets/TwinsAlimentacionWidget'
 import TwinsHeroWidget                                     from './widgets/TwinsHeroWidget'
 import TwinsPesoWidget                                     from './widgets/TwinsPesoWidget'
 
-// ─── MOCK DATA ────────────────────────────────────────────────────────────────
+import {
+  useTwinsAnimales,
+  useTwinsPesos,
+  useTwinsTimeline,
+  useTwinsAlimentacion,
+  useTwinsFeed,
+} from '../../hooks/useTwinsData'
 
-const MOCK_ANIMALES: AnimalListItem[] = [
-  {
-    perfil: {
-      arete: 'EJM-892', nombre: 'Lupita', raza: 'Charolais × Suizo Europeo',
-      sexo: 'Hembra', edadMeses: 24, lote: 'Lote 4', corral: 'Corral 1',
-      upp: 'UPP San Jacinto', pesoActual: 437, pesoNacimiento: 38,
-      pesoMeta: 500, gananciaDiaria: 0.82, estado: 'engorda', alertas: 1,
-    },
-    pesos: [
-      { fecha: '02 MAR 24', peso:  38, objetivo:  38 },
-      { fecha: '01 SEP 24', peso: 210, objetivo: 200 },
-      { fecha: '01 FEB 25', peso: 340, objetivo: 345 },
-      { fecha: '24 FEB 26', peso: 437, objetivo: 480 },
-    ],
-  },
-  {
-    perfil: {
-      arete: 'EJM-741', nombre: 'Canela', raza: 'Hereford',
-      sexo: 'Hembra', edadMeses: 18, lote: 'Lote 2', corral: 'Corral 2',
-      upp: 'UPP San Jacinto', pesoActual: 362, pesoNacimiento: 35,
-      pesoMeta: 480, gananciaDiaria: 0.74, estado: 'engorda', alertas: 0,
-    },
-    pesos: [
-      { fecha: '15 MAY 24', peso:  35, objetivo:  35 },
-      { fecha: '01 SEP 24', peso: 180, objetivo: 175 },
-      { fecha: '01 FEB 25', peso: 290, objetivo: 300 },
-      { fecha: '24 FEB 26', peso: 362, objetivo: 390 },
-    ],
-  },
-  {
-    perfil: {
-      arete: 'EJM-503', nombre: 'Presumida', raza: 'Simmental',
-      sexo: 'Hembra', edadMeses: 30, lote: 'Lote 1', corral: 'Corral 3',
-      upp: 'UPP San Jacinto', pesoActual: 512, pesoNacimiento: 41,
-      pesoMeta: 520, gananciaDiaria: 0.91, estado: 'engorda', alertas: 0,
-    },
-    pesos: [
-      { fecha: '10 AGO 23', peso:  41, objetivo:  41 },
-      { fecha: '01 FEB 24', peso: 220, objetivo: 210 },
-      { fecha: '01 AGO 24', peso: 380, objetivo: 370 },
-      { fecha: '24 FEB 26', peso: 512, objetivo: 510 },
-    ],
-  },
-  {
-    perfil: {
-      arete: 'EJM-188', nombre: undefined, raza: 'Charolais',
-      sexo: 'Macho', edadMeses: 12, lote: 'Lote 3', corral: 'Corral 4',
-      upp: 'UPP San Jacinto', pesoActual: 198, pesoNacimiento: 40,
-      pesoMeta: 500, gananciaDiaria: 0.55, estado: 'cría', alertas: 2,
-    },
-    pesos: [
-      { fecha: '01 FEB 25', peso:  40, objetivo:  40 },
-      { fecha: '01 AGO 25', peso: 140, objetivo: 160 },
-      { fecha: '24 FEB 26', peso: 198, objetivo: 230 },
-    ],
-  },
-  {
-    perfil: {
-      arete: 'EJM-330', nombre: 'Reina', raza: 'Suizo Americano',
-      sexo: 'Hembra', edadMeses: 36, lote: 'Lote 1', corral: 'Corral 1',
-      upp: 'UPP San Jacinto', pesoActual: 489, pesoNacimiento: 38,
-      pesoMeta: 500, gananciaDiaria: 0.88, estado: 'reproducción', alertas: 0,
-    },
-    pesos: [
-      { fecha: '01 FEB 23', peso:  38, objetivo:  38 },
-      { fecha: '01 AGO 23', peso: 240, objetivo: 230 },
-      { fecha: '01 FEB 24', peso: 380, objetivo: 370 },
-      { fecha: '24 FEB 26', peso: 489, objetivo: 490 },
-    ],
-  },
-]
-
-const MOCK_EVENTOS: EventoTimeline[] = [
-  { id: 1, fecha: '18 FEB 26', tipo: 'movilizacion', titulo: 'Traslado a Corral 1 — Engorda final',    detalle: 'Movimiento autorizado por operador campo. Registro REEMO pendiente de firma digital del MVZ.', valor: 'Corral 2 → Corral 1',    cert: 'parcial',   ubicacion: 'Corral 1'        },
-  { id: 2, fecha: '10 FEB 26', tipo: 'pesaje',        titulo: 'Pesaje semanal',                         valor: '437 kg · +12 kg vs semana anterior',                                                          cert: 'completa',               ubicacion: 'Báscula A'       },
-  { id: 3, fecha: '02 FEB 26', tipo: 'vacunacion',    titulo: 'Vacunación anual 2026',                  detalle: 'Protocolo anual complejo viral-clostridial. Dosis: 2 ml IM. Fotografía pendiente.',          valor: 'Dosis 2 ml IM',         cert: 'pendiente', ubicacion: 'Manga Corral 1'  },
-  { id: 4, fecha: '17 ENE 26', tipo: 'pesaje',        titulo: 'Pesaje mensual',                         valor: '425 kg',                                                                                      cert: 'completa',               ubicacion: 'Báscula A'       },
-  { id: 5, fecha: '14 ENE 26', tipo: 'auditoria',     titulo: 'Auditoría sanitaria SENASICA',           detalle: 'Campaña Nacional TB y Brucelosis 2024–2025. Resultado negativo. Firma MVZ registrada.',      valor: 'Resultado negativo',    cert: 'completa',  ubicacion: 'UPP San Jacinto' },
-  { id: 6, fecha: '10 NOV 25', tipo: 'movilizacion',  titulo: 'Traslado a Corral 2 — Cambio de etapa', valor: 'Corral 3 → Corral 2',                                                                         cert: 'completa',               ubicacion: 'Corral 2'        },
-  { id: 7, fecha: '15 OCT 25', tipo: 'tratamiento',   titulo: 'Tratamiento antiparasitario',            detalle: 'Ivermectina 1% subcutánea. Dosis: 4.4 ml. Sin periodo de retiro activo.',                   valor: 'Ivermectina 4.4 ml SC', cert: 'completa',  ubicacion: 'Manga Corral 2'  },
-  { id: 8, fecha: '02 MAR 24', tipo: 'movilizacion',  titulo: 'Ingreso — Destete maternidad',           valor: 'Maternidad → Corral 3',                                                                       cert: 'completa',               ubicacion: 'Corral 3'        },
-]
-
-const MOCK_AUDITORIAS: Auditoria[] = [
-  {
-    id: 1,
-    nombre: 'Auditoría sanitaria · SENASICA', sub: 'Campaña TB y Brucelosis 2024–2025',
-    fecha: '14 ENE 2026', estado: 'aprobado',
-    pills: [
-      { label: 'Foto vacunación',    ok: true  },
-      { label: 'Firma MVZ digital',  ok: true  },
-      { label: 'SINIIGA verificado', ok: true  },
-      { label: 'Resultado negativo', ok: true  },
-    ],
-    hash: '0x3fa8c219…d7c291 · IPFS · verificado', hashOk: true,
-  },
-  {
-    id: 2,
-    nombre: 'Verificación de inventario · UPP', sub: 'Conteo biométrico Corral 1',
-    fecha: '17 FEB 2026', estado: 'coincide',
-    pills: [
-      { label: 'Lectura biométrica', ok: true },
-      { label: 'Foto corral',        ok: true },
-      { label: 'GPS registrado',     ok: true },
-    ],
-    hash: '0xb11d9a4c…f7e004 · IPFS · verificado', hashOk: true,
-  },
-  {
-    id: 3,
-    nombre: 'Registro vacunación 2026', sub: 'Protocolo anual · Operador en campo',
-    fecha: '02 FEB 2026', estado: 'incompleto',
-    pills: [
-      { label: 'Registro manual',  ok: true  },
-      { label: 'Sin fotografía',   ok: false },
-      { label: 'Firma pendiente',  ok: false },
-    ],
-    hash: 'Sin indexar · evidencia incompleta', hashOk: false,
-  },
-]
-
-const MOCK_ALIMENTACION: DatosAlimentacion = {
-  semanas: [
-    { fecha: '24 FEB', forraje: 95, concentrado: 88, suplemento: 62 },
-    { fecha: '17 FEB', forraje: 92, concentrado: 91, suplemento: 84 },
-    { fecha: '10 FEB', forraje: 97, concentrado: 93, suplemento: 89 },
-    { fecha: '03 FEB', forraje: 90, concentrado: 85, suplemento: 91 },
-  ],
-  caActual:    6.8,
-  caObjetivo:  7.1,
-  caIndustria: 8.2,
-  proyDias:    38,
-  proyFecha:   '08 ABR 2026',
-  pesoMeta:    500,
-  pesoActual:  437,
-}
+import { useAnimalesList, useRanchoId, getAuthUserId } from '../../hooks/useAnimales'
 
 // ─── TIPOS ────────────────────────────────────────────────────────────────────
 
@@ -169,23 +40,62 @@ const TABS: { id: Tab; label: string }[] = [
   { id: 'auditorias',   label: 'Auditorías'   },
 ]
 
-const pendientesAudit = MOCK_AUDITORIAS.filter(a => a.estado === 'incompleto').length
+// ─── LOADING ──────────────────────────────────────────────────────────────────
+
+function LoadingState({ mensaje }: { mensaje: string }) {
+  return (
+    <div className="flex items-center gap-2 py-10 justify-center">
+      <span className="w-2 h-2 rounded-full bg-[#2FAF8F] animate-pulse" />
+      <span className="text-[12px] text-stone-400 dark:text-stone-500">{mensaje}</span>
+    </div>
+  )
+}
 
 // ─── COMPONENTE ───────────────────────────────────────────────────────────────
 
 export default function GemelosModulo({ onClose, onEscalate }: Props) {
   const [activeTab,      setActiveTab]      = useState<Tab>('perfiles')
   const [selectedAnimal, setSelectedAnimal] = useState<AnimalListItem | null>(null)
+  const [userId,         setUserId]         = useState<string | null>(null)
 
-  const handleSelectAnimal = (item: AnimalListItem) => {
-    setSelectedAnimal(item)
-    // nos quedamos en Perfiles mostrando el detalle
-  }
+  // 1. userId de la sesión activa
+  useEffect(() => { getAuthUserId().then(setUserId) }, [])
+
+  // 2. ranchoId del usuario
+  const { ranchoId } = useRanchoId(userId)
+
+  // 3. Lista de animales → TwinsPerfilesWidget + TwinsHeroWidget
+  const { animales, loading: loadingAnimales } = useTwinsAnimales(ranchoId)
+
+  // 4. UUID del animal seleccionado (para las queries twins_*)
+  //    animal_id en twins_pesos/alimentacion es UUID, en twins_eventos es siniiga (text)
+  const { animales: animalesDB } = useAnimalesList(ranchoId)
+  const animalUUID = selectedAnimal
+    ? (animalesDB.find(a => a.siniiga === selectedAnimal.perfil.arete)?.id ?? null)
+    : null
+  const animalSiniiga = selectedAnimal?.perfil.arete ?? null
+
+  // 5. Datos por widget del animal seleccionado
+  const { registros, loading: loadingPesos  } = useTwinsPesos(animalUUID)
+  const { eventos,   loading: loadingTimeline } = useTwinsTimeline(animalSiniiga)
+  const { datos,     loading: loadingAlim    } = useTwinsAlimentacion(
+    animalUUID,
+    selectedAnimal?.perfil.pesoActual,
+    selectedAnimal?.perfil.pesoMeta,
+    selectedAnimal?.perfil.gananciaDiaria,
+  )
+  const { auditorias, completitud } = useTwinsFeed(animalSiniiga)
+
+  const pendientesAudit = auditorias.filter(a => a.estado === 'incompleto').length
+
+  // ── Render por tab ────────────────────────────────────────────────────────
 
   const renderWidget = () => {
     switch (activeTab) {
+
       case 'perfiles':
-        return selectedAnimal ? (
+        if (loadingAnimales) return <LoadingState mensaje="Cargando animales..." />
+        if (selectedAnimal) return (
           <div className="flex flex-col gap-4">
             <button
               onClick={() => setSelectedAnimal(null)}
@@ -196,26 +106,54 @@ export default function GemelosModulo({ onClose, onEscalate }: Props) {
               </svg>
               Todos los animales
             </button>
+
+            {/* Hero del animal seleccionado */}
             <TwinsHeroWidget perfil={selectedAnimal.perfil} />
-            <TwinsPesoWidget
-              registros={selectedAnimal.pesos}
-              pesoMeta={selectedAnimal.perfil.pesoMeta}
-              gananciaDiaria={selectedAnimal.perfil.gananciaDiaria}
-            />
+
+            {/* Curva de peso */}
+            {loadingPesos
+              ? <LoadingState mensaje="Cargando curva de peso..." />
+              : registros.length > 0
+                ? <TwinsPesoWidget
+                    registros={registros}
+                    pesoMeta={selectedAnimal.perfil.pesoMeta}
+                    gananciaDiaria={selectedAnimal.perfil.gananciaDiaria}
+                  />
+                : <EmptyState mensaje="Sin registros de peso aún" />
+            }
           </div>
-        ) : (
+        )
+        return (
           <TwinsPerfilesWidget
-            animales={MOCK_ANIMALES}
+            animales={animales}
             selected={selectedAnimal}
-            onSelect={handleSelectAnimal}
+            onSelect={setSelectedAnimal}
           />
         )
+
       case 'timeline':
-        return <TwinsTimelineWidget eventos={MOCK_EVENTOS} ubicacionActual={selectedAnimal!.perfil.corral} />
+        if (loadingTimeline) return <LoadingState mensaje="Cargando historial..." />
+        if (!eventos.length)  return <EmptyState mensaje="Sin eventos registrados" />
+        return (
+          <TwinsTimelineWidget
+            eventos={eventos}
+            ubicacionActual={selectedAnimal?.perfil.corral ?? '—'}
+          />
+        )
+
       case 'alimentacion':
-        return <TwinsAlimentacionWidget datos={MOCK_ALIMENTACION} />
+        if (loadingAlim) return <LoadingState mensaje="Cargando alimentación..." />
+        if (!datos)      return <EmptyState mensaje="Sin datos de alimentación" />
+        return <TwinsAlimentacionWidget datos={datos} />
+
       case 'auditorias':
-        return <TwinsFeedWidget auditorias={MOCK_AUDITORIAS} completitud={78} />
+        return (
+          <TwinsFeedWidget
+            auditorias={auditorias}
+            completitud={completitud}
+          />
+        )
+
       default:
         return null
     }
@@ -282,9 +220,9 @@ export default function GemelosModulo({ onClose, onEscalate }: Props) {
       {/* Tabs */}
       <div className="flex border-b border-stone-200/70 dark:border-stone-800/60 bg-white dark:bg-[#1c1917] px-3.5 shrink-0 overflow-x-auto [&::-webkit-scrollbar]:hidden">
         {TABS.map(tab => {
-          const active    = activeTab === tab.id
-          const isBadge   = tab.id === 'auditorias' && pendientesAudit > 0
-          const disabled  = tab.id !== 'perfiles' && !selectedAnimal
+          const active   = activeTab === tab.id
+          const isBadge  = tab.id === 'auditorias' && pendientesAudit > 0
+          const disabled = tab.id !== 'perfiles' && !selectedAnimal
           return (
             <button
               key={tab.id}
@@ -317,7 +255,19 @@ export default function GemelosModulo({ onClose, onEscalate }: Props) {
           {renderWidget()}
         </div>
       </div>
+    </div>
+  )
+}
 
+// ─── EMPTY STATE ──────────────────────────────────────────────────────────────
+
+function EmptyState({ mensaje }: { mensaje: string }) {
+  return (
+    <div className="flex flex-col items-center gap-2 py-10">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="text-stone-300 dark:text-stone-700">
+        <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+      </svg>
+      <span className="text-[12px] text-stone-400 dark:text-stone-500">{mensaje}</span>
     </div>
   )
 }
