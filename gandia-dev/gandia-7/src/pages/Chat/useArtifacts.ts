@@ -33,6 +33,7 @@ import {
 import { detectIntent }                    from './artifactEngine/intentDetector'
 import { runSimulation }                   from './artifactEngine/simulator'
 import { renderWidget }                    from './artifactEngine/widgetMap'
+import { useTwinsWrite }                   from '../../hooks/useTwinsWrite'   // ← nuevo
 
 // ─── TIPOS ────────────────────────────────────────────────────────────────────
 
@@ -144,6 +145,9 @@ export function useArtifacts({ pushMessage }: UseArtifactsOptions): UseArtifacts
   // ── Historial de navegación (stack) ───────────────────────────────────
   const historyRef = useRef<ArtifactState[]>([])
 
+  // ── Twins write ────────────────────────────────────────────────────────
+  const { handleTwinsWrite } = useTwinsWrite()   // ← nuevo
+
   // ─── Navegación ─────────────────────────────────────────────────────────
 
   const openDirect = useCallback((state: ArtifactState) => {
@@ -209,6 +213,19 @@ export function useArtifacts({ pushMessage }: UseArtifactsOptions): UseArtifacts
     const intent = detectIntent(text, role)
     if (!intent) return false
 
+    // Intent de ESCRITURA twins → guardar en Supabase   ← nuevo
+    if (intent.action === 'write' && intent.domain === 'twins') {
+      void handleTwinsWrite(text).then((result: { ok: boolean; message: string }) => {
+        pushMessage({
+          role:     'assistant',
+          content:  result.message,
+          thoughts: [],
+          artifact: { kind: 'widget', id: 'twins:timeline', domain: 'twins' },
+        })
+      })
+      return true
+    }
+
     if (intent.level === 'module') {
       // Abrir módulo directamente — sin simulación
       const mod = widgetToModule(intent.widgetId as WidgetArtifact['id'])
@@ -225,7 +242,7 @@ export function useArtifacts({ pushMessage }: UseArtifactsOptions): UseArtifacts
 
     runArtifact(intent.widgetId, intent.domain)
     return true
-  }, [runArtifact, openDirect, role])
+  }, [runArtifact, openDirect, handleTwinsWrite, pushMessage, role])
 
   const handleCopiloAction = useCallback((actionId: string) => {
     const target = COPILO_ACTION_MAP[actionId]

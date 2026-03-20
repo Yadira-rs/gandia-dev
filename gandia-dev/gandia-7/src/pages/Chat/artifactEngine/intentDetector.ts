@@ -1,5 +1,11 @@
 /**
  * artifactEngine/intentDetector.ts
+ *
+ * Cambios respecto a la versión anterior:
+ *   - DetectedIntent ahora incluye `action?: 'read' | 'write'`
+ *   - Se agregan 4 intents de ESCRITURA para Gemelo Digital (twins):
+ *       registrar pesaje, registrar vacunación, registrar traslado,
+ *       registrar consumo/alimentación
  */
 
 import {
@@ -11,9 +17,75 @@ export interface DetectedIntent {
   widgetId: string
   domain:   ArtifactDomain
   level:    'widget' | 'module' | 'anima'
+  action?:  'read' | 'write'   // ← nuevo: distingue lectura vs escritura
 }
 
-const EXTENDED_RULES: Array<{ keywords: string[]; widgetId: string; domain: ArtifactDomain; level: 'widget' | 'module' | 'anima' }> = [
+const EXTENDED_RULES: Array<{
+  keywords: string[]
+  widgetId: string
+  domain:   ArtifactDomain
+  level:    'widget' | 'module' | 'anima'
+  action?:  'read' | 'write'
+}> = [
+
+  // ══════════════════════════════════════════════════════════════════
+  // TWINS — INTENTS DE ESCRITURA (registro desde chat)  ← NUEVO
+  // ══════════════════════════════════════════════════════════════════
+
+  // Registrar pesaje
+  {
+    keywords: [
+      'registrar pesaje', 'registrar peso', 'nuevo pesaje', 'anotar pesaje',
+      'pesar animal', 'pesé al animal', 'pesó', 'actualizár peso', 'actualizar peso',
+    ],
+    widgetId: 'twins:registro-peso',
+    domain:   'twins',
+    level:    'widget',
+    action:   'write',
+  },
+
+  // Registrar vacunación
+  {
+    keywords: [
+      'registrar vacuna', 'registrar vacunación', 'registrar vacunacion',
+      'anotar vacuna', 'vacuné', 'se vacunó', 'aplicar vacuna', 'apliqué vacuna',
+      'registrar dosis', 'anotar dosis',
+    ],
+    widgetId: 'twins:registro-evento',
+    domain:   'twins',
+    level:    'widget',
+    action:   'write',
+  },
+
+  // Registrar traslado
+  {
+    keywords: [
+      'registrar traslado', 'registrar movilización', 'registrar movilizacion',
+      'anotar traslado', 'trasladé', 'moví al animal', 'mover animal',
+      'cambiar de corral', 'cambié de corral', 'registrar movimiento',
+    ],
+    widgetId: 'twins:registro-evento',
+    domain:   'twins',
+    level:    'widget',
+    action:   'write',
+  },
+
+  // Registrar consumo / alimentación
+  {
+    keywords: [
+      'registrar consumo', 'anotar consumo', 'registrar alimentación', 'registrar alimentacion',
+      'consumo de esta semana', 'consumo semanal', 'anotar forraje',
+      'registrar forraje', 'registrar concentrado',
+    ],
+    widgetId: 'twins:registro-alimentacion',
+    domain:   'twins',
+    level:    'widget',
+    action:   'write',
+  },
+
+  // ══════════════════════════════════════════════════════════════════
+  // FICHA GANADERA (passport)
+  // ══════════════════════════════════════════════════════════════════
 
   // ── Espacio Gandia Ficha Ganadera (anima) ── máxima prioridad
   { keywords: ['espacio gandia ficha', 'espacio ficha ganadera', 'abrir espacio ficha', 'espacio de fichas'],      widgetId: 'passport:perfiles', domain: 'passport', level: 'anima'  },
@@ -35,6 +107,10 @@ const EXTENDED_RULES: Array<{ keywords: string[]; widgetId: string; domain: Arti
   { keywords: ['ver ficha', 'abrir ficha', 'mi ficha', 'fichas ganaderas', 'las fichas',
       'ficha del bovino', 'abrir pasaporte', 'ver pasaporte', 'mis pasaportes',
       'el pasaporte', 'ficha animal'],                                                                            widgetId: 'passport:card',      domain: 'passport', level: 'widget' },
+
+  // ══════════════════════════════════════════════════════════════════
+  // MONITOREO
+  // ══════════════════════════════════════════════════════════════════
 
   // ── Espacio Gandia (anima) ── máxima prioridad
   { keywords: ['espacio gandia monitoreo', 'espacio gandia monitoring', 'abrir espacio monitoreo', 'espacio de gandia monitoreo'],  widgetId: 'monitoring:mapa', domain: 'monitoring', level: 'anima'  },
@@ -70,6 +146,10 @@ const EXTENDED_RULES: Array<{ keywords: string[]; widgetId: string; domain: Arti
   // Sanidad
   { keywords: ['gusano', 'barrenador', 'cochliomyia', 'riesgo sanitario', 'plaga', 'senasica riesgo', 'alerta sanitaria', 'sanidad zona'],         widgetId: 'sanidad:gusano',         domain: 'sanidad',    level: 'widget' },
 
+  // ══════════════════════════════════════════════════════════════════
+  // TWINS — INTENTS DE LECTURA
+  // ══════════════════════════════════════════════════════════════════
+
   // ── Espacio Gandia Gemelos (anima) ──
   { keywords: ['espacio gandia gemelo', 'espacio gemelo', 'abrir espacio gemelo'],                                                                              widgetId: 'twins:timeline',      domain: 'twins',     level: 'anima'  },
   // ── Módulo Gemelos ──
@@ -83,6 +163,10 @@ const EXTENDED_RULES: Array<{ keywords: string[]; widgetId: string; domain: Arti
   // ── Conversión alimenticia ──
   { keywords: ['conversion alimenticia', 'conversión alimenticia', 'ca actual', 'kg por kg', 'proyeccion salida', 'proyección salida', 'dias para salida'],     widgetId: 'twins:alimentacion',  domain: 'twins',     level: 'widget' },
 
+  // ══════════════════════════════════════════════════════════════════
+  // BIOMETRÍA DE MORRO
+  // ══════════════════════════════════════════════════════════════════
+
   // ── Biometría de morro ── máxima especificidad primero
   { keywords: ['espacio gandia biometria', 'espacio gandia biometría', 'espacio biometria', 'espacio biometría'],                                   widgetId: 'biometria:captura',      domain: 'biometria',  level: 'anima'  },
   { keywords: ['módulo biometria', 'modulo biometria', 'módulo biometría', 'modulo biometría', 'abrir biometria completo', 'abrir biometría completo'], widgetId: 'biometria:captura',   domain: 'biometria',  level: 'module' },
@@ -94,7 +178,10 @@ const EXTENDED_RULES: Array<{ keywords: string[]; widgetId: string; domain: Arti
   { keywords: ['hoja inteligente', 'hoja morro', 'aruco', 'modo hoja'],                                                                            widgetId: 'biometria:captura',      domain: 'biometria',  level: 'widget' },
   { keywords: ['biometria', 'biometría'],                                                                                                          widgetId: 'biometria:captura',      domain: 'biometria',  level: 'widget' },
 
-  // ── Certificación ──
+  // ══════════════════════════════════════════════════════════════════
+  // CERTIFICACIÓN
+  // ══════════════════════════════════════════════════════════════════
+
   { keywords: ['espacio gandia certif', 'espacio certif', 'abrir espacio certif', 'espacio de certificacion', 'espacio certificacion'],                            widgetId: 'certification:elegibilidad', domain: 'certification', level: 'anima'  },
   { keywords: ['módulo certif', 'modulo certif', 'abrir módulo certif', 'certif completo', 'abrir certif completo'],                                               widgetId: 'certification:elegibilidad', domain: 'certification', level: 'module' },
   { keywords: ['elegibil', 'listo para export', 'listo para certif', 'puede salir', 'apto para certif', 'score certif', 'precertif', 'pre-certif', 'expediente elegib'], widgetId: 'certification:elegibilidad', domain: 'certification', level: 'widget' },
@@ -103,7 +190,10 @@ const EXTENDED_RULES: Array<{ keywords: string[]; widgetId: string; domain: Arti
   { keywords: ['vencimiento', 'por vencer', 'certificado vencido', 'renovar certif'],                                                                              widgetId: 'certification:vencimientos', domain: 'certification', level: 'widget' },
   { keywords: ['certificación', 'certificacion', 'certificado sanitario', 'cert sanitario'],                                                                       widgetId: 'certification:card',         domain: 'certification', level: 'widget' },
 
-  // ── Verificación ──
+  // ══════════════════════════════════════════════════════════════════
+  // VERIFICACIÓN
+  // ══════════════════════════════════════════════════════════════════
+
   { keywords: ['espacio gandia verificacion', 'espacio verificacion', 'abrir espacio verificacion'],                                                               widgetId: 'verification:cola',          domain: 'verification',  level: 'anima'  },
   { keywords: ['módulo verificacion', 'modulo verificacion', 'abrir módulo verificacion', 'abrir verificacion completo'],                                          widgetId: 'verification:cola',          domain: 'verification',  level: 'module' },
   { keywords: ['cola de verificacion', 'cola verificacion', 'pendientes de verificar', 'qué falta verificar', 'que falta verificar', 'pendientes verificacion'],   widgetId: 'verification:cola',          domain: 'verification',  level: 'widget' },
@@ -111,7 +201,11 @@ const EXTENDED_RULES: Array<{ keywords: string[]; widgetId: string; domain: Arti
   { keywords: ['inconsistencias', 'inconsistencia', 'sin verificar', 'rechazado sin seguimiento', 'conflicto de datos'],                                           widgetId: 'verification:inconsistencias', domain: 'verification', level: 'widget' },
   { keywords: ['verificar', 'verificacion', 'verificación', 'confirmar accion', 'confirmar acción', 'revisar lo que hizo la ia', 'revisar acciones'],              widgetId: 'verification:cola',          domain: 'verification',  level: 'widget' },
 
-  // ── Vinculación ── máxima prioridad primero
+  // ══════════════════════════════════════════════════════════════════
+  // VINCULACIÓN
+  // ══════════════════════════════════════════════════════════════════
+
+  // ── máxima prioridad primero
   { keywords: ['espacio gandia vinculacion', 'espacio vinculacion', 'abrir espacio vinculacion'],                                                                   widgetId: 'vinculacion:lista',      domain: 'vinculacion', level: 'anima'  },
   { keywords: ['módulo vinculacion', 'modulo vinculacion', 'abrir módulo vinculacion', 'vinculacion completo', 'abrir vinculacion completo'],                        widgetId: 'vinculacion:lista',      domain: 'vinculacion', level: 'module' },
   { keywords: ['aceptar vinculacion', 'rechazar vinculacion', 'solicitudes pendientes vinculacion', 'pendientes de vinculacion', 'vinculaciones pendientes'],        widgetId: 'vinculacion:pendientes', domain: 'vinculacion', level: 'widget' },
@@ -119,7 +213,11 @@ const EXTENDED_RULES: Array<{ keywords: string[]; widgetId: string; domain: Arti
   { keywords: ['historial vinculacion', 'vinculaciones anteriores', 'vinculaciones revocadas', 'entidades revocadas'],                                              widgetId: 'vinculacion:historial',  domain: 'vinculacion', level: 'widget' },
   { keywords: ['mis vinculaciones', 'ver vinculaciones', 'entidades vinculadas', 'quién tiene acceso', 'quien tiene acceso', 'accesos activos', 'vinculacion'],     widgetId: 'vinculacion:lista',      domain: 'vinculacion', level: 'widget' },
 
-  // ── Exportación ── máxima prioridad primero
+  // ══════════════════════════════════════════════════════════════════
+  // EXPORTACIÓN
+  // ══════════════════════════════════════════════════════════════════
+
+  // ── máxima prioridad primero
   { keywords: ['espacio gandia exportacion', 'espacio exportacion', 'abrir espacio exportacion', 'espacio de exportacion'],                                        widgetId: 'exportacion:solicitud', domain: 'exportacion', level: 'anima'  },
   { keywords: ['módulo exportacion', 'modulo exportacion', 'abrir módulo exportacion', 'exportacion completo', 'abrir exportacion completo'],                      widgetId: 'exportacion:solicitud', domain: 'exportacion', level: 'module' },
   { keywords: ['escanear aretes', 'escanear arete', 'scan arete', 'cámara aretes', 'camara aretes', 'leer arete'],                                                widgetId: 'exportacion:scanner',   domain: 'exportacion', level: 'widget' },
@@ -127,7 +225,11 @@ const EXTENDED_RULES: Array<{ keywords: string[]; widgetId: string; domain: Arti
   { keywords: ['tabla de aretes', 'tabla aretes', 'llenar tabla', 'capturar aretes', 'lista de aretes', 'aretes capturados'],                                     widgetId: 'exportacion:tabla',     domain: 'exportacion', level: 'widget' },
   { keywords: ['solicitud de aretes', 'solicitud aretes', 'nueva solicitud exportacion', 'aretes de exportacion', 'aretes de exportación', 'psg exportacion', 'psg exportación', 'exportar ganado', 'exportar bovinos', 'solicitud senasica aretes'], widgetId: 'exportacion:solicitud', domain: 'exportacion', level: 'widget' },
 
-  // ── Documentos ── máxima prioridad primero
+  // ══════════════════════════════════════════════════════════════════
+  // DOCUMENTOS
+  // ══════════════════════════════════════════════════════════════════
+
+  // ── máxima prioridad primero
   { keywords: ['espacio gandia documentos', 'espacio documentos', 'abrir espacio documentos'],                                                                   widgetId: 'documentos:subida',      domain: 'documentos', level: 'anima'  },
   { keywords: ['módulo documentos', 'modulo documentos', 'abrir módulo documentos', 'documentos completo'],                                                      widgetId: 'documentos:subida',      domain: 'documentos', level: 'module' },
   { keywords: ['panel general documentos', 'ver todos los productores', 'productores con expediente', 'panel union'],                                            widgetId: 'documentos:panel',       domain: 'documentos', level: 'widget' },
@@ -136,6 +238,10 @@ const EXTENDED_RULES: Array<{ keywords: string[]; widgetId: string; domain: Arti
   { keywords: ['subir documento', 'subir archivo', 'cargar documento', 'nuevo expediente', 'crear expediente'],                                                  widgetId: 'documentos:subida',      domain: 'documentos', level: 'widget' },
   { keywords: ['qué me falta', 'que me falta', 'documentos faltantes', 'checklist tramite', 'validar documentos', 'tengo todo para'],                            widgetId: 'documentos:validacion',  domain: 'documentos', level: 'widget' },
   { keywords: ['mis expedientes', 'ver expedientes', 'mis documentos', 'expediente de tramite', 'historial expedientes'],                                        widgetId: 'documentos:expedientes', domain: 'documentos', level: 'widget' },
+
+  // ══════════════════════════════════════════════════════════════════
+  // TRÁMITES
+  // ══════════════════════════════════════════════════════════════════
 
   // ── Trámites: nuevo ──
   { keywords: ['nuevo trámite', 'nuevo tramite', 'crear trámite', 'crear tramite', 'iniciar trámite', 'iniciar tramite', 'solicitar trámite', 'solicitar tramite', 'abrir trámite', 'abrir tramite'], widgetId: 'tramites:nuevo', domain: 'tramites', level: 'widget' },
@@ -162,13 +268,18 @@ export function detectIntent(text: string, role?: string | null): DetectedIntent
       if (isUnion && PRODUCTOR_ONLY_WIDGETS.has(rule.widgetId)) return null
       // Bloquear widgets de unión si es productor
       if (!isUnion && role && UNION_ONLY_WIDGETS.has(rule.widgetId)) return null
-      return { widgetId: rule.widgetId, domain: rule.domain, level: rule.level }
+      return {
+        widgetId: rule.widgetId,
+        domain:   rule.domain,
+        level:    rule.level,
+        action:   rule.action ?? 'read',
+      }
     }
   }
 
   const primary = detectArtifactIntent(text)
   if (primary) {
-    return { widgetId: primary.id, domain: primary.domain, level: 'widget' }
+    return { widgetId: primary.id, domain: primary.domain, level: 'widget', action: 'read' }
   }
 
   return null
