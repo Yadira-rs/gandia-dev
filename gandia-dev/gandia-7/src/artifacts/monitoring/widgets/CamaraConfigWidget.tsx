@@ -1,13 +1,15 @@
 /**
  * CamaraConfigWidget — REDISEÑO PRO
+ * Si no recibe `camara` y `corrales`, los fetcha de Supabase.
  */
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { supabase } from '../../../lib/supabaseClient'
 import type { Camara } from './CamaraListaWidget'
 import type { Corral } from './MapaVistaGeneralWidget'
 
 interface Props {
-  camara:      Camara
-  corrales:    Corral[]
+  camara?:     Camara
+  corrales?:   Corral[]
   onGuardar?:  (cam: Camara) => void
   onEliminar?: (id: number) => void
   onCancelar?: () => void
@@ -15,13 +17,10 @@ interface Props {
 
 const inputStyle: React.CSSProperties = {
   width: '100%', padding: '8px 11px',
-  borderRadius: 9,
-  border: '1px solid #222222',
-  background: '#0D0D0D',
-  color: '#F0F0F0', fontSize: 12,
+  borderRadius: 9, border: '1px solid #222222',
+  background: '#0D0D0D', color: '#F0F0F0', fontSize: 12,
   outline: 'none', boxSizing: 'border-box',
-  fontFamily: 'system-ui, sans-serif',
-  transition: 'border-color 0.15s',
+  fontFamily: 'system-ui, sans-serif', transition: 'border-color 0.15s',
 }
 
 const labelStyle: React.CSSProperties = {
@@ -30,11 +29,57 @@ const labelStyle: React.CSSProperties = {
   fontFamily: 'ui-monospace, monospace',
 }
 
-export function CamaraConfigWidget({ camara, corrales, onGuardar, onEliminar, onCancelar }: Props) {
-  const [form,    setForm]    = useState({ ...camara })
+export function CamaraConfigWidget({ camara: camaraProp, corrales: corraleProp, onGuardar, onEliminar, onCancelar }: Props) {
+  const [fetchedCamara,   setFetchedCamara]   = useState<Camara | null>(null)
+  const [fetchedCorrales, setFetchedCorrales] = useState<Corral[]>([])
+  const [loaded,          setLoaded]          = useState(false)
+
+  useEffect(() => {
+    if (camaraProp && corraleProp) return
+    async function load() {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session) { setLoaded(true); return }
+      const { data: rancho } = await supabase.from('ranch_extended_profiles').select('id').eq('user_id', session.user.id).single()
+      if (!rancho) { setLoaded(true); return }
+      const { data: corralesDb } = await supabase.from('corrales').select('*').eq('rancho_id', rancho.id).eq('activo', true).order('label')
+      const { data: camarasDb  } = await supabase.from('camaras').select('*').eq('rancho_id', rancho.id)
+      if (corralesDb) setFetchedCorrales(corralesDb.map((c: Record<string,unknown>, i: number) => ({ id: i+1, label: c.label as string, animales: c.animales as number, capacidad: c.capacidad as number, estado: c.estado as 'normal'|'atencion'|'cuarentena', temp: 22, humedad: 60, camara: c.tiene_camara as boolean, _dbId: c.id as string })))
+      if (camarasDb && camarasDb.length > 0 && !camaraProp) {
+        const c = (camarasDb as Record<string,unknown>[])[0]
+        const corral = corralesDb?.find((cr: Record<string,unknown>) => cr.id === c.corral_id)
+        setFetchedCamara({ id: 1, label: c.label as string, corral: (corral as Record<string,unknown>)?.label as string ?? '—', estado: c.estado as 'online'|'offline', detectados: (c.detectados as number) ?? 0, inventario: (c.inventario as number) ?? 0, fps: (c.fps_analisis as number) ?? 24 })
+      }
+      setLoaded(true)
+    }
+    load()
+  }, [camaraProp, corraleProp])
+
+  const camara   = camaraProp   ?? fetchedCamara
+  const corrales = corraleProp  ?? fetchedCorrales
+
+  const [form,    setForm]    = useState<Camara | null>(camara)
+  if (camara && !form) setForm(camara)
+
   const [alertas, setAlertas] = useState(true)
   const [saved,   setSaved]   = useState(false)
   const [confirm, setConfirm] = useState(false)
+
+  if (!camaraProp && !loaded) return (
+    <div style={{ display:'flex', alignItems:'center', justifyContent:'center', height:180, background:'#111111', border:'1px solid #222222', borderRadius:14 }}>
+      <div style={{ width:20, height:20, border:'2px solid #2FAF8F', borderTopColor:'transparent', borderRadius:'50%', animation:'spin 0.8s linear infinite' }} />
+      <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
+    </div>
+  )
+
+  if (!camara || !form) return (
+    <div style={{ display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:10, height:180, background:'#111111', border:'1px solid #222222', borderRadius:14 }}>
+      <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#333" strokeWidth="1.5" strokeLinecap="round">
+        <path d="M23 7l-7 5 7 5V7z"/><rect x="1" y="5" width="15" height="14" rx="2"/>
+        <line x1="1" y1="1" x2="23" y2="23"/>
+      </svg>
+      <p style={{ fontSize:12, color:'#444', margin:0 }}>Sin cámaras registradas</p>
+    </div>
+  )
 
   const save = () => {
     setSaved(true)
@@ -89,7 +134,7 @@ export function CamaraConfigWidget({ camara, corrales, onGuardar, onEliminar, on
             <label style={labelStyle}>NOMBRE</label>
             <input
               value={form.label}
-              onChange={e => setForm(f => ({ ...f, label: e.target.value }))}
+              onChange={e => setForm(f => f ? { ...f, label: e.target.value } : f)}
               style={inputStyle}
               onFocus={e => { e.currentTarget.style.borderColor = 'rgba(47,175,143,0.35)' }}
               onBlur={e => { e.currentTarget.style.borderColor = '#222222' }}
@@ -99,7 +144,7 @@ export function CamaraConfigWidget({ camara, corrales, onGuardar, onEliminar, on
             <label style={labelStyle}>CORRAL ASIGNADO</label>
             <select
               value={form.corral}
-              onChange={e => setForm(f => ({ ...f, corral: e.target.value }))}
+              onChange={e => setForm(f => f ? { ...f, corral: e.target.value } : f)}
               style={{ ...inputStyle, cursor: 'pointer' }}
             >
               {corrales.map(c => <option key={c.id} value={c.label}>{c.label}</option>)}
@@ -114,7 +159,7 @@ export function CamaraConfigWidget({ camara, corrales, onGuardar, onEliminar, on
             {[12,18,24,30].map(fps => (
               <button
                 key={fps}
-                onClick={() => setForm(f => ({ ...f, fps }))}
+                onClick={() => setForm(f => f ? { ...f, fps } : f)}
                 style={{
                   flex: 1, padding: '7px',
                   borderRadius: 8,

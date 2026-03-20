@@ -54,8 +54,16 @@ const EXTENDED_RULES: Array<{ keywords: string[]; widgetId: string; domain: Arti
   // Corrales
   { keywords: ['gestionar corrales', 'administrar corrales', 'config corrales', 'zonas corrales'],                                                  widgetId: 'config:corrales',  domain: 'monitoring', level: 'widget' },
   { keywords: ['detalle corral', 'info corral', 'ver corral', 'corral b1', 'corral a1', 'corral c1'],                                              widgetId: 'mapa:corral-detalle', domain: 'monitoring', level: 'widget' },
-  // Sensor / calibración
-  { keywords: ['calibr', 'precisión sensor', 'precision sensor', 'parámetros ia', 'parametros ia', 'modelo ia'],                                   widgetId: 'sensor:calibracion', domain: 'monitoring', level: 'widget' },
+  // Trazabilidad
+  { keywords: ['trazabilidad', 'conteo manual', 'registrar conteo', 'conteos corrales', 'conteo de animales', 'registro de conteo'], widgetId: 'monitoring:trazabilidad', domain: 'monitoring', level: 'widget' },
+  // Registrar anomalía manual
+  { keywords: ['registrar anomalía', 'registrar anomalia', 'nueva anomalía', 'nueva anomalia', 'anomalía manual', 'anomalia manual', 'reportar anomalía', 'reportar anomalia'], widgetId: 'monitoring:anomalia:registrar', domain: 'monitoring', level: 'widget' },
+  // Caso sanitario
+  { keywords: ['caso sanitario', 'abrir caso', 'caso clínico', 'caso clinico', 'expediente sanitario', 'iniciar caso'], widgetId: 'monitoring:caso', domain: 'monitoring', level: 'widget' },
+  // Reporte PDF
+  { keywords: ['reporte', 'reporte sanitario', 'reporte pdf', 'exportar reporte', 'generar reporte', 'imprimir reporte', 'descargar reporte'], widgetId: 'monitoring:reporte', domain: 'monitoring', level: 'widget' },
+  // Drones
+  { keywords: ['drones', 'drone', 'configurar drones', 'config drones', 'vuelo drone', 'cobertura aérea', 'cobertura aerea', 'vigilancia aérea', 'vigilancia aerea'], widgetId: 'monitoring:drones', domain: 'monitoring', level: 'widget' },
   // Anomalías
   { keywords: ['detalle anomalía', 'detalle anomalia', 'ver anomalía', 'ver anomalia', 'info anomalía', 'info anomalia'],                           widgetId: 'anomalia:detalle',       domain: 'monitoring', level: 'widget' },
   { keywords: ['umbral', 'configurar alerta', 'sensibilidad alerta', 'config umbral', 'umbrales de alerta'],                                       widgetId: 'anomalia:config-umbral', domain: 'monitoring', level: 'widget' },
@@ -118,13 +126,42 @@ const EXTENDED_RULES: Array<{ keywords: string[]; widgetId: string; domain: Arti
   { keywords: ['validar aretes', 'validar solicitud', 'validar exportacion', 'verificar aretes', 'revisar duplicados', 'duplicados aretes', 'errores aretes'],     widgetId: 'exportacion:validacion', domain: 'exportacion', level: 'widget' },
   { keywords: ['tabla de aretes', 'tabla aretes', 'llenar tabla', 'capturar aretes', 'lista de aretes', 'aretes capturados'],                                     widgetId: 'exportacion:tabla',     domain: 'exportacion', level: 'widget' },
   { keywords: ['solicitud de aretes', 'solicitud aretes', 'nueva solicitud exportacion', 'aretes de exportacion', 'aretes de exportación', 'psg exportacion', 'psg exportación', 'exportar ganado', 'exportar bovinos', 'solicitud senasica aretes'], widgetId: 'exportacion:solicitud', domain: 'exportacion', level: 'widget' },
+
+  // ── Documentos ── máxima prioridad primero
+  { keywords: ['espacio gandia documentos', 'espacio documentos', 'abrir espacio documentos'],                                                                   widgetId: 'documentos:subida',      domain: 'documentos', level: 'anima'  },
+  { keywords: ['módulo documentos', 'modulo documentos', 'abrir módulo documentos', 'documentos completo'],                                                      widgetId: 'documentos:subida',      domain: 'documentos', level: 'module' },
+  { keywords: ['panel general documentos', 'ver todos los productores', 'productores con expediente', 'panel union'],                                            widgetId: 'documentos:panel',       domain: 'documentos', level: 'widget' },
+  { keywords: ['revisar expediente', 'revisar documentos de', 'aprobar expediente', 'rechazar expediente', 'dejar nota expediente'],                             widgetId: 'documentos:revision',    domain: 'documentos', level: 'widget' },
+  { keywords: ['empacar documentos', 'descargar documentos', 'preparar paquete', 'documentos para ventanilla', 'mis archivos para tramite'],                     widgetId: 'documentos:empacar',     domain: 'documentos', level: 'widget' },
+  { keywords: ['subir documento', 'subir archivo', 'cargar documento', 'nuevo expediente', 'crear expediente'],                                                  widgetId: 'documentos:subida',      domain: 'documentos', level: 'widget' },
+  { keywords: ['qué me falta', 'que me falta', 'documentos faltantes', 'checklist tramite', 'validar documentos', 'tengo todo para'],                            widgetId: 'documentos:validacion',  domain: 'documentos', level: 'widget' },
+  { keywords: ['mis expedientes', 'ver expedientes', 'mis documentos', 'expediente de tramite', 'historial expedientes'],                                        widgetId: 'documentos:expedientes', domain: 'documentos', level: 'widget' },
+
+  // ── Trámites: nuevo ──
+  { keywords: ['nuevo trámite', 'nuevo tramite', 'crear trámite', 'crear tramite', 'iniciar trámite', 'iniciar tramite', 'solicitar trámite', 'solicitar tramite', 'abrir trámite', 'abrir tramite'], widgetId: 'tramites:nuevo', domain: 'tramites', level: 'widget' },
 ]
 
-export function detectIntent(text: string): DetectedIntent | null {
-  const lower = text.toLowerCase()
+const PRODUCTOR_ONLY_WIDGETS = new Set([
+  'documentos:subida',
+  'documentos:empacar',
+  'tramites:nuevo',
+])
+
+const UNION_ONLY_WIDGETS = new Set([
+  'documentos:revision',
+  'documentos:panel',
+])
+
+export function detectIntent(text: string, role?: string | null): DetectedIntent | null {
+  const lower   = text.toLowerCase()
+  const isUnion = role === 'union' || role === 'union_ganadera'
 
   for (const rule of EXTENDED_RULES) {
     if (rule.keywords.some(kw => lower.includes(kw))) {
+      // Bloquear widgets de productor si es unión
+      if (isUnion && PRODUCTOR_ONLY_WIDGETS.has(rule.widgetId)) return null
+      // Bloquear widgets de unión si es productor
+      if (!isUnion && role && UNION_ONLY_WIDGETS.has(rule.widgetId)) return null
       return { widgetId: rule.widgetId, domain: rule.domain, level: rule.level }
     }
   }

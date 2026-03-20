@@ -49,6 +49,10 @@ import ExportacionAnima  from './exportacion/ExportacionAnima'
 import VinculacionModulo from './vinculacion/VinculacionModulo'
 import VinculacionAnima  from './vinculacion/VinculacionAnima'
 
+// ── Documentos ─────────────────────────────────────────────────────────────────
+import DocumentosModulo from './documentos/DocumentosModulo'
+import DocumentosAnima  from './documentos/DocumentosAnima'
+
 // ─── PROPS ────────────────────────────────────────────────────────────────────
 
 interface Props {
@@ -140,10 +144,7 @@ function AwakeShell({
 
     case 'tramites:detail':
       return (
-        <ComingSoonPanel
-          domain="tramites"
-          label="Trámites · Detalle"
-          description="Estado de trámites activos ante SENASICA y REEMO."
+        <DocumentosModulo
           onClose={onClose}
           onEscalate={onEscalate}
         />
@@ -177,6 +178,14 @@ function AwakeShell({
     case 'vinculacion:panel':
       return (
         <VinculacionModulo
+          onClose={onClose}
+          onEscalate={onEscalate}
+        />
+      )
+
+    case 'documentos:panel':
+      return (
+        <DocumentosModulo
           onClose={onClose}
           onEscalate={onEscalate}
         />
@@ -274,6 +283,14 @@ function AnimaShell({
         />
       )
 
+    case 'documentos':
+      return (
+        <DocumentosAnima
+          onClose={onClose}
+          onEscalate={onDeescalate}
+        />
+      )
+
     default:
       return null
   }
@@ -292,63 +309,7 @@ const DOMAIN_COLOR: Record<ArtifactDomain, string> = {
   biometria:     '#6366f1',
   exportacion:   '#f97316',
   vinculacion:   '#0ea5e9',
-}
-
-function ComingSoonPanel({
-  domain,
-  label,
-  description,
-  onClose,
-  onEscalate,
-}: {
-  domain:      ArtifactDomain
-  label:       string
-  description: string
-  onClose:     () => void
-  onEscalate:  () => void
-}) {
-  const color = DOMAIN_COLOR[domain]
-  return (
-    <div className="flex-1 flex flex-col bg-[#fafaf9] dark:bg-[#0c0a09]">
-      <div className="flex items-center justify-between px-5 py-3.5 border-b border-stone-200/70 dark:border-stone-800">
-        <div className="flex items-center gap-2.5">
-          <div className="w-2 h-2 rounded-full" style={{ background: color }} />
-          <p className="text-[13px] font-semibold text-stone-800 dark:text-stone-100">{label}</p>
-        </div>
-        <div className="flex items-center gap-1.5">
-          <button
-            onClick={onEscalate}
-            title="Abrir Espacio Gandia"
-            className="h-7 px-2.5 rounded-lg text-[11px] font-medium text-stone-500 dark:text-stone-400 hover:text-stone-700 dark:hover:text-stone-200 hover:bg-stone-100 dark:hover:bg-stone-800/60 transition-all flex items-center gap-1.5"
-          >
-            <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-              <polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/>
-              <line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/>
-            </svg>
-            Espacio Gandia
-          </button>
-          <button
-            onClick={onClose}
-            className="w-7 h-7 flex items-center justify-center rounded-lg text-stone-400 hover:text-stone-600 dark:hover:text-stone-200 hover:bg-stone-100 dark:hover:bg-stone-800/60 transition-all"
-          >
-            <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-              <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
-            </svg>
-          </button>
-        </div>
-      </div>
-      <div className="flex-1 flex flex-col items-center justify-center gap-3 px-8 text-center">
-        <div className="w-10 h-10 rounded-2xl flex items-center justify-center" style={{ background: `${color}18` }}>
-          <svg className="w-5 h-5" style={{ color }} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
-            <rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/>
-          </svg>
-        </div>
-        <p className="text-[13px] font-semibold text-stone-700 dark:text-stone-300">{label}</p>
-        <p className="text-[12px] text-stone-400 dark:text-stone-500 max-w-56 leading-relaxed">{description}</p>
-        <p className="text-[11px] text-stone-300 dark:text-stone-600 font-mono mt-1">Próximamente</p>
-      </div>
-    </div>
-  )
+  documentos:    '#3b82f6',
 }
 
 function ComingSoonAnima({

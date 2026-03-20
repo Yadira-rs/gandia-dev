@@ -25,7 +25,7 @@ export default function Tramites() {
       navigate('/tramites/panel', { replace: true })
     } else {
       // Para mvz, productor, exportador, auditor, y otros sin panel propio:
-      navigate('/chat', { replace: true, state: { context: 'tramites' } })
+      navigate('/chat', { replace: true, state: { openDocumentos: true } })
     }
   }, [navigate, role, profileReady, authStatus])
 

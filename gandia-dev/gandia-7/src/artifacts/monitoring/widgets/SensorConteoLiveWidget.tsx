@@ -1,6 +1,12 @@
 /**
  * SensorConteoLiveWidget — REDISEÑO PRO
+ * Si no recibe `stats`, los fetcha de Supabase directamente.
  */
+import { useState, useEffect } from 'react'
+import { supabase } from '../../../lib/supabaseClient'
+import CamaraFeedWidget from './CamaraFeedWidget'
+import type { Camara } from './CamaraListaWidget'
+
 interface SensorStat {
   corral:      string
   detectados:  number
@@ -10,11 +16,53 @@ interface SensorStat {
 }
 
 interface Props {
-  stats:                SensorStat[]
+  stats?:               SensorStat[]
   ultimaActualizacion?: string
 }
 
-export default function SensorConteoLiveWidget({ stats, ultimaActualizacion = 'hace 2 min' }: Props) {
+export default function SensorConteoLiveWidget({ stats: statsProp, ultimaActualizacion = 'hace 2 min' }: Props) {
+  const [fetched,  setFetched]  = useState<SensorStat[]>([])
+  const [camara,   setCamara]   = useState<Camara | null>(null)
+
+  useEffect(() => {
+    if (statsProp) return
+    async function load() {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session) return
+      const { data: rancho } = await supabase.from('ranch_extended_profiles').select('id').eq('user_id', session.user.id).single()
+      if (!rancho) return
+      const { data: corrales } = await supabase.from('corrales').select('id, label, animales, capacidad').eq('rancho_id', rancho.id).eq('activo', true).order('label')
+      const { data: conteos }  = await supabase.from('conteos').select('corral_id, detectados, inventario_esperado, match_pct').eq('rancho_id', rancho.id).order('created_at', { ascending: false }).limit(50)
+      const { data: camaras }  = await supabase.from('camaras').select('id, label, corral_id, estado, detectados, inventario, fps_analisis').eq('rancho_id', rancho.id)
+      if (corrales) {
+        setFetched(corrales.map((c: Record<string,unknown>) => {
+          const ult = conteos?.find((ct: Record<string,unknown>) => ct.corral_id === c.id)
+          return {
+            corral:     c.label as string,
+            detectados: (ult?.detectados as number) ?? (c.animales as number),
+            inventario: (ult?.inventario_esperado as number) ?? (c.capacidad as number),
+            match:      (ult?.match_pct as number) ?? ((c.capacidad as number) > 0 ? Math.round((c.animales as number) / (c.capacidad as number) * 100) : 0),
+            activo:     camaras?.some((cam: Record<string,unknown>) => cam.corral_id === c.id && cam.estado === 'online') ?? false,
+          }
+        }))
+      }
+      if (camaras && camaras.length > 0) {
+        const online = (camaras as Record<string,unknown>[]).find(c => c.estado === 'online') ?? (camaras as Record<string,unknown>[])[0]
+        const corral = corrales?.find((c: Record<string,unknown>) => c.id === online.corral_id)
+        setCamara({
+          id: 1, label: online.label as string,
+          corral: (corral as Record<string,unknown>)?.label as string ?? '—',
+          estado: online.estado as 'online'|'offline',
+          detectados: (online.detectados as number) ?? 0,
+          inventario: (online.inventario as number) ?? 0,
+          fps: (online.fps_analisis as number) ?? 24,
+        })
+      }
+    }
+    load()
+  }, [statsProp])
+
+  const stats = statsProp ?? fetched
   const activos     = stats.filter(s => s.activo)
   const totalDetect = stats.reduce((s, c) => s + c.detectados, 0)
   const totalInvent = stats.reduce((s, c) => s + c.inventario, 0)
@@ -181,6 +229,24 @@ export default function SensorConteoLiveWidget({ stats, ultimaActualizacion = 'h
       <style>{`
         @keyframes sensorPulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
       `}</style>
+
+      {/* Cámara — solo en modo chat (sin statsProp) */}
+      {!statsProp && (
+        camara
+          ? <CamaraFeedWidget camara={camara} />
+          : (
+            <div style={{
+              display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+              gap: 10, background: '#111', border: '1px solid #1E1E1E', borderRadius: 14, padding: 32, minHeight: 160,
+            }}>
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#333" strokeWidth="1.5" strokeLinecap="round">
+                <path d="M23 7l-7 5 7 5V7z"/><rect x="1" y="5" width="15" height="14" rx="2"/>
+                <line x1="1" y1="1" x2="23" y2="23"/>
+              </svg>
+              <p style={{ fontSize: 12, color: '#444', margin: 0 }}>Sin cámaras registradas</p>
+            </div>
+          )
+      )}
     </div>
   )
 }

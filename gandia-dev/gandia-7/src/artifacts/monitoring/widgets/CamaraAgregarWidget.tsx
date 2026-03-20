@@ -1,13 +1,15 @@
 /**
  * CamaraAgregarWidget — REDISEÑO PRO
+ * Si no recibe `corrales`, los fetcha de Supabase.
  */
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { supabase } from '../../../lib/supabaseClient'
 import type { Corral } from './MapaVistaGeneralWidget'
 
 export interface NuevaCamara { label: string; corral: string; url: string; fps: number; alertas: boolean }
 
 interface Props {
-  corrales:    Corral[]
+  corrales?:    Corral[]
   onGuardar?:  (data: NuevaCamara) => void
   onCancelar?: () => void
 }
@@ -31,10 +33,26 @@ const labelStyle: React.CSSProperties = {
 
 const FPS_OPTIONS = [12, 18, 24, 30]
 
-export default function CamaraAgregarWidget({ corrales, onGuardar, onCancelar }: Props) {
+export default function CamaraAgregarWidget({ corrales: corraleProp, onGuardar, onCancelar }: Props) {
+  const [fetchedCorrales, setFetchedCorrales] = useState<Corral[]>([])
   const [form, setForm] = useState<NuevaCamara>({ label: '', corral: '', url: '', fps: 24, alertas: true })
   const [saved, setSaved] = useState(false)
   const valid = form.label.trim() && form.corral && form.url.trim()
+
+  useEffect(() => {
+    if (corraleProp) return
+    async function load() {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session) return
+      const { data: rancho } = await supabase.from('ranch_extended_profiles').select('id').eq('user_id', session.user.id).single()
+      if (!rancho) return
+      const { data: dbC } = await supabase.from('corrales').select('*').eq('rancho_id', rancho.id).eq('activo', true).order('label')
+      if (dbC) setFetchedCorrales(dbC.map((c: Record<string,unknown>, i: number) => ({ id: i+1, label: c.label as string, animales: c.animales as number, capacidad: c.capacidad as number, estado: c.estado as 'normal'|'atencion'|'cuarentena', temp: 22, humedad: 60, camara: c.tiene_camara as boolean, _dbId: c.id as string })))
+    }
+    load()
+  }, [corraleProp])
+
+  const corrales = corraleProp ?? fetchedCorrales
 
   const handleGuardar = () => {
     if (!valid) return
@@ -64,7 +82,7 @@ export default function CamaraAgregarWidget({ corrales, onGuardar, onCancelar }:
           </div>
           <div>
             <p style={{ fontSize: 12, fontWeight: 700, color: '#F0F0F0', margin: 0 }}>Nueva cámara</p>
-            <p style={{ fontSize: 10, color: '#666666', margin: '2px 0 0', fontFamily: 'ui-monospace, monospace' }}>Registrar en UPP Rancho Morales</p>
+            <p style={{ fontSize: 10, color: '#666666', margin: '2px 0 0', fontFamily: 'ui-monospace, monospace' }}>Registrar nueva cámara en tu UPP</p>
           </div>
         </div>
         {onCancelar && (

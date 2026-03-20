@@ -164,19 +164,27 @@ export default function Chat() {
 
   // ── Abrir anima desde sidebar (?open=domain) ────────────────────────────────
   const VALID_DOMAINS: ArtifactDomain[] = [
-    'passport', 'twins', 'monitoring', 'certification', 'verification',
+    'passport', 'twins', 'monitoring', 'certification', 'verification', 'documentos',
   ]
   useEffect(() => {
     const params = new URLSearchParams(location.search)
     const domain = params.get('open') as ArtifactDomain | null
     if (domain && VALID_DOMAINS.includes(domain)) {
       openDirect(domainToAnima(domain))
-      // Limpiar el query param sin recargar
       navigate('/chat', { replace: true })
     }
-  // Solo en mount o cuando cambia location.search
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [location.search])
+
+  // ── Abrir Ánima de documentos desde tramitesPanel (location.state) ──────────
+  useEffect(() => {
+    const state = location.state as { openDocumentos?: boolean; docFilter?: string } | null
+    if (state?.openDocumentos) {
+      openDirect(domainToAnima('documentos'))
+      navigate('/chat', { replace: true, state: { docFilter: state.docFilter } })
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   // ── User ────────────────────────────────────────────────────────────────────
   const { profile } = useUser()

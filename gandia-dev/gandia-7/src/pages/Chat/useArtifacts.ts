@@ -21,6 +21,7 @@
 
 import { useState, useCallback, useRef }  from 'react'
 import type { ReactNode }                  from 'react'
+import { useUser }                         from '../../context/UserContext'
 
 import {
   type ArtifactState,
@@ -115,11 +116,21 @@ const COPILO_ACTION_MAP: Record<string, { widgetId: string; domain: ArtifactDoma
   escanear_aretes:      { widgetId: 'exportacion:scanner',      domain: 'exportacion'  },
   validar_aretes:       { widgetId: 'exportacion:validacion',   domain: 'exportacion'  },
   exportar_excel:       { widgetId: 'exportacion:export',       domain: 'exportacion'  },
+  // documentos — productor
+  subir_documento:      { widgetId: 'documentos:subida',        domain: 'documentos'   },
+  mis_expedientes:      { widgetId: 'documentos:expedientes',   domain: 'documentos'   },
+  validar_docs:         { widgetId: 'documentos:validacion',    domain: 'documentos'   },
+  empacar_docs:         { widgetId: 'documentos:empacar',       domain: 'documentos'   },
+  // documentos — unión
+  panel_union_docs:     { widgetId: 'documentos:panel',         domain: 'documentos'   },
+  revisar_expediente:   { widgetId: 'documentos:revision',      domain: 'documentos'   },
 }
 
 // ─── HOOK ─────────────────────────────────────────────────────────────────────
 
 export function useArtifacts({ pushMessage }: UseArtifactsOptions): UseArtifactsReturn {
+
+  const { role } = useUser()
 
   // ── Estado del artefacto activo ────────────────────────────────────────
   const [artifact,      setArtifact]      = useState<ArtifactState>(null)
@@ -195,7 +206,7 @@ export function useArtifacts({ pushMessage }: UseArtifactsOptions): UseArtifacts
   // ─── Entry points ────────────────────────────────────────────────────────
 
   const handleText = useCallback((text: string): boolean => {
-    const intent = detectIntent(text)
+    const intent = detectIntent(text, role)
     if (!intent) return false
 
     if (intent.level === 'module') {
@@ -214,7 +225,7 @@ export function useArtifacts({ pushMessage }: UseArtifactsOptions): UseArtifacts
 
     runArtifact(intent.widgetId, intent.domain)
     return true
-  }, [runArtifact, openDirect])
+  }, [runArtifact, openDirect, role])
 
   const handleCopiloAction = useCallback((actionId: string) => {
     const target = COPILO_ACTION_MAP[actionId]

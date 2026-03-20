@@ -11,6 +11,13 @@ export default function HojaInteligenteSheet({ animal, onClose }: Props) {
 
   const sheetRef = useRef<HTMLDivElement>(null)
 
+  const APP_URL = import.meta.env.VITE_APP_URL ?? window.location.origin
+  const qrTarget = animal?.id
+    ? `${APP_URL}/animal/${animal.id}`
+    : `${APP_URL}/biometria/registrar`
+  const qrImageUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&ecc=M&data=${encodeURIComponent(qrTarget)}`
+  const qrLabel = animal?.id ? 'Escanear · Ver perfil' : 'Escanear · Registrar animal'
+
   const getHojaHTML = () => {
     const content = sheetRef.current?.outerHTML ?? ''
     return `<!DOCTYPE html>
@@ -313,26 +320,17 @@ export default function HojaInteligenteSheet({ animal, onClose }: Props) {
           {/* Bottom row */}
           <div style={{ height: '34mm', display: 'flex', flexShrink: 0 }}>
 
-            {/* QR */}
+            {/* QR Real — perfil del animal o link a registrar */}
             <div style={{ width: '34mm', borderRight: '1px solid #0a0a0a', flexShrink: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '2mm', padding: '3mm' }}>
-              <svg style={{ width: '24mm', height: '24mm', imageRendering: 'pixelated' }} viewBox="0 0 25 25">
-                <rect width="25" height="25" fill="white"/>
-                <rect x="1" y="1" width="7" height="7" fill="#0a0a0a"/><rect x="2" y="2" width="5" height="5" fill="white"/><rect x="3" y="3" width="3" height="3" fill="#0a0a0a"/>
-                <rect x="17" y="1" width="7" height="7" fill="#0a0a0a"/><rect x="18" y="2" width="5" height="5" fill="white"/><rect x="19" y="3" width="3" height="3" fill="#0a0a0a"/>
-                <rect x="1" y="17" width="7" height="7" fill="#0a0a0a"/><rect x="2" y="18" width="5" height="5" fill="white"/><rect x="3" y="19" width="3" height="3" fill="#0a0a0a"/>
-                <rect x="8" y="6" width="1" height="1" fill="#0a0a0a"/><rect x="10" y="6" width="1" height="1" fill="#0a0a0a"/>
-                <rect x="12" y="6" width="1" height="1" fill="#0a0a0a"/><rect x="14" y="6" width="1" height="1" fill="#0a0a0a"/>
-                <rect x="6" y="8" width="1" height="1" fill="#0a0a0a"/><rect x="6" y="10" width="1" height="1" fill="#0a0a0a"/>
-                <rect x="6" y="12" width="1" height="1" fill="#0a0a0a"/><rect x="6" y="14" width="1" height="1" fill="#0a0a0a"/>
-                <rect x="8" y="8" width="2" height="2" fill="#0a0a0a"/><rect x="11" y="9" width="2" height="1" fill="#0a0a0a"/>
-                <rect x="14" y="8" width="1" height="2" fill="#0a0a0a"/><rect x="16" y="10" width="2" height="1" fill="#0a0a0a"/>
-                <rect x="9" y="11" width="1" height="2" fill="#0a0a0a"/><rect x="12" y="12" width="2" height="1" fill="#0a0a0a"/>
-                <rect x="8" y="14" width="2" height="1" fill="#0a0a0a"/><rect x="11" y="15" width="1" height="2" fill="#0a0a0a"/>
-                <rect x="9" y="17" width="2" height="2" fill="#0a0a0a"/><rect x="12" y="18" width="1" height="2" fill="#0a0a0a"/>
-                <rect x="8" y="20" width="1" height="2" fill="#0a0a0a"/><rect x="10" y="21" width="2" height="2" fill="#0a0a0a"/>
-                <rect x="16" y="16" width="5" height="5" fill="#0a0a0a"/><rect x="17" y="17" width="3" height="3" fill="white"/><rect x="18" y="18" width="1" height="1" fill="#0a0a0a"/>
-              </svg>
-              <span style={{ fontSize: 5.5, letterSpacing: '0.08em', textTransform: 'uppercase', color: '#ccc', textAlign: 'center', lineHeight: 1.6 }}>ID animal<br/>generado por sistema</span>
+              <img
+                src={qrImageUrl}
+                alt="QR"
+                style={{ width: '24mm', height: '24mm', imageRendering: 'pixelated', display: 'block' }}
+                crossOrigin="anonymous"
+              />
+              <span style={{ fontSize: 5.5, letterSpacing: '0.08em', textTransform: 'uppercase', color: '#888', textAlign: 'center', lineHeight: 1.6 }}>
+                {qrLabel}
+              </span>
             </div>
 
             {/* Instructions */}
