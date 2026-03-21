@@ -505,7 +505,7 @@ export default function RadarSearchPage() {
               </div>
 
               <p className="text-center text-[10.5px] text-stone-300 dark:text-stone-700 mt-2">
-                Consulta inteligente · Handeia Radar · Prioridad: {perfil}
+                Las respuestas son generadas por IA y pueden contener errores · Verifica con fuentes oficiales
               </p>
             </div>
           </div>

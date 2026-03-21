@@ -13,6 +13,7 @@ interface Noticia {
   titulo:              string
   cuerpo:              string
   fuente:              string
+  fuente_origen:       string
   url_original:        string | null
   categoria:           string
   urgente:             boolean
@@ -377,7 +378,7 @@ export default function NoticiaDetallePage() {
             </h1>
 
             {/* Fuente + HTI */}
-            <div className="flex items-center justify-between mb-10 pb-8 border-b border-stone-100 dark:border-stone-800/60">
+            <div className="flex items-center justify-between mb-6 pb-6 border-b border-stone-100 dark:border-stone-800/60">
               <div className="flex items-center gap-3">
                 <div className="w-6 h-6 rounded-full bg-stone-100 dark:bg-stone-800 flex items-center justify-center shrink-0">
                   <Ico.Shield c="w-3 h-3 text-stone-400 dark:text-stone-500" />
@@ -386,20 +387,45 @@ export default function NoticiaDetallePage() {
                   <p className="text-[12px] font-semibold text-stone-700 dark:text-stone-300">
                     {noticia.fuente}
                   </p>
-                  {noticia.url_original && (
-                    <a
-                      href={noticia.url_original}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex items-center gap-1 text-[11px] text-stone-400 dark:text-stone-500 hover:text-[#2FAF8F] transition-colors mt-0.5"
-                    >
-                      Ver fuente original <Ico.ExternalLink c="w-3 h-3" />
-                    </a>
-                  )}
+                  <div className="flex items-center gap-2 mt-0.5">
+                    {/* Badge de origen */}
+                    {noticia.fuente_origen === 'api' && (
+                      <span className="text-[10px] font-medium text-stone-400 dark:text-stone-500 bg-stone-100 dark:bg-stone-800/60 px-1.5 py-0.5 rounded">
+                        IA · NewsAPI
+                      </span>
+                    )}
+                    {noticia.fuente_origen === 'comunidad' && (
+                      <span className="text-[10px] font-medium text-[#2FAF8F] bg-[#2FAF8F]/10 px-1.5 py-0.5 rounded">
+                        Comunidad
+                      </span>
+                    )}
+                    {noticia.url_original && (
+                      <a
+                        href={noticia.url_original}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-1 text-[11px] text-stone-400 dark:text-stone-500 hover:text-[#2FAF8F] transition-colors"
+                      >
+                        Ver fuente original <Ico.ExternalLink c="w-3 h-3" />
+                      </a>
+                    )}
+                  </div>
                 </div>
               </div>
               <HTIBadge size="md" score={noticia.trust_index} status={noticia.verification_status} showTooltip />
             </div>
+
+            {/* Disclaimer IA */}
+            {noticia.fuente_origen === 'api' && (
+              <div className="mb-8 px-4 py-3 rounded-xl bg-stone-50 dark:bg-stone-900/50 border border-stone-200/60 dark:border-stone-800/50 flex items-start gap-2.5">
+                <svg className="w-3.5 h-3.5 text-stone-400 dark:text-stone-500 shrink-0 mt-0.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round">
+                  <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+                </svg>
+                <p className="text-[11.5px] text-stone-400 dark:text-stone-500 leading-[1.6]">
+                  Este contenido fue procesado y resumido por IA a partir de fuentes externas. Puede contener errores o imprecisiones — verifica los datos críticos en la fuente original.
+                </p>
+              </div>
+            )}
 
             {/* ── PANEL ANÁLISIS IA ── */}
             <div className="mb-10 rounded-2xl border border-stone-200/70 dark:border-stone-800/60 bg-white dark:bg-[#141210] overflow-hidden shadow-[0_1px_12px_rgba(0,0,0,0.04)]">

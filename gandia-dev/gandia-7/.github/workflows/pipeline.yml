@@ -2,8 +2,8 @@ name: Handeia Radar Pipeline
 
 on:
   schedule:
-    # Cada 6 horas: 0:00, 6:00, 12:00, 18:00 UTC (equivale a 19:00, 01:00, 07:00, 13:00 CDMX)
-    - cron: '0 0,6,12,18 * * *'
+    # Cada 3 días a las 8:00 UTC
+    - cron: '0 8 */3 * *'
   workflow_dispatch:
     # Permite correr manualmente desde GitHub Actions
 

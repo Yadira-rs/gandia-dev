@@ -97,6 +97,17 @@ export default function CreadorHomePage() {
       <div className="np min-h-screen bg-[#fafaf9] dark:bg-[#0c0a09]">
         <div className="max-w-[800px] mx-auto px-8 pt-10 pb-20">
 
+          {/* Back */}
+          <button
+            onClick={() => navigate('/noticias')}
+            className="flex items-center gap-1.5 text-[12.5px] font-medium text-stone-400 dark:text-stone-500 hover:text-stone-700 dark:hover:text-stone-200 transition-colors mb-8"
+          >
+            <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round">
+              <line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/>
+            </svg>
+            Noticias
+          </button>
+
           {/* Header */}
           <div className="mb-10">
             <h1 className="s text-[22px] text-stone-900 dark:text-stone-50 mb-1">
@@ -170,6 +181,19 @@ export default function CreadorHomePage() {
                         Ver perfil
                       </button>
                     </div>
+                  )}
+
+                  {/* Acceso al panel de moderación — solo nivel 4 */}
+                  {creatorProfile.nivel >= 4 && creatorProfile.status === 'activo' && (
+                    <button
+                      onClick={() => navigate('/moderador/panel')}
+                      className="mt-3 w-full h-9 rounded-xl border border-stone-200 dark:border-stone-800/60 text-[12.5px] font-medium text-stone-500 dark:text-stone-400 hover:text-[#2FAF8F] hover:border-[#2FAF8F]/40 transition-all flex items-center justify-center gap-2"
+                    >
+                      <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                      </svg>
+                      Panel de moderación
+                    </button>
                   )}
                 </div>
               ) : (

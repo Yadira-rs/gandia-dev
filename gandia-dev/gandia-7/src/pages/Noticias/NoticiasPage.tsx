@@ -2,12 +2,11 @@ import { useState, useRef, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../../lib/supabaseClient'
 import { useUser } from '../../context/UserContext'
-import { HTIBadge, HTIStatusBadge, HTILegend } from '../../components/ui/radar/HTIBadge'
+import { HTIBadge, HTIStatusBadge } from '../../components/ui/radar/HTIBadge'
 import type { VerificationStatus } from '../../components/ui/radar/HTIBadge'
 
 // ─── TYPES ────────────────────────────────────────────────────────────────────
 type Perfil = 'Productor' | 'Exportador' | 'MVZ' | 'Union' | 'Auditor'
-type Tab    = 'radar' | 'search' | 'wiki'
 
 interface Noticia {
   id:                  string
@@ -16,6 +15,7 @@ interface Noticia {
   resumen_general:     string
   resumenes_ia:        Record<string, string>
   fuente:              string
+  fuente_origen:       string
   categoria:           string
   tiempo_relativo:     string
   lectura_minutos:     number
@@ -36,13 +36,6 @@ interface DailySummary {
 // ─── CONSTANTS ────────────────────────────────────────────────────────────────
 const CATEGORIAS = ['Todas', 'Sanidad', 'Precios', 'Normativa', 'Clima', 'Exportacion', 'Mercados', 'General']
 const PERFILES:   Perfil[] = ['Productor', 'Exportador', 'MVZ', 'Union', 'Auditor']
-
-const SUGERENCIAS = [
-  'Resumen de precios esta semana',
-  'Impacto de nuevas regulaciones en exportación',
-  'Estado sanitario en el norte del país',
-  'Noticias urgentes hoy',
-]
 
 // ─── ICONS ────────────────────────────────────────────────────────────────────
 const Ico = {
@@ -94,13 +87,14 @@ export default function NoticiasPage() {
   const navigate = useNavigate()
   const { profile } = useUser()
 
-  const [tab,         setTab]         = useState<Tab>('radar')
   const [perfil,      setPerfil]      = useState<Perfil>('Productor')
   const [filtro,      setFiltro]      = useState('Todas')
   const [profileOpen, setProfileOpen] = useState(false)
   const [query,       setQuery]       = useState('')
   const [focused,     setFocused]     = useState(false)
+  const [mode,        setMode]        = useState<'radar' | 'search'>('radar')
   const [barLeft,     setBarLeft]     = useState(0)
+  const [scrolled,    setScrolled]    = useState(false)
   const [hasCreatorProfile, setHasCreatorProfile] = useState(false)
 
   // Noticias
@@ -188,6 +182,13 @@ export default function NoticiasPage() {
     return rb - ra
   })
 
+  // ─── Scroll detector para sticky nav ─────────────────────────────────────
+  useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > 80)
+    window.addEventListener('scroll', onScroll, { passive: true })
+    return () => window.removeEventListener('scroll', onScroll)
+  }, [])
+
   // ─── Sidebar-aware bar ────────────────────────────────────────────────────
   useEffect(() => {
     const update = () => {
@@ -257,61 +258,96 @@ export default function NoticiasPage() {
 
       <div ref={mainRef} className="np min-h-screen bg-[#fafaf9] dark:bg-[#0c0a09]">
 
-        {/* ── HEADER ──────────────────────────────────────────────────────── */}
-        <header className="max-w-[860px] mx-auto px-8 pt-10">
-          <div className="flex items-center justify-between">
+        {/* ── STICKY CATEGORY NAV ─────────────────────────────────────────── */}
+        <div
+          className={`fixed top-0 right-0 z-20 transition-all duration-300 ${
+            scrolled
+              ? 'opacity-100 translate-y-0'
+              : 'opacity-0 -translate-y-2 pointer-events-none'
+          }`}
+          style={{ left: barLeft }}
+        >
+          <div className="bg-[#fafaf9]/90 dark:bg-[#0c0a09]/90 backdrop-blur-xl border-b border-stone-100/80 dark:border-stone-800/50">
+            <div className="max-w-[860px] mx-auto px-8 h-10 flex items-center justify-between gap-4">
+              <div className="flex items-center gap-0.5 overflow-x-auto scrollbar-none">
+                {CATEGORIAS.map(f => (
+                  <button
+                    key={f}
+                    onClick={() => setFiltro(f)}
+                    className={`shrink-0 px-3 h-6 rounded-md text-[11px] font-medium transition-all duration-150 ${
+                      filtro === f
+                        ? 'text-stone-900 dark:text-stone-100 font-semibold'
+                        : 'text-stone-400 dark:text-stone-500 hover:text-stone-700 dark:hover:text-stone-300'
+                    }`}
+                  >
+                    {f === 'Todas' ? 'Todas' : f.charAt(0) + f.slice(1).toLowerCase()}
+                  </button>
+                ))}
+              </div>
+              <div className="relative shrink-0" ref={profileRef}>
+                <button
+                  onClick={() => setProfileOpen(p => !p)}
+                  className="flex items-center gap-1 text-[11px] font-medium text-stone-400 dark:text-stone-500 hover:text-stone-700 dark:hover:text-stone-200 transition-colors"
+                >
+                  {perfil}
+                  <Ico.ChevronDown c="w-3 h-3" />
+                </button>
+                {profileOpen && (
+                  <div className="dd absolute right-0 top-full mt-1.5 w-32 bg-white dark:bg-[#1c1917] rounded-xl border border-stone-200/80 dark:border-stone-800 shadow-[0_8px_24px_rgba(0,0,0,.08)] overflow-hidden z-50 py-1">
+                    {PERFILES.map(p => (
+                      <button key={p} onClick={() => { setPerfil(p); setProfileOpen(false) }}
+                        className={`w-full text-left px-4 py-2 text-[12px] transition-colors ${
+                          perfil === p ? 'text-[#2FAF8F] font-semibold' : 'text-stone-700 dark:text-stone-300 hover:bg-stone-50 dark:hover:bg-stone-800/60'
+                        }`}>
+                        {p}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* ── HEADER EDITORIAL ────────────────────────────────────────────── */}
+        <header className="max-w-[860px] mx-auto px-8 pt-10 pb-6">
+          <div className="flex items-start justify-between">
+
+            {/* Título */}
             <div>
-              <h1 className="s text-[18px] font-normal tracking-[-0.01em] text-stone-900 dark:text-stone-50">
-                Radar<span style={{ color: '#2FAF8F' }}>.</span>
+              <h1 className="s text-[26px] font-normal tracking-[-0.02em] text-stone-900 dark:text-stone-50 leading-none">
+                {mode === 'search' ? 'Search' : 'Noticias'}<span style={{ color: '#2FAF8F' }}>.</span>
               </h1>
-              <p className="text-[11.5px] text-stone-400 dark:text-stone-500 mt-0.5 leading-none">
-                Sector ganadero · Actualizado cada 6 h
+              <p className="text-[11px] text-stone-400 dark:text-stone-500 mt-1.5 leading-none tracking-[0.01em]">
+                {mode === 'search' ? 'Pregunta sobre el sector ganadero' : 'Sector ganadero · Actualizado cada 6 h'}
               </p>
             </div>
 
-            <div className="flex items-center gap-2">
-              {/* Filtros — solo en tab radar */}
-              {tab === 'radar' && (
-                <div className="hidden sm:flex items-center">
-                  {CATEGORIAS.map(f => (
-                    <button
-                      key={f}
-                      onClick={() => setFiltro(f)}
-                      className={`px-3 h-7 rounded-full text-[11.5px] font-medium transition-all duration-150 ${
-                        filtro === f
-                          ? 'bg-stone-900 dark:bg-stone-100 text-white dark:text-stone-900'
-                          : 'text-stone-500 dark:text-stone-400 hover:text-stone-700 dark:hover:text-stone-200'
-                      }`}
-                    >
-                      {f.charAt(0) + f.slice(1).toLowerCase()}
-                    </button>
-                  ))}
-                </div>
-              )}
-
-              <div className="hidden sm:block w-px h-4 bg-stone-200 dark:bg-stone-700/60 mx-1" />
-
-              {/* Selector de perfil */}
+            {/* Acciones */}
+            <div className="flex items-center gap-3 pt-1">
+              <button
+                onClick={() => navigate(hasCreatorProfile ? '/creadores/nuevo' : '/creadores')}
+                className="text-[11.5px] font-medium text-stone-400 dark:text-stone-500 hover:text-[#2FAF8F] transition-colors"
+              >
+                + Enviar aporte
+              </button>
+              <div className="w-px h-3.5 bg-stone-200 dark:bg-stone-700/60" />
+              {/* Perfil */}
               <div className="relative" ref={profileRef}>
                 <button
                   onClick={() => setProfileOpen(p => !p)}
-                  className="flex items-center gap-1.5 h-7 px-3 rounded-full text-[11.5px] font-medium text-stone-600 dark:text-stone-300 border border-stone-200 dark:border-stone-700/60 hover:border-stone-300 dark:hover:border-stone-600 transition-colors bg-white dark:bg-transparent"
+                  className="flex items-center gap-1.5 text-[11.5px] font-medium text-stone-600 dark:text-stone-300 hover:text-stone-900 dark:hover:text-stone-50 transition-colors"
                 >
                   {perfil}
-                  <Ico.ChevronDown c={`w-3 h-3 text-stone-400 transition-transform duration-150 ${profileOpen ? 'rotate-180' : ''}`} />
+                  <Ico.ChevronDown c={`w-3 h-3 text-stone-400 transition-transform ${profileOpen ? 'rotate-180' : ''}`} />
                 </button>
                 {profileOpen && (
-                  <div className="dd absolute right-0 top-full mt-1.5 w-32 bg-white dark:bg-[#1c1917] rounded-xl border border-stone-200/80 dark:border-stone-800 shadow-[0_8px_24px_rgba(0,0,0,.08)] dark:shadow-[0_8px_32px_rgba(0,0,0,.4)] overflow-hidden z-50 py-1">
+                  <div className="dd absolute right-0 top-full mt-2 w-32 bg-white dark:bg-[#1c1917] rounded-xl border border-stone-200/80 dark:border-stone-800 shadow-[0_8px_24px_rgba(0,0,0,.08)] dark:shadow-[0_8px_32px_rgba(0,0,0,.4)] overflow-hidden z-50 py-1">
                     {PERFILES.map(p => (
-                      <button
-                        key={p}
-                        onClick={() => { setPerfil(p); setProfileOpen(false) }}
+                      <button key={p} onClick={() => { setPerfil(p); setProfileOpen(false) }}
                         className={`w-full text-left px-4 py-2 text-[12px] transition-colors ${
-                          perfil === p
-                            ? 'text-[#2FAF8F] font-semibold'
-                            : 'text-stone-700 dark:text-stone-300 hover:bg-stone-50 dark:hover:bg-stone-800/60'
-                        }`}
-                      >
+                          perfil === p ? 'text-[#2FAF8F] font-semibold' : 'text-stone-700 dark:text-stone-300 hover:bg-stone-50 dark:hover:bg-stone-800/60'
+                        }`}>
                         {p}
                       </button>
                     ))}
@@ -321,52 +357,61 @@ export default function NoticiasPage() {
             </div>
           </div>
 
-          {/* ── TABS ──────────────────────────────────────────────────────── */}
-          <div className="flex items-center gap-1 mt-6">
-            {(['radar', 'search', 'wiki'] as Tab[]).map(t => (
+          {/* Línea divisoria + categorías inline */}
+          {mode === 'radar' && (
+          <div className="mt-6 pt-4 border-t border-stone-100 dark:border-stone-800/60 flex items-center gap-0.5 overflow-x-auto scrollbar-none">
+            {CATEGORIAS.map(f => (
               <button
-                key={t}
-                onClick={() => {
-                  if (t === 'search') { navigate(`/noticias/search?perfil=${perfil}`); return }
-                  if (t === 'wiki')   return
-                  setTab(t)
-                }}
-                disabled={t === 'wiki'}
-                className={`relative flex items-center gap-1.5 px-4 h-8 rounded-lg text-[12.5px] font-medium transition-all duration-150 ${
-                  tab === t
-                    ? 'bg-stone-900 dark:bg-stone-100 text-white dark:text-stone-900'
-                    : t === 'wiki'
-                      ? 'text-stone-300 dark:text-stone-600 cursor-default'
-                      : 'text-stone-500 dark:text-stone-400 hover:text-stone-700 dark:hover:text-stone-200 hover:bg-stone-100 dark:hover:bg-stone-800/50'
+                key={f}
+                onClick={() => setFiltro(f)}
+                className={`shrink-0 px-3 h-6 rounded-md text-[11.5px] font-medium transition-all duration-150 ${
+                  filtro === f
+                    ? 'text-stone-900 dark:text-stone-100 font-semibold'
+                    : 'text-stone-400 dark:text-stone-500 hover:text-stone-700 dark:hover:text-stone-200'
                 }`}
               >
-                {t === 'radar'  ? 'Radar'  : null}
-                {t === 'search' ? 'Search' : null}
-                {t === 'wiki'   ? (
-                  <>
-                    Wiki
-                    <span className="inline-flex items-center px-1.5 py-0.5 rounded-full bg-[#2FAF8F]/15 text-[#2FAF8F] text-[9px] font-bold uppercase tracking-[0.04em]">
-                      pronto
-                    </span>
-                  </>
-                ) : null}
+                {f === 'Todas' ? 'Todas' : f.charAt(0) + f.slice(1).toLowerCase()}
               </button>
             ))}
-
-            <div className="ml-auto flex items-center gap-2">
-              <button
-                onClick={() => navigate(hasCreatorProfile ? '/creadores/nuevo' : '/creadores')}
-                className="flex items-center gap-1.5 h-8 px-3 rounded-lg text-[11.5px] font-medium text-stone-500 dark:text-stone-400 hover:text-[#2FAF8F] hover:bg-stone-100 dark:hover:bg-stone-800/50 transition-all"
-              >
-                <Ico.Plus />
-                Reportar
-              </button>
-            </div>
           </div>
+          )}
         </header>
 
         {/* ── MAIN ────────────────────────────────────────────────────────── */}
         <main className="max-w-[860px] mx-auto px-8 pb-48">
+
+          {/* ── MODO SEARCH — pantalla de búsqueda ── */}
+          {mode === 'search' && (
+            <div className="fu flex flex-col items-center justify-center min-h-[50vh] text-center">
+              <h2 className="s text-[32px] text-stone-900 dark:text-stone-50 leading-tight mb-2">
+                ¿Qué quieres saber<span style={{ color: '#2FAF8F' }}>?</span>
+              </h2>
+              <p className="text-[13px] text-stone-400 dark:text-stone-500 mb-12">
+                Análisis del sector ganadero mexicano
+              </p>
+              <div className="flex flex-wrap gap-2 justify-center max-w-[560px]">
+                {[
+                  'Panorama ganadero hoy',
+                  'Normativa USDA y México',
+                  'Sanidad en el norte',
+                  'Precios del becerro',
+                  'Alertas sanitarias activas',
+                  'Temporada de lluvias',
+                ].map((s, i) => (
+                  <button
+                    key={i}
+                    onClick={() => navigate(`/noticias/search?q=${encodeURIComponent(s)}&perfil=${perfil}`)}
+                    className="h-8 px-4 rounded-full text-[12.5px] text-stone-600 dark:text-stone-300 border border-stone-200 dark:border-stone-700/60 hover:border-stone-400 dark:hover:border-stone-500 hover:text-stone-900 dark:hover:text-stone-50 transition-all duration-150 bg-white dark:bg-transparent"
+                  >
+                    {s}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* ── MODO NOTICIAS — feed editorial ── */}
+          {mode === 'radar' && (<>
 
           {/* RESUMEN DIARIO */}
           <div className="mt-10 fu rounded-2xl border border-stone-200/70 dark:border-stone-800/60 bg-white dark:bg-[#141210] px-7 py-6 shadow-[0_1px_12px_rgba(0,0,0,0.04)] dark:shadow-none">
@@ -392,7 +437,7 @@ export default function NoticiasPage() {
               </div>
             ) : summary ? (
               <>
-                <p className="s text-[17.5px] text-stone-800 dark:text-stone-100 leading-[1.72] italic">
+                <p className="text-[15px] text-stone-700 dark:text-stone-300 leading-[1.72]">
                   {summary}
                 </p>
                 <button
@@ -408,22 +453,6 @@ export default function NoticiasPage() {
                 El análisis del día estará disponible en cuanto el pipeline procese las primeras noticias.
               </p>
             )}
-          </div>
-
-          {/* HTI LEGEND */}
-          <div className="mt-6 px-1">
-            <HTILegend />
-          </div>
-
-          {/* FEED HEADER */}
-          <div className="mt-6 flex items-center gap-3">
-            <span className="text-[10.5px] font-semibold text-stone-400 dark:text-stone-500 uppercase tracking-[0.1em] shrink-0">
-              {filtro === 'Todas' ? 'Todas las noticias' : filtro}
-            </span>
-            <div className="flex-1 h-px bg-stone-100 dark:bg-stone-800/60" />
-            <span className="text-[11px] text-stone-300 dark:text-stone-600 shrink-0">
-              Prioridad: {perfil}
-            </span>
           </div>
 
           {/* LOADING */}
@@ -505,7 +534,7 @@ export default function NoticiasPage() {
                   </p>
 
                   <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 flex-wrap">
                       <span className="text-[11.5px] font-medium text-stone-400 dark:text-stone-500">
                         {n.fuente}
                       </span>
@@ -513,6 +542,16 @@ export default function NoticiasPage() {
                       <span className="text-[11.5px] text-stone-400 dark:text-stone-500">
                         {n.lectura_minutos} min
                       </span>
+                      {n.fuente_origen === 'api' && (
+                        <span className="text-[10px] font-medium text-stone-300 dark:text-stone-600 bg-stone-100 dark:bg-stone-800/50 px-1.5 py-0.5 rounded">
+                          IA
+                        </span>
+                      )}
+                      {n.fuente_origen === 'comunidad' && (
+                        <span className="text-[10px] font-medium text-[#2FAF8F] bg-[#2FAF8F]/10 px-1.5 py-0.5 rounded">
+                          Comunidad
+                        </span>
+                      )}
                     </div>
 
                     <div className="flex items-center gap-3">
@@ -528,6 +567,7 @@ export default function NoticiasPage() {
               ))}
             </div>
           )}
+          </>)}
         </main>
 
         {/* ── BARRA FIJA INFERIOR ─────────────────────────────────────────── */}
@@ -541,22 +581,45 @@ export default function NoticiasPage() {
             <div className="max-w-[860px] mx-auto px-8">
 
               {focused && !query && (
-                <div className="flex flex-wrap gap-1.5 mb-2.5 max-h-7 overflow-hidden">
-                  {SUGERENCIAS.map((s, i) => (
+                <div className="flex items-center gap-1 mb-2.5 sug">
+                  {(['radar', 'search'] as const).map(m => (
                     <button
-                      key={i}
-                      onMouseDown={() => { setQuery(s); setTimeout(() => inputRef.current?.focus(), 10) }}
-                      className="sug shrink-0 h-7 px-3 rounded-full border border-stone-200 dark:border-stone-700/60 bg-white/80 dark:bg-stone-800/60 text-[11.5px] text-stone-500 dark:text-stone-400 hover:border-stone-300 dark:hover:border-stone-600 hover:text-stone-700 dark:hover:text-stone-200 transition-all whitespace-nowrap"
-                      style={{ animationDelay: `${i * 40}ms` }}
+                      key={m}
+                      onMouseDown={() => { setMode(m); setTimeout(() => inputRef.current?.focus(), 10) }}
+                      className={`shrink-0 h-7 px-3 rounded-full text-[11.5px] font-medium transition-all duration-150 ${
+                        mode === m
+                          ? 'bg-stone-800/40 dark:bg-stone-700/40 text-stone-200 dark:text-stone-200'
+                          : 'text-stone-400 dark:text-stone-500 hover:text-stone-600 dark:hover:text-stone-300'
+                      }`}
                     >
-                      {s}
+                      {m === 'radar' ? 'Radar' : 'Search'}
                     </button>
                   ))}
+                  <span className="h-7 px-3 flex items-center text-[11.5px] font-medium text-stone-200 dark:text-stone-700 select-none">
+                    Wiki · pronto
+                  </span>
                 </div>
               )}
 
-              <div className={`sb flex items-center gap-3 bg-white dark:bg-[#1c1917] border border-stone-200/80 dark:border-stone-800/60 rounded-2xl px-4 shadow-[0_2px_16px_rgba(0,0,0,0.05)] dark:shadow-[0_2px_20px_rgba(0,0,0,0.30)] ${focused ? 'active' : ''}`}>
-                <Ico.Search c="w-4 h-4 text-stone-300 dark:text-stone-600 shrink-0" />
+              {/* Input */}
+              <div className={`sb flex items-center gap-2 bg-white dark:bg-[#1c1917] border border-stone-200/80 dark:border-stone-800/60 rounded-2xl px-4 shadow-[0_2px_16px_rgba(0,0,0,0.05)] dark:shadow-[0_2px_20px_rgba(0,0,0,0.30)] ${focused ? 'active' : ''}`}>
+
+                {/* Botón de modo — icono */}
+                <button
+                  onMouseDown={e => { e.preventDefault(); setMode(m => m === 'radar' ? 'search' : 'radar') }}
+                  className={`shrink-0 flex items-center justify-center transition-colors ${
+                    mode === 'search' ? 'text-[#2FAF8F]' : 'text-stone-300 dark:text-stone-600 hover:text-stone-500'
+                  }`}
+                  title={mode === 'radar' ? 'Cambiar a Search' : 'Cambiar a Radar'}
+                >
+                  {mode === 'search'
+                    ? <Ico.Spark c="w-4 h-4" />
+                    : <Ico.Search c="w-4 h-4" />
+                  }
+                </button>
+
+                <div className="w-px h-3.5 bg-stone-200 dark:bg-stone-700/60 shrink-0" />
+
                 <input
                   ref={inputRef}
                   type="text"
@@ -565,7 +628,7 @@ export default function NoticiasPage() {
                   onFocus={() => setFocused(true)}
                   onBlur={() => setFocused(false)}
                   onKeyDown={e => { if (e.key === 'Enter') handleSubmit() }}
-                  placeholder="Buscar noticias o preguntar a la IA..."
+                  placeholder={mode === 'search' ? 'Preguntar a la IA...' : 'Buscar en el feed...'}
                   style={{ outline: 'none', boxShadow: 'none', WebkitAppearance: 'none' }}
                   className="flex-1 h-12 bg-transparent text-[14px] text-stone-800 dark:text-stone-100 placeholder-stone-300 dark:placeholder-stone-600"
                 />
@@ -580,7 +643,7 @@ export default function NoticiasPage() {
               </div>
 
               <p className="text-center text-[10.5px] text-stone-300 dark:text-stone-700 mt-2">
-                Normativa SENASICA · USDA · FDA · Precios SNIIM
+                SENASICA · USDA · SNIIM · Handeia Radar
               </p>
             </div>
           </div>

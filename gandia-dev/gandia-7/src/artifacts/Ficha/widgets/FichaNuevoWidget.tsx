@@ -93,7 +93,17 @@ export default function FichaNuevoWidget({ onCancelar, onGuardar }: Props) {
 
   const handleSubmit = async () => {
     const authUserId = await getAuthUserId()
-    if (!authUserId || !ranchoId) {
+
+    // Si ranchoId aún no cargó, esperar hasta 3 segundos
+    let resolvedRanchoId = ranchoId
+    if (!resolvedRanchoId && userId) {
+      for (let i = 0; i < 6; i++) {
+        await new Promise(r => setTimeout(r, 500))
+        if (ranchoId) { resolvedRanchoId = ranchoId; break }
+      }
+    }
+
+    if (!authUserId || !resolvedRanchoId) {
       setError('Sin sesión o rancho activo. Recarga la página.')
       return
     }
@@ -116,7 +126,7 @@ export default function FichaNuevoWidget({ onCancelar, onGuardar }: Props) {
         upp:     form.upp     || undefined,
         municipio: form.municipio || undefined,
       },
-      ranchoId,
+      resolvedRanchoId,
       authUserId
     )
 

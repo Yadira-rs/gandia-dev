@@ -46,8 +46,10 @@ import AlertasPage          from '../pages/Alertas/AlertasPage'
 // Creadores (nuevas)
 import CreadorHomePage      from '../pages/Creadores/CreadorHomePage'
 import CreadorFormPage      from '../pages/Creadores/CreadorFormPage'
-import CreadorSolicitarPage from '../pages/Creadores/CreadorSolicitarPage'
+import CreadorSolicitarPage from '../pages/Creadores/Creadorsolicitarpage'
 import { CreadorPerfilPage } from '../pages/Creadores/CreadorPerfilPage'
+import ModeradorAccesoPage  from '../pages/Moderador/ModeradorAccesoPage'
+import ModeradorPanelPage   from '../pages/Moderador/ModeradorPanelPage'
 
 import { useUser }  from '../context/UserContext'
 import { useEffect } from 'react'
@@ -112,6 +114,8 @@ function Router() {
         <Route path="/legal"             element={<LegalPage />} />
         <Route path="/compliance"        element={<CompliancePage />} />
         <Route path="/modelo-operativo"  element={<ModeloOperativoPage />} />
+        <Route path="/moderador/acceso"  element={<ModeradorAccesoPage />} />
+        <Route path="/moderador/panel"   element={<ModeradorPanelPage />} />
 
         <Route path="/blog"        element={<BlogPage />} />
         <Route path="/blog/:slug"  element={<BlogPostPage />} />
