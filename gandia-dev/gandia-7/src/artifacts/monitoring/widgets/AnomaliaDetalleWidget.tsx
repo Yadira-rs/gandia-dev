@@ -1,10 +1,13 @@
 /**
  * AnomaliaDetalleWidget — REDISEÑO v2
+ * Si no recibe `anomalia`, fetcha la más reciente activa de Supabase.
  */
+import { useState, useEffect } from 'react'
+import { supabase } from '../../../lib/supabaseClient'
 import type { Anomalia } from './AnomaliaFeedWidget'
 
 interface Props {
-  anomalia:    Anomalia
+  anomalia?:   Anomalia
   onResolver?: (id: number) => void
   onClose?:    () => void
 }
@@ -17,7 +20,36 @@ const SENALES: Record<string, string[]> = {
   'Temperatura elevada':    ['Temp. >39.5°C', 'Jadeo', 'Búsqueda de sombra'],
 }
 
-export default function AnomaliaDetalleWidget({ anomalia, onResolver, onClose }: Props) {
+export default function AnomaliaDetalleWidget({ anomalia: anomaliaProp, onResolver, onClose }: Props) {
+  const [fetched, setFetched] = useState<Anomalia | null>(null)
+
+  useEffect(() => {
+    if (anomaliaProp) return
+    async function load() {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session) return
+      const { data: rancho } = await supabase.from('ranch_extended_profiles').select('id').eq('user_id', session.user.id).single()
+      if (!rancho) return
+      const { data: corrales } = await supabase.from('corrales').select('id, label').eq('rancho_id', rancho.id)
+      const { data: dbA } = await supabase.from('anomalias_monitoreo').select('*').eq('rancho_id', rancho.id).eq('resuelto', false).order('created_at', { ascending: false }).limit(1)
+      if (dbA && dbA.length > 0) {
+        const a = dbA[0] as Record<string,unknown>
+        const corral = corrales?.find((c: Record<string,unknown>) => c.id === a.corral_id)
+        const ts = new Date(a.created_at as string).toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' })
+        setFetched({ id: a.id as string, ts, animal: a.animal_id ? `#${(a.animal_id as string).slice(-4).toUpperCase()}` : '—', corral: (corral as Record<string,unknown>)?.label as string ?? '—', tipo: a.tipo as string, severidad: (a.severidad === 'baja' ? 'media' : a.severidad) as 'alta'|'media', resuelto: a.resuelto as boolean, _dbId: a.id as string })
+      }
+    }
+    load()
+  }, [anomaliaProp])
+
+  const anomalia = anomaliaProp ?? fetched
+  if (!anomalia) return (
+    <div style={{ display:'flex', alignItems:'center', justifyContent:'center', height:180, background:'#171717', border:'1px solid #252525', borderRadius:12 }}>
+      <div style={{ width:20, height:20, border:'2px solid #2FAF8F', borderTopColor:'transparent', borderRadius:'50%', animation:'spin 0.8s linear infinite' }} />
+      <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
+    </div>
+  )
+
   const isAlta  = anomalia.severidad === 'alta'
   const color   = isAlta ? '#E5484D' : '#F5A623'
   const senales = SENALES[anomalia.tipo] ?? [anomalia.tipo]
@@ -96,7 +128,7 @@ export default function AnomaliaDetalleWidget({ anomalia, onResolver, onClose }:
 
         {/* CTA */}
         {!anomalia.resuelto && onResolver && (
-          <button onClick={() => onResolver(anomalia.id)} style={{
+          <button onClick={() => onResolver(Number(anomalia.id))} style={{
             width: '100%', padding: '11px',
             borderRadius: 9, background: '#2FAF8F', border: 'none',
             color: 'white', fontSize: 12, fontWeight: 600,

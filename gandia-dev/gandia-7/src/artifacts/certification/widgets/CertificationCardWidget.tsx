@@ -1,178 +1,301 @@
-import { useState, useEffect } from 'react'
-
-export type EstadoCert = 'vigente' | 'por_vencer' | 'vencido' | 'en_proceso' | 'rechazado'
+/**
+ * CertificationCardWidget
+ * v3 — barra 5px, umbrales badge, separadores grid, botones claros, type="button"
+ */
+export type EstadoCert =
+  | "vigente"
+  | "por_vencer"
+  | "vencido"
+  | "en_proceso"
+  | "rechazado";
 
 export interface DatosCertCard {
-  id:              string
-  tipo:            string
-  autoridad:       string
-  animal:          string
-  arete:           string
-  lote?:           string
-  estado:          EstadoCert
-  folio?:          string
-  fechaEmision?:   string
-  fechaVence?:     string
-  diasParaVencer?: number
-  completitud:     number
-  expedidor?:      string
+  id: string;
+  tipo: string;
+  autoridad: string;
+  animal: string;
+  arete: string;
+  lote?: string;
+  corral?: string;
+  estado: EstadoCert;
+  folio?: string;
+  fechaEmision?: string;
+  fechaVence?: string;
+  diasParaVencer?: number;
+  bloqueantes?: number;
+  completitud: number;
+  expedidor?: string;
 }
 
 interface Props {
-  data:        DatosCertCard
-  onExpand?:   () => void
-  onVerCheck?: () => void
+  data: DatosCertCard;
+  onExpand?: () => void;
+  onVerCheck?: () => void;
 }
 
-// Status → left border color + short label only.  NO colored text anywhere.
-const STATUS: Record<EstadoCert, { border: string; label: string }> = {
-  vigente:    { border: '#2A7A5A', label: 'Vigente'    },
-  por_vencer: { border: '#8A6800', label: 'Por vencer' },
-  vencido:    { border: '#8C1A1A', label: 'Vencido'    },
-  en_proceso: { border: '#1A3870', label: 'En proceso' },
-  rechazado:  { border: '#C8C2BB', label: 'Rechazado'  },
-}
+// ─── Config de estado ──────────────────────────────────────────────────────────
 
-function useDark() {
-  const [d, setD] = useState(() => typeof document !== 'undefined' && document.documentElement.classList.contains('dark'))
-  useEffect(() => {
-    const obs = new MutationObserver(() => setD(document.documentElement.classList.contains('dark')))
-    obs.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] })
-    return () => obs.disconnect()
-  }, [])
-  return d
-}
+const EST: Record<
+  EstadoCert,
+  { label: string; color: string; bg: string; text: string }
+> = {
+  vigente: {
+    label: "Vigente",
+    color: "#2FAF8F",
+    bg: "#2FAF8F18",
+    text: "#1a8c6e",
+  },
+  por_vencer: {
+    label: "Por vencer",
+    color: "#d97706",
+    bg: "#fef3c7",
+    text: "#92400e",
+  },
+  vencido: {
+    label: "Vencido",
+    color: "#e11d48",
+    bg: "#ffe4e6",
+    text: "#9f1239",
+  },
+  en_proceso: {
+    label: "En proceso",
+    color: "#3b82f6",
+    bg: "#eff6ff",
+    text: "#1e40af",
+  },
+  rechazado: {
+    label: "Rechazado",
+    color: "#78716c",
+    bg: "#f5f5f4",
+    text: "#57534e",
+  },
+};
 
-export default function CertificationCardWidget({ data, onExpand, onVerCheck }: Props) {
-  const dark = useDark()
-  const tk = dark
-    ? { bg:'#0E0D0C', card:'#1C1917', b:'#2A2724', blt:'#221F1D', tx:'#F4F2EF', txMd:'#A19D97', txSm:'#58534E', acc:'#2FAF8F' }
-    : { bg:'#FAFAF9', card:'#FFFFFF', b:'#E7E5E4', blt:'#F5F5F4', tx:'#1C1917', txMd:'#57534E', txSm:'#A8A29E', acc:'#2FAF8F' }
+const PROGRESS_COLOR = (pct: number) =>
+  pct >= 80 ? "#2FAF8F" : pct >= 50 ? "#d97706" : "#e11d48";
 
-  const s   = STATUS[data.estado]
-  const pct = data.completitud
+// ─── Componente ───────────────────────────────────────────────────────────────
+
+export default function CertificationCardWidget({
+  data,
+  onExpand,
+  onVerCheck,
+}: Props) {
+  const est = EST[data.estado];
+  const progColor = PROGRESS_COLOR(data.completitud);
+
+  const renderBadge = () => {
+    // Bloqueantes — rojo con pulso
+    if ((data.bloqueantes ?? 0) > 0) {
+      return (
+        <span
+          style={{ background: "#ffe4e6", color: "#9f1239" }}
+          className="inline-flex items-center text-[11px] font-medium px-2.5 py-0.5 rounded-full animate-pulse"
+        >
+          {data.bloqueantes} bloqueante{(data.bloqueantes ?? 0) > 1 ? "s" : ""}
+        </span>
+      );
+    }
+
+    if (data.diasParaVencer !== undefined) {
+      // Vencido
+      if (data.diasParaVencer < 0) {
+        return (
+          <span
+            style={{ background: "#ffe4e6", color: "#9f1239" }}
+            className="inline-flex items-center text-[11px] font-medium px-2.5 py-0.5 rounded-full animate-pulse"
+          >
+            Vencido
+          </span>
+        );
+      }
+      // Urgente ≤30 días — ámbar con pulso
+      if (data.diasParaVencer <= 30) {
+        return (
+          <span
+            style={{ background: "#fef3c7", color: "#92400e" }}
+            className="inline-flex items-center text-[11px] font-medium px-2.5 py-0.5 rounded-full animate-pulse"
+          >
+            {data.diasParaVencer} día{data.diasParaVencer !== 1 ? "s" : ""}
+          </span>
+        );
+      }
+      // Holgado >30 días — verde sin pulso
+      return (
+        <span
+          style={{ background: "#f0fdf4", color: "#166534" }}
+          className="inline-flex items-center text-[11px] font-medium px-2.5 py-0.5 rounded-full"
+        >
+          {data.diasParaVencer} días
+        </span>
+      );
+    }
+
+    return null;
+  };
 
   return (
-    <>
-      <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600;700&family=Sora:wght@400;500;600&display=swap');
+    <div className="border border-stone-200/60 dark:border-stone-800/50 rounded-[14px] overflow-hidden bg-white dark:bg-[#1c1917]">
+      {/* Barra de estado — 5px */}
+      <div className="h-[5px] w-full" style={{ background: est.color }} />
 
-        .ccw5 * { box-sizing:border-box; margin:0; padding:0; }
-        .ccw5 {
-          font-family:'Sora',ui-sans-serif,sans-serif; font-size:13px;
-          color:var(--tx); background:var(--card); -webkit-font-smoothing:antialiased;
-          border:1px solid var(--b); border-radius:2px; overflow:hidden; position:relative;
-        }
-        /* Noise paper texture */
-        .ccw5::after {
-          content:''; position:absolute; inset:0; pointer-events:none; z-index:10; border-radius:2px;
-          background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='200' height='200' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E");
-        }
-        .ccw5-serif  { font-family:'Cormorant Garamond',Georgia,serif; }
-        .ccw5-mono   { font-family:ui-monospace,'Cascadia Code',monospace; }
-        .ccw5-lbl    { font-size:9px; font-weight:600; letter-spacing:.11em; text-transform:uppercase; color:var(--tx-sm); }
+      {/* Header — tipo + estado */}
+      <div className="px-4 pt-4 pb-3 flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="text-[14px] font-semibold text-stone-800 dark:text-stone-100 leading-snug">
+            {data.tipo}
+          </p>
+          <p className="text-[11.5px] text-stone-400 dark:text-stone-500 mt-0.5">
+            {data.autoridad}
+          </p>
+        </div>
+        <div className="shrink-0 text-right">
+          <span
+            className="inline-flex items-center gap-[5px] text-[12px] font-medium px-2.5 py-1 rounded-full"
+            style={{ background: est.bg, color: est.text }}
+          >
+            <span
+              className="w-1.5 h-1.5 rounded-full shrink-0"
+              style={{ background: est.color }}
+            />
+            {est.label}
+          </span>
+          {data.folio && (
+            <p className="font-mono text-[10px] text-stone-300 dark:text-stone-600 mt-1.5">
+              {data.folio}
+            </p>
+          )}
+        </div>
+      </div>
 
-        /* Section header strip — diagonal hatching for depth */
-        .ccw5-strip {
-          background-color:var(--bg);
-          background-image:repeating-linear-gradient(
-            -45deg, transparent, transparent 5px,
-            rgba(0,0,0,.022) 5px, rgba(0,0,0,.022) 6px
-          );
-        }
+      {/* Divisor */}
+      <div className="h-px bg-stone-100 dark:bg-stone-800/40 mx-4" />
 
-        .ccw5-btn-ghost {
-          font-family:'Sora',sans-serif; font-size:11px; font-weight:500; letter-spacing:.04em;
-          padding:6px 15px; border:1px solid var(--b); border-radius:2px;
-          background:transparent; color:var(--tx-md); cursor:pointer;
-          transition:border-color .12s, color .12s;
-        }
-        .ccw5-btn-ghost:hover { border-color:var(--tx-md); color:var(--tx); }
+      {/* Animal */}
+      <div className="px-4 py-3 flex items-center gap-3">
+        <div className="w-8 h-8 rounded-full bg-stone-100 dark:bg-stone-800/50 flex items-center justify-center shrink-0">
+          <svg
+            width="14"
+            height="14"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.5"
+            strokeLinecap="round"
+            className="text-stone-400 dark:text-stone-500"
+          >
+            <path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z" />
+            <path d="m12 15-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z" />
+            <path d="M9 12H4s.55-3.03 2-4c1.62-1.08 5 0 5 0" />
+            <path d="M12 15v5s3.03-.55 4-2c1.08-1.62 0-5 0-5" />
+          </svg>
+        </div>
+        <div className="min-w-0 flex-1">
+          <p className="text-[13.5px] font-semibold text-stone-800 dark:text-stone-100">
+            {data.animal}{" "}
+            <span className="font-mono font-normal text-stone-400 dark:text-stone-500 text-[12px]">
+              {data.arete}
+            </span>
+          </p>
+          {(data.lote || data.corral) && (
+            <p className="text-[11px] text-stone-400 dark:text-stone-500 mt-0.5">
+              {[data.lote, data.corral].filter(Boolean).join(" · ")}
+            </p>
+          )}
+        </div>
+        <div className="shrink-0">{renderBadge()}</div>
+      </div>
 
-        .ccw5-btn-solid {
-          font-family:'Sora',sans-serif; font-size:11px; font-weight:600; letter-spacing:.04em;
-          padding:6px 15px; border:1px solid var(--tx); border-radius:2px;
-          background:var(--tx); color:var(--card); cursor:pointer; transition:opacity .12s;
-        }
-        .ccw5-btn-solid:hover { opacity:.82; }
-
-        .ccw5-divider { height:1px; background:var(--blt); }
-      `}</style>
-
-      <div className="ccw5" style={{ '--bg':tk.bg,'--card':tk.card,'--b':tk.b,'--blt':tk.blt,'--tx':tk.tx,'--tx-md':tk.txMd,'--tx-sm':tk.txSm,'--acc':tk.acc, borderLeft:`2px solid ${s.border}` } as React.CSSProperties}>
-
-        {/* ── Header strip ── */}
-        <div className="ccw5-strip" style={{ padding:'14px 18px 12px', borderBottom:'1px solid var(--blt)' }}>
-          <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', gap:12 }}>
-            <div style={{ minWidth:0 }}>
-              <p className="ccw5-serif" style={{ fontSize:18, fontWeight:600, color:'var(--tx)', lineHeight:1.2, marginBottom:3 }}>
-                {data.tipo}
+      {/* Grid de datos con separadores verticales */}
+      <div className="grid grid-cols-3 border-t border-b border-stone-100 dark:border-stone-800/40 bg-stone-50/70 dark:bg-stone-900/30">
+        {[
+          { label: "Emisión", value: data.fechaEmision, color: undefined },
+          {
+            label: "Vencimiento",
+            value: data.fechaVence,
+            color:
+              data.estado === "vencido" || data.estado === "por_vencer"
+                ? est.color
+                : undefined,
+          },
+          {
+            label: "Expedidor",
+            value: data.expedidor,
+            color: undefined,
+            small: true,
+          },
+        ].map((col, i) =>
+          col.value ? (
+            <div
+              key={col.label}
+              className={`px-4 py-3 ${i !== 2 ? "border-r border-stone-100 dark:border-stone-800/40" : ""}`}
+            >
+              <p className="text-[10.5px] text-stone-400 dark:text-stone-500 mb-0.5">
+                {col.label}
               </p>
-              <p style={{ fontSize:11, color:'var(--tx-sm)' }}>{data.autoridad}</p>
-            </div>
-            {/* Status: label only, no pill background */}
-            <div style={{ flexShrink:0, display:'flex', alignItems:'center', gap:5, paddingTop:2 }}>
-              <div style={{ width:4, height:4, borderRadius:'50%', background:s.border, flexShrink:0 }} />
-              <span style={{ fontSize:10, fontWeight:600, color:'var(--tx-md)', letterSpacing:'.05em' }}>
-                {s.label}
-              </span>
-            </div>
-          </div>
-        </div>
-
-        {/* ── Animal ── */}
-        <div style={{ padding:'13px 18px', borderBottom:'1px solid var(--blt)' }}>
-          <p style={{ fontSize:13.5, fontWeight:600, color:'var(--tx)', marginBottom:4 }}>{data.animal}</p>
-          <div style={{ display:'flex', gap:8, alignItems:'center', flexWrap:'wrap' }}>
-            <span className="ccw5-mono" style={{ fontSize:11.5, color:'var(--tx-md)', letterSpacing:'.04em' }}>{data.arete}</span>
-            {data.lote  && <><span style={{ color:'var(--b)' }}>·</span><span className="ccw5-mono" style={{ fontSize:11, color:'var(--tx-sm)' }}>{data.lote}</span></>}
-            {data.folio && <span className="ccw5-mono" style={{ marginLeft:'auto', fontSize:10.5, color:'var(--tx-sm)' }}># {data.folio}</span>}
-          </div>
-        </div>
-
-        {/* ── Data grid ── */}
-        <div style={{ padding:'13px 18px 0', display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:'10px 20px', marginBottom:14 }}>
-          {data.fechaEmision && (
-            <div>
-              <p className="ccw5-lbl" style={{ marginBottom:4 }}>Emisión</p>
-              <p className="ccw5-mono" style={{ fontSize:11.5, color:'var(--tx-md)' }}>{data.fechaEmision}</p>
-            </div>
-          )}
-          {data.fechaVence && (
-            <div>
-              <p className="ccw5-lbl" style={{ marginBottom:4 }}>Vence</p>
-              <p className="ccw5-mono" style={{ fontSize:11.5, fontWeight:600, color:'var(--tx)' }}>
-                {data.fechaVence}
+              <p
+                className={`font-medium text-stone-700 dark:text-stone-300 ${col.small ? "text-[12px]" : "text-[12.5px]"}`}
+                style={{ color: col.color }}
+              >
+                {col.value}
               </p>
             </div>
-          )}
-          <div>
-            <p className="ccw5-lbl" style={{ marginBottom:4 }}>Expediente</p>
-            <p className="ccw5-mono" style={{ fontSize:11.5, fontWeight:600, color:'var(--tx)' }}>{pct}%</p>
-          </div>
-          {data.expedidor && (
-            <div style={{ gridColumn:'1/-1', paddingTop:4, borderTop:'1px solid var(--blt)' }}>
-              <p className="ccw5-lbl" style={{ marginBottom:4 }}>Expedidor</p>
-              <p style={{ fontSize:11.5, color:'var(--tx-md)', lineHeight:1.5 }}>{data.expedidor}</p>
-            </div>
-          )}
-        </div>
-
-        {/* ── Progress hairline ── */}
-        <div style={{ padding:'0 18px 0' }}>
-          <div style={{ height:1, background:'var(--blt)', position:'relative' }}>
-            <div style={{ position:'absolute', top:0, left:0, height:'100%', width:`${pct}%`, background:'var(--tx-md)', transition:'width .8s cubic-bezier(.16,1,.3,1)' }} />
-          </div>
-        </div>
-
-        {/* ── Actions ── */}
-        {(onVerCheck || onExpand) && (
-          <div style={{ display:'flex', gap:6, justifyContent:'flex-end', padding:'10px 18px' }}>
-            {onVerCheck && <button className="ccw5-btn-ghost" onClick={onVerCheck}>Checklist</button>}
-            {onExpand   && <button className="ccw5-btn-solid" onClick={onExpand}>Ver expediente</button>}
-          </div>
+          ) : null,
         )}
       </div>
-    </>
-  )
+
+      {/* Barra de progreso */}
+      <div className="px-4 py-3.5">
+        <div className="flex items-center justify-between mb-2">
+          <p className="text-[11px] text-stone-400 dark:text-stone-500">
+            Completitud del expediente
+          </p>
+          <p className="text-[13px] font-semibold" style={{ color: progColor }}>
+            {data.completitud}%
+          </p>
+        </div>
+        <div className="h-[5px] bg-stone-100 dark:bg-stone-800/50 rounded-full overflow-hidden">
+          <div
+            className="h-full rounded-full transition-all duration-700"
+            style={{ width: `${data.completitud}%`, background: progColor }}
+          />
+        </div>
+      </div>
+
+      {/* Acciones */}
+      {(onVerCheck || onExpand) && (
+        <div className="px-4 pb-4 pt-1 flex items-center justify-end gap-2 border-t border-stone-100 dark:border-stone-800/40">
+          {onVerCheck && (
+            <button
+              type="button"
+              onClick={onVerCheck}
+              className="text-[12px] font-medium text-stone-500 dark:text-stone-400 hover:text-stone-700 dark:hover:text-stone-200 bg-transparent border border-stone-200/70 dark:border-stone-700/60 rounded-[8px] px-3 py-1.5 cursor-pointer transition-colors hover:bg-stone-50 dark:hover:bg-stone-800/40"
+            >
+              Checklist
+            </button>
+          )}
+          {onExpand && (
+            <button
+              type="button"
+              onClick={onExpand}
+              className="text-[12px] font-semibold rounded-[8px] px-3 py-1.5 cursor-pointer transition-colors border"
+              style={{
+                color: "#2FAF8F",
+                borderColor: "#2FAF8F44",
+                background: "transparent",
+              }}
+              onMouseEnter={(e) =>
+                (e.currentTarget.style.background = "#2FAF8F12")
+              }
+              onMouseLeave={(e) =>
+                (e.currentTarget.style.background = "transparent")
+              }
+            >
+              Ver expediente →
+            </button>
+          )}
+        </div>
+      )}
+    </div>
+  );
 }

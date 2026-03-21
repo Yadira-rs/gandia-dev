@@ -12,6 +12,8 @@ import { ThinkingBlock } from './ThinkingBlock'
 import type { ChatModel } from '../../lib/chatService'
 import type { WidgetArtifact, ArtifactDomain } from '../../artifacts/artifactTypes'
 import { domainToAnima } from '../../artifacts/artifactTypes'
+import { supabase } from '../../lib/supabaseClient'
+import { useDictation } from './useDictation'
 
 // ─── Greetings ────────────────────────────────────────────────────────────────
 const GREETINGS = [
@@ -162,26 +164,48 @@ export default function Chat() {
 
   // ── Abrir anima desde sidebar (?open=domain) ────────────────────────────────
   const VALID_DOMAINS: ArtifactDomain[] = [
-    'passport', 'twins', 'monitoring', 'certification', 'verification',
+    'passport', 'twins', 'monitoring', 'certification', 'verification', 'documentos',
   ]
   useEffect(() => {
     const params = new URLSearchParams(location.search)
     const domain = params.get('open') as ArtifactDomain | null
     if (domain && VALID_DOMAINS.includes(domain)) {
       openDirect(domainToAnima(domain))
-      // Limpiar el query param sin recargar
       navigate('/chat', { replace: true })
     }
-  // Solo en mount o cuando cambia location.search
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [location.search])
 
+  // ── Abrir Ánima de documentos desde tramitesPanel (location.state) ──────────
+  useEffect(() => {
+    const state = location.state as { openDocumentos?: boolean; docFilter?: string } | null
+    if (state?.openDocumentos) {
+      openDirect(domainToAnima('documentos'))
+      navigate('/chat', { replace: true, state: { docFilter: state.docFilter } })
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
   // ── User ────────────────────────────────────────────────────────────────────
   const { profile } = useUser()
+
+  // Leer prefs del asistente desde localStorage
+  const assistantPrefs = (() => {
+    try {
+      const raw = localStorage.getItem('gandia-assistant-prefs')
+      return raw ? { suggestions: true, history: true, ...JSON.parse(raw) } : { suggestions: true, history: true }
+    } catch { return { suggestions: true, history: true } }
+  })()
   const pd = (profile?.personal_data as Record<string, string> | null) ?? {}
   const firstName = (pd.fullName || pd.full_name || pd.nombre_completo || pd.nombre || profile?.email?.split('@')[0] || '').split(' ')[0]
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  const greeting = useMemo(() => GREETINGS[Math.floor(Math.random() * GREETINGS.length)](firstName || 'tú'), [])
+  // Fijar el índice del saludo una vez (no cambia al navegar)
+  const greetingIdxRef = useRef(Math.floor(Math.random() * GREETINGS.length))
+  // Recalcular solo cuando firstName pasa de vacío a tener valor
+  const greeting = useMemo(
+    () => GREETINGS[greetingIdxRef.current](firstName || 'tú'),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [firstName || 'tú']
+  )
 
   // ── Artifacts ───────────────────────────────────────────────────────────────
   // pushMessage is defined after useChat, so we use a ref to avoid circular dep
@@ -222,7 +246,7 @@ export default function Chat() {
     addToast, handleCopy,
     processFiles,
     handleStop, doNewChat, handleNewChat,
-    handleSend, handleEditSave, handleRegenerate, handlePin,
+    handleSend, handleSendWith, handleEditSave, handleRegenerate, handlePin,
     isOnline,
   } = useChat(handleArtifactText)
 
@@ -271,6 +295,19 @@ export default function Chat() {
     setMessages(prev => prev.map((m, i) => i === idx ? { ...m, thoughtsExpanded: !m.thoughtsExpanded } : m))
   }, [setMessages])
 
+  // ── Feedback real → message_feedback table ──────────────────────────────────
+  const handleFeedback = useCallback(async (msgId: string, kind: 'up' | 'down') => {
+    try {
+      await supabase.from('message_feedback').upsert({
+        message_id: msgId,
+        feedback:   kind,
+        created_at: new Date().toISOString(),
+      }, { onConflict: 'message_id' })
+    } catch {
+      // silencioso — el feedback no debe interrumpir el flujo
+    }
+  }, [])
+
   // ── Keyboard shortcuts ────────────────────────────────────────────────────────
   useEffect(() => {
     const MODES: import('../../lib/chatService').ChatMode[] = ['asistente', 'noticias', 'investigacion']
@@ -288,6 +325,60 @@ export default function Chat() {
     window.addEventListener('keydown', handler)
     return () => window.removeEventListener('keydown', handler)
   }, [handleNewChat, setMode])
+
+  // ── Dictation ────────────────────────────────────────────────────────────────
+  const dictation = useDictation(
+    () => {},  // commit handled directly below via event
+    () => {},  // cancel handled directly below via event
+  )
+
+  // Sync transcript + interim into input
+  useEffect(() => {
+    if (!dictation.active) return
+    const full = dictation.interim
+      ? (dictation.transcript + ' ' + dictation.interim).trim()
+      : dictation.transcript
+    setMessage(full)
+  }, [dictation.active, dictation.transcript, dictation.interim, setMessage])
+
+  // COMMIT — escuchar directo, sin pasar por callbacks de useDictation
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const text = (e as CustomEvent<{text: string}>).detail.text
+      if (!text) return
+      setMessage(text)
+      handleSendWith(text)
+    }
+    window.addEventListener('gandia:dictation-commit', handler)
+    return () => window.removeEventListener('gandia:dictation-commit', handler)
+  }, [handleSendWith, setMessage])
+
+  // CANCEL — limpiar input
+  useEffect(() => {
+    const handler = () => setMessage('')
+    window.addEventListener('gandia:dictation-cancelled', handler)
+    return () => window.removeEventListener('gandia:dictation-cancelled', handler)
+  }, [setMessage])
+
+  // ── Voice command listener ───────────────────────────────────────────────────
+  // AppLayout despacha 'gandia:voice-cmd' cuando el usuario habla un comando de chat.
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const cmd = (e as CustomEvent<string>).detail
+      if (!cmd) return
+      if (cmd === 'new_chat') {
+        handleNewChat()
+      } else if (cmd === 'stop') {
+        handleStop()
+      } else if (cmd.startsWith('search:')) {
+        const term = cmd.slice(7)
+        setMessage(term)
+        handleSendWith(term)
+      }
+    }
+    window.addEventListener('gandia:voice-cmd', handler)
+    return () => window.removeEventListener('gandia:voice-cmd', handler)
+  }, [handleNewChat, handleStop, handleSendWith, setMessage])
 
   // ─────────────────────────────────────────────────────────────────────────────
   // RENDER
@@ -443,20 +534,22 @@ export default function Chat() {
                         {greeting}
                       </h1>
                     </div>
-                    <RotatingPhrase onSelect={setMessage} />
-                    <div className="ch-card flex flex-wrap justify-center gap-2 mt-7" style={{ animationDelay: '300ms' }}>
-                      {QUICK_ACTIONS_BY_MODE[mode].map((qa, i) => (
-                        <button
-                          key={qa.icon}
-                          onClick={() => setMessage(`${qa.label}: `)}
-                          className="flex items-center gap-1.5 h-8 px-3.5 rounded-full border border-stone-200/80 dark:border-stone-700/50 bg-white dark:bg-[#141210] text-[12px] font-medium text-stone-500 dark:text-stone-400 hover:text-stone-800 dark:hover:text-stone-100 hover:border-stone-300 dark:hover:border-stone-600 hover:shadow-[0_2px_10px_rgba(0,0,0,0.06)] transition-all duration-150"
-                          style={{ animationDelay: `${i * 40 + 320}ms` }}
-                        >
-                          <span className="text-stone-300 dark:text-stone-600"><QuickIcon icon={qa.icon} /></span>
-                          {qa.label}
-                        </button>
-                      ))}
-                    </div>
+                    {assistantPrefs.suggestions && <RotatingPhrase onSelect={setMessage} />}
+                    {assistantPrefs.suggestions && (
+                      <div className="ch-card flex flex-wrap justify-center gap-2 mt-7" style={{ animationDelay: '300ms' }}>
+                        {QUICK_ACTIONS_BY_MODE[mode].map((qa, i) => (
+                          <button
+                            key={qa.icon}
+                            onClick={() => setMessage(`${qa.label}: `)}
+                            className="flex items-center gap-1.5 h-8 px-3.5 rounded-full border border-stone-200/80 dark:border-stone-700/50 bg-white dark:bg-[#141210] text-[12px] font-medium text-stone-500 dark:text-stone-400 hover:text-stone-800 dark:hover:text-stone-100 hover:border-stone-300 dark:hover:border-stone-600 hover:shadow-[0_2px_10px_rgba(0,0,0,0.06)] transition-all duration-150"
+                            style={{ animationDelay: `${i * 40 + 320}ms` }}
+                          >
+                            <span className="text-stone-300 dark:text-stone-600"><QuickIcon icon={qa.icon} /></span>
+                            {qa.label}
+                          </button>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 </div>
               ) : (
@@ -476,6 +569,7 @@ export default function Chat() {
                       onCopy={handleCopy}
                       onRegenerate={handleRegenerate}
                       onPin={handlePin}
+                      onFeedback={handleFeedback}
                       onLightbox={setLightboxUrl}
                       onAddToast={addToast}
                       onCloseArtifact={closeArtifact}
@@ -526,7 +620,7 @@ export default function Chat() {
             </div>
 
             {/* Gradient — overlapa el scroll sin ocupar espacio */}
-            <div className="h-16 -mt-16 bg-gradient-to-t from-[#fafaf9] dark:from-[#0c0a09] to-transparent pointer-events-none shrink-0 relative z-10" />
+            
 
             {/* Input bar */}
             <ChatInputBar
@@ -556,6 +650,8 @@ export default function Chat() {
               onNewChat={handleNewChat}
               onProcessFiles={processFiles}
               onNavigateVoz={() => navigate('/voz')}
+              dictationActive={dictation.active}
+              onDictationStop={dictation.stop}
             />
           </div>
 

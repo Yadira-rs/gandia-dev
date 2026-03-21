@@ -1,0 +1,42 @@
+version: "3.9"
+
+# Desarrollo local completo sin GPU
+# Ejecutar: docker compose -f docker/docker-compose.dev.yml up
+
+services:
+
+  api:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.api
+    ports:
+      - "8000:8000"
+    env_file: ../.env
+    volumes:
+      - ..:/app
+    depends_on:
+      - redis
+    command: uvicorn api.main:app --host 0.0.0.0 --port 8000 --reload
+
+  worker:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.api   # Sin GPU en dev
+    env_file: ../.env
+    volumes:
+      - ..:/app
+    depends_on:
+      - redis
+    command: celery -A workers.celery_app worker --queues=vision,rfid --concurrency=1 --loglevel=debug --pool=solo
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+
+  mqtt:
+    image: eclipse-mosquitto:2
+    ports:
+      - "1883:1883"
+    volumes:
+      - ./mosquitto.conf:/mosquitto/config/mosquitto.conf

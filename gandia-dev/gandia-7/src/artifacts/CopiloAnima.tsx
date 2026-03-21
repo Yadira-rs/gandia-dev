@@ -67,6 +67,7 @@ const SUGGESTED_ACTIONS: Record<ArtifactDomain, CopiloAction[]> = {
   biometria:     [{ id: 'capture_morro',   label: 'Nueva captura',    icon: <IcoCamera /> },{ id: 'view_historial',   label: 'Historial',        icon: <IcoClock /> },    { id: 'register_animal', label: 'Registrar',        icon: <IcoPlus /> }],
   exportacion:   [{ id: 'nueva_solicitud', label: 'Nueva solicitud',  icon: <IcoPlus /> },  { id: 'escanear_aretes',  label: 'Escanear aretes',  icon: <IcoCamera /> },   { id: 'validar_aretes',  label: 'Validar aretes',   icon: <IcoBadge /> },   { id: 'exportar_excel',  label: 'Exportar Excel',   icon: <IcoDownload /> }],
   vinculacion:   [{ id: 'nueva_vinculacion', label: 'Nueva vinculación', icon: <IcoPlus /> }, { id: 'ver_pendientes', label: 'Ver pendientes', icon: <IcoTimer /> }, { id: 'ver_activas', label: 'Ver activas', icon: <IcoBadge /> }, { id: 'ver_historial', label: 'Historial', icon: <IcoClock /> }],
+  documentos:    [{ id: 'subir_documento',  label: 'Subir documento',  icon: <IcoPlus /> }, { id: 'mis_expedientes', label: 'Mis expedientes', icon: <IcoFile /> },  { id: 'validar_docs',   label: 'Qué me falta',    icon: <IcoClipboard /> }, { id: 'empacar_docs', label: 'Empacar docs', icon: <IcoDownload /> }],
 }
 
 // ─── fix #5 — hint contextual por dominio ────────────────────────────────────
@@ -82,6 +83,7 @@ const DOMAIN_HINT: Record<ArtifactDomain, string> = {
   biometria:     'Captura y consulta huellas de morro',
   exportacion:   'Gestiona solicitudes de aretes azules SENASICA',
   vinculacion:   'Administra tu red de acceso institucional',
+  documentos:    'Organiza y valida tus documentos por trámite',
 }
 
 const DOMAIN_LABEL: Record<ArtifactDomain, string> = {
@@ -95,6 +97,7 @@ const DOMAIN_LABEL: Record<ArtifactDomain, string> = {
   biometria:     'Biometría',
   exportacion:   'Exportación',
   vinculacion:   'Vinculaciones',
+  documentos:    'Documentos',
 }
 
 // ─── ESTADO ───────────────────────────────────────────────────────────────────

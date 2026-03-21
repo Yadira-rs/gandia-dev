@@ -23,6 +23,23 @@
     <!-- Canonical -->
     <link rel="canonical" href="https://gandia.mx" />
 
+    <!-- Anti-FOUC: aplica clase dark antes del primer paint -->
+    <script>
+      (function(){
+        try {
+          var t = localStorage.getItem('gandia-theme')
+          if (t === 'dark') {
+            document.documentElement.classList.add('dark')
+          } else if (t === 'light') {
+            document.documentElement.classList.remove('dark')
+          } else {
+            if (window.matchMedia('(prefers-color-scheme: dark)').matches)
+              document.documentElement.classList.add('dark')
+          }
+        } catch(e) {}
+      })()
+    </script>
+
     <!-- Font preference — GANDIA 7 -->
     <style>
       :root {

@@ -1,0 +1,21 @@
+{
+  "_comment": "Umbrales por defecto — sobreescribibles por rancho desde el widget AnomaliaConfigUmbralWidget",
+
+  "postura_caida_minutos":      20,
+  "separacion_metros":          15,
+  "faltante_minutos":           30,
+  "wound_suspect_confianza":    0.65,
+  "sin_ingesta_horas":           4,
+  "sobrepoblacion_pct":         110,
+  "velocidad_minima_normal":    0.05,
+  "tiempo_ventana_rfid_seg":    30,
+
+  "severidades": {
+    "postura_caida":         "alta",
+    "separacion":            "alta",
+    "wound_suspect":         "alta",
+    "faltante":              "media",
+    "sin_ingesta":           "media",
+    "sobrepoblacion":        "media"
+  }
+}

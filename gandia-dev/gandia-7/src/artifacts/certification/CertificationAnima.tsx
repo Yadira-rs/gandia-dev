@@ -1,9 +1,6 @@
 /**
  * CertificationAnima — Nivel Ánima (pantalla completa)
  * ARCHIVO → src/artifacts/certification/CertificationAnima.tsx
- *
- * Tabs centrados: Perfiles · Elegibilidad · Checklist · Expediente · Vencimientos
- * Tabs bloqueadas hasta seleccionar animal (excepto Perfiles y Vencimientos).
  */
 import { useState } from 'react'
 import CopiloAnima from '../CopiloAnima'
@@ -52,7 +49,13 @@ const TABS: { key: Tab; label: string; alerta?: boolean }[] = [
 
 const vencUrgentes = MOCK_VENCIMIENTOS.filter(v => v.diasRestantes <= 14).length
 
-// ─── ÍCONO DOMINIO ────────────────────────────────────────────────────────────
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+function scoreColor(score: number) {
+  return score >= 80 ? '#2FAF8F' : score >= 50 ? '#f59e0b' : '#f43f5e'
+}
+
+// ─── Ícono dominio ────────────────────────────────────────────────────────────
 
 function IcoCert() {
   return (
@@ -114,6 +117,7 @@ export default function CertificationAnima({ onClose, onEscalate }: Props) {
             return (
               <button
                 key={t.key}
+                type="button"
                 onClick={() => !disabled && setActiveTab(t.key)}
                 className={`relative flex items-center gap-1.5 px-3.5 py-1.5 rounded-[9px] border-0 text-[12px] transition-all
                   ${disabled
@@ -135,6 +139,7 @@ export default function CertificationAnima({ onClose, onEscalate }: Props) {
         {/* Acciones derecha */}
         <div className="flex items-center gap-2 ml-auto">
           <button
+            type="button"
             onClick={onEscalate}
             className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-[10px] border border-stone-200/70 dark:border-stone-800/60 bg-white dark:bg-[#1c1917] text-[12px] text-stone-400 dark:text-stone-500 cursor-pointer hover:text-[#2FAF8F] hover:border-[#2FAF8F]/40 transition-all"
           >
@@ -145,6 +150,7 @@ export default function CertificationAnima({ onClose, onEscalate }: Props) {
             Espacio Gandia
           </button>
           <button
+            type="button"
             onClick={onClose}
             className="px-3.5 py-1.5 rounded-[10px] border border-stone-200/70 dark:border-stone-800/60 bg-white dark:bg-[#1c1917] text-[12px] text-stone-400 dark:text-stone-500 cursor-pointer hover:text-stone-600 dark:hover:text-stone-300 transition-colors"
           >
@@ -168,7 +174,10 @@ export default function CertificationAnima({ onClose, onEscalate }: Props) {
           {activeTab === 'perfiles' && (
             selectedAnimal ? (
               <div className="flex flex-col gap-4">
+
+                {/* Back */}
                 <button
+                  type="button"
                   onClick={() => setSelectedAnimal(null)}
                   className="flex items-center gap-1.5 text-[12px] text-stone-400 dark:text-stone-500 hover:text-stone-600 dark:hover:text-stone-300 transition-colors bg-transparent border-0 cursor-pointer w-fit"
                 >
@@ -179,59 +188,69 @@ export default function CertificationAnima({ onClose, onEscalate }: Props) {
                 </button>
 
                 {/* Hero score */}
-                <div className="bg-white dark:bg-[#1c1917] border border-stone-200/60 dark:border-stone-800/50 rounded-[16px] px-5 py-4">
-                  <div className="flex items-start justify-between mb-4">
-                    <div>
-                      <div className="flex items-center gap-2.5 mb-1">
-                        <span className="font-mono text-[22px] font-extrabold text-stone-900 dark:text-stone-50">{selectedAnimal.arete}</span>
-                        {selectedAnimal.nombre && (
-                          <span className="text-[15px] text-stone-400 dark:text-stone-500">{selectedAnimal.nombre}</span>
-                        )}
+                <div className="bg-white dark:bg-[#1c1917] border border-stone-200/60 dark:border-stone-800/50 rounded-[16px] overflow-hidden">
+                  <div className="h-[5px] w-full" style={{ background: scoreColor(selectedAnimal.score) }} />
+                  <div className="px-5 pt-4 pb-4">
+                    <div className="flex items-start justify-between mb-4">
+                      <div>
+                        <div className="flex items-center gap-2.5 mb-1">
+                          <span className="font-mono text-[20px] font-semibold text-stone-900 dark:text-stone-50">
+                            {selectedAnimal.arete}
+                          </span>
+                          {selectedAnimal.nombre && (
+                            <span className="text-[14px] text-stone-400 dark:text-stone-500">{selectedAnimal.nombre}</span>
+                          )}
+                        </div>
+                        <p className="text-[11.5px] text-stone-400 dark:text-stone-500">
+                          {selectedAnimal.tipoCert} · {selectedAnimal.lote}
+                          {selectedAnimal.corral && ` · ${selectedAnimal.corral}`}
+                        </p>
                       </div>
-                      <p className="text-[12.5px] text-stone-400 dark:text-stone-500">
-                        {selectedAnimal.tipoCert} · {selectedAnimal.lote}
-                        {selectedAnimal.corral && ` · ${selectedAnimal.corral}`}
-                      </p>
+                      <div className="shrink-0 text-right">
+                        <p className="text-[42px] font-medium leading-none tabular-nums"
+                          style={{ color: scoreColor(selectedAnimal.score) }}>
+                          {selectedAnimal.score}
+                        </p>
+                        <p className="text-[11px] text-stone-400 dark:text-stone-500">/ 100</p>
+                      </div>
                     </div>
-                    <div className="shrink-0 text-right">
-                      <p className={`text-[36px] font-extrabold leading-none tabular-nums ${
-                        selectedAnimal.score >= 80 ? 'text-[#2FAF8F]' :
-                        selectedAnimal.score >= 50 ? 'text-amber-500 dark:text-amber-400' :
-                        'text-rose-500 dark:text-rose-400'
-                      }`}>{selectedAnimal.score}</p>
-                      <p className="text-[11px] text-stone-400 dark:text-stone-500">/ 100</p>
+                    <div className="flex items-center gap-3 mb-4">
+                      <div className="flex-1 h-[6px] bg-stone-100 dark:bg-stone-800/50 rounded-full overflow-hidden">
+                        <div
+                          className="h-full rounded-full transition-all duration-700"
+                          style={{ width: `${selectedAnimal.score}%`, background: scoreColor(selectedAnimal.score) }}
+                        />
+                      </div>
+                      <span className="text-[11px] font-medium tabular-nums shrink-0"
+                        style={{ color: scoreColor(selectedAnimal.score) }}>
+                        {selectedAnimal.score}%
+                      </span>
                     </div>
-                  </div>
-                  <div className="h-2.5 bg-stone-100 dark:bg-stone-800/50 rounded-full overflow-hidden">
-                    <div
-                      className="h-full rounded-full transition-all duration-700"
-                      style={{
-                        width: `${selectedAnimal.score}%`,
-                        backgroundColor:
-                          selectedAnimal.score >= 80 ? '#2FAF8F' :
-                          selectedAnimal.score >= 50 ? '#f59e0b' : '#f43f5e',
-                      }}
-                    />
-                  </div>
-                  <div className="flex gap-3 mt-3">
-                    <button
-                      onClick={() => setActiveTab('elegibilidad')}
-                      className="flex-1 py-2 rounded-[10px] bg-[#2FAF8F] hover:bg-[#27a07f] text-white text-[12px] font-semibold border-0 cursor-pointer transition-colors"
-                    >
-                      Ver elegibilidad
-                    </button>
-                    <button
-                      onClick={() => setActiveTab('checklist')}
-                      className="flex-1 py-2 rounded-[10px] border border-stone-200/70 dark:border-stone-800/60 bg-white dark:bg-[#1c1917] text-stone-600 dark:text-stone-300 text-[12px] font-medium cursor-pointer hover:border-[#2FAF8F]/40 transition-colors"
-                    >
-                      Checklist
-                    </button>
+                    <div className="flex gap-2.5">
+                      <button
+                        type="button"
+                        onClick={() => setActiveTab('elegibilidad')}
+                        className="flex-1 py-2.5 rounded-[10px] text-[12px] font-medium text-white border-0 cursor-pointer transition-colors"
+                        style={{ background: '#2FAF8F' }}
+                        onMouseEnter={e => (e.currentTarget.style.background = '#27a07f')}
+                        onMouseLeave={e => (e.currentTarget.style.background = '#2FAF8F')}
+                      >
+                        Ver elegibilidad
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setActiveTab('checklist')}
+                        className="flex-1 py-2.5 rounded-[10px] border border-stone-200/70 dark:border-stone-800/60 bg-white dark:bg-[#1c1917] text-stone-600 dark:text-stone-300 text-[12px] font-medium cursor-pointer hover:border-[#2FAF8F]/40 transition-colors"
+                      >
+                        Checklist
+                      </button>
+                    </div>
                   </div>
                 </div>
 
                 {/* Certificaciones activas */}
                 <div>
-                  <p className="text-[11px] font-bold text-stone-500 dark:text-stone-400 uppercase tracking-[0.05em] mb-2.5">
+                  <p className="text-[10px] text-stone-400 dark:text-stone-500 tracking-[0.07em] uppercase mb-2.5 px-0.5">
                     Certificaciones activas
                   </p>
                   <div className="flex flex-col gap-2">
@@ -250,6 +269,7 @@ export default function CertificationAnima({ onClose, onEscalate }: Props) {
                     )}
                   </div>
                 </div>
+
               </div>
             ) : (
               <CertificationPerfilesWidget
@@ -294,6 +314,7 @@ export default function CertificationAnima({ onClose, onEscalate }: Props) {
           return (
             <button
               key={t.key}
+              type="button"
               onClick={() => !disabled && setActiveTab(t.key)}
               className={`relative flex-1 py-3 text-[11px] font-medium transition-colors bg-transparent border-0
                 ${disabled

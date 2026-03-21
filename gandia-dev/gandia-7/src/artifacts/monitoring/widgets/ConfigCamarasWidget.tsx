@@ -1,15 +1,38 @@
 /**
  * ConfigCamarasWidget — REDISEÑO PRO
+ * Si no recibe `camaras`, las fetcha de Supabase.
  */
+import { useState, useEffect } from 'react'
+import { supabase } from '../../../lib/supabaseClient'
 import type { Camara } from './CamaraListaWidget'
 
 interface Props {
-  camaras:       Camara[]
+  camaras?:       Camara[]
   onConfigurar?: (cam: Camara) => void
   onAgregar?:    () => void
 }
 
-export default function ConfigCamarasWidget({ camaras, onConfigurar, onAgregar }: Props) {
+export default function ConfigCamarasWidget({ camaras: camarasProp, onConfigurar, onAgregar }: Props) {
+  const [fetched, setFetched] = useState<Camara[]>([])
+
+  useEffect(() => {
+    if (camarasProp) return
+    async function load() {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session) return
+      const { data: rancho } = await supabase.from('ranch_extended_profiles').select('id').eq('user_id', session.user.id).single()
+      if (!rancho) return
+      const { data: corrales } = await supabase.from('corrales').select('id, label').eq('rancho_id', rancho.id)
+      const { data: cams } = await supabase.from('camaras').select('*').eq('rancho_id', rancho.id)
+      if (cams) setFetched(cams.map((c: Record<string,unknown>, i: number) => {
+        const corral = corrales?.find((cr: Record<string,unknown>) => cr.id === c.corral_id)
+        return { id: i+1, label: c.label as string, corral: (corral as Record<string,unknown>)?.label as string ?? '—', estado: c.estado as 'online'|'offline', detectados: (c.detectados as number) ?? 0, inventario: (c.inventario as number) ?? 0, fps: (c.fps_analisis as number) ?? 24 }
+      }))
+    }
+    load()
+  }, [camarasProp])
+
+  const camaras = camarasProp ?? fetched
   const online  = camaras.filter(c => c.estado === 'online').length
   const offline = camaras.length - online
 

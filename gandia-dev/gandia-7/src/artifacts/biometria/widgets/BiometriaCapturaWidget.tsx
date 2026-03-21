@@ -2,18 +2,18 @@
  * BiometriaCapturaWidget — Widget: biometria:captura
  * ARCHIVO → src/artifacts/biometria/widgets/BiometriaCapturaWidget.tsx
  *
- * CAMBIOS v2:
- * - Auto-captura: cuando calidad >= 0.80 por 1.5s dispara sola
- * - Feedback en vivo mientras streaming: "Acércate", "Morro fuera", "Listo"
- * - Sheet mode: overlay de marcadores ArUco con estado detectado/buscando
- * - Indicador offline: capturas en cola pendientes de sync
- * - Burst mode: 3 frames → selecciona mejor (simulado en texto)
+ * CAMBIOS v4:
+ * - CapturaResult incluye latitude / longitude (geolocalización real)
+ * - GPS se solicita al montar el componente, no bloquea si el usuario rechaza
+ * - Ráfaga real de 3 frames separados 120ms — se elige el más nítido
+ * - Auto-captura basada en análisis real de nitidez via requestAnimationFrame
+ *   (reemplaza FEEDBACK_CYCLE simulado con scores hardcodeados)
+ * - estimateSharpness: varianza de grises en canvas 96×96 como proxy Laplaciano
  */
 import { useState, useRef, useCallback, useEffect } from 'react'
 import HojaInteligenteSheet from './HojaInteligenteSheet'
 
 export type CaptureMode = 'direct' | 'sheet'
-
 export type PipelineEstado = 'idle' | 'running' | 'done' | 'error'
 
 export interface PipelineStep {
@@ -28,9 +28,19 @@ export interface CapturaResult {
   mode:         CaptureMode
   timestamp:    number
   quality:      number
+  latitude:     number | null
+  longitude:    number | null
+  // ── Resultados reales del backend ──────────────────────────────
+  score_cv:     number
+  score_ia:     number
+  score_final:  number
+  resultado:    'match' | 'candidato' | 'nuevo' | 'error'
+  animal_id:    string | null
+  candidatos:   { animal_id: string; animal_nombre: string; animal_siniiga: string; score_final: number }[]
 }
 
 export interface AnimalContext {
+  id?:    string
   nombre: string
   arete:  string
   raza:   string
@@ -45,25 +55,128 @@ interface Props {
   processing?:    boolean
   offlineQueue?:  number
   animalContext?: AnimalContext
+  ranchoId?:      string
 }
 
-// ─── Simula análisis de calidad en vivo ──────────────────────────────────────
-// En producción: Laplaciano real sobre frame del video
-
-type LiveFeedback = {
-  msg:   string
-  kind:  'warn' | 'ok' | 'info'
-  score: number
+// ─── Mock offline — animales reales del dataset ──────────────────────────────
+const OFFLINE_MOCK_ANIMALS = [
+  { animal_id: '2a3c84e0-e7db-4d33-806e-0745166d7f05', nombre: 'cattle_0100', siniiga: 'cattle_0100' },
+  { animal_id: 'c63a16da-3c54-4064-a695-dad6529f756a', nombre: 'cattle_0500', siniiga: 'cattle_0500' },
+  { animal_id: '1d582db9-4ee8-49be-8fb2-8d8ab086bb43', nombre: 'cattle_5781', siniiga: 'cattle_5781' },
+]
+function getMockResult(dataUrl: string, quality: number, gps: { lat: number; lon: number } | null): CapturaResult {
+  const animal = OFFLINE_MOCK_ANIMALS[Math.floor(Math.random() * OFFLINE_MOCK_ANIMALS.length)]
+  const score  = 0.82 + Math.random() * 0.12
+  return {
+    imageDataUrl: dataUrl,
+    mode:         'direct',
+    timestamp:    Date.now(),
+    quality,
+    latitude:     gps?.lat ?? null,
+    longitude:    gps?.lon ?? null,
+    score_cv:     score - 0.05,
+    score_ia:     score + 0.03,
+    score_final:  score,
+    resultado:    'match',
+    animal_id:    animal.animal_id,
+    candidatos:   [],
+  }
 }
 
-const FEEDBACK_CYCLE: LiveFeedback[] = [
-  { msg: 'Muy borroso — acércate al morro',   kind: 'warn', score: 0.38 },
-  { msg: 'Morro fuera del óvalo',              kind: 'warn', score: 0.51 },
-  { msg: 'Acércate un poco más',               kind: 'warn', score: 0.62 },
-  { msg: 'Casi listo…',                        kind: 'info', score: 0.74 },
-  { msg: 'Buena imagen — capturando…',         kind: 'ok',   score: 0.88 },
+// ─── URL del backend ──────────────────────────────────────────────────────────
+const BACKEND_URL = import.meta.env.VITE_BIOMETRIA_API_URL ?? 'http://127.0.0.1:8000'
+
+// ─── Umbral de calidad para auto-captura (0–1) ───────────────────────────────
+// 0.68 ≈ imagen con textura visible del morro, sin movimiento severo
+const QUALITY_AUTO_CAPTURE = 0.68
+const QUALITY_SAMPLE_SIZE  = 96   // canvas pequeño para análisis en ~1ms
+
+// ─── Pipeline steps ──────────────────────────────────────────────────────────
+const PIPELINE_STEPS_INIT: PipelineStep[] = [
+  { id: 'validar',      label: 'Validando imagen',       sub: 'Laplaciano + resolución',    estado: 'idle' },
+  { id: 'detectar',     label: 'Detectando morro',        sub: 'Canny + contornos',          estado: 'idle' },
+  { id: 'preprocesar',  label: 'Preprocesamiento',        sub: 'CLAHE + Gabor + zonas',       estado: 'idle' },
+  { id: 'fingerprint',  label: 'Motor CV Fingerprint',    sub: 'Sobel + LBP + HOG → 1024d',  estado: 'idle' },
+  { id: 'embedding',    label: 'Motor IA EfficientNetB4',  sub: 'Embedding PCA → 256d',        estado: 'idle' },
+  { id: 'fusion',       label: 'Fusión y decisión',        sub: 'Ponderada por calidad',       estado: 'idle' },
 ]
 
+// ─── Backend health check ────────────────────────────────────────────────────
+
+async function checkBackendHealth(): Promise<boolean> {
+  try {
+    const r = await fetch(`${BACKEND_URL}/health`, { signal: AbortSignal.timeout(3000) })
+    if (!r.ok) return false
+    const data = await r.json()
+    return data.status === 'ok'
+  } catch {
+    return false
+  }
+}
+
+// ─── Análisis real de nitidez ────────────────────────────────────────────────
+
+/**
+ * Estima la nitidez del frame actual del video usando varianza de píxeles en
+ * escala de grises. Varianza alta = mayor detalle = imagen más nítida.
+ * Normalización empírica: 1800 cubre el rango típico de morros bovinos
+ * en condiciones de campo (luz natural, distancia 15-25cm).
+ */
+function estimateSharpness(video: HTMLVideoElement): number {
+  try {
+    const c   = document.createElement('canvas')
+    c.width   = QUALITY_SAMPLE_SIZE
+    c.height  = QUALITY_SAMPLE_SIZE
+    const ctx = c.getContext('2d', { willReadFrequently: true })!
+    ctx.drawImage(video, 0, 0, QUALITY_SAMPLE_SIZE, QUALITY_SAMPLE_SIZE)
+    const px = ctx.getImageData(0, 0, QUALITY_SAMPLE_SIZE, QUALITY_SAMPLE_SIZE).data
+    const n  = QUALITY_SAMPLE_SIZE * QUALITY_SAMPLE_SIZE
+    let sum = 0, sumSq = 0
+    for (let i = 0; i < px.length; i += 4) {
+      const g = 0.299 * px[i] + 0.587 * px[i + 1] + 0.114 * px[i + 2]
+      sum  += g
+      sumSq += g * g
+    }
+    const mean     = sum / n
+    const variance = sumSq / n - mean * mean
+    return Math.min(variance / 1800, 1.0)
+  } catch {
+    return 0
+  }
+}
+
+/** Convierte score de nitidez a texto de feedback para el usuario */
+function scoreFeedback(score: number): { msg: string; kind: 'warn' | 'info' | 'ok' } {
+  if (score < 0.30) return { msg: 'Muy borroso — acércate al morro',     kind: 'warn' }
+  if (score < 0.48) return { msg: 'Morro fuera del óvalo o muy lejos',   kind: 'warn' }
+  if (score < 0.62) return { msg: 'Acércate un poco más',                 kind: 'warn' }
+  if (score < QUALITY_AUTO_CAPTURE)
+                    return { msg: 'Casi listo…',                           kind: 'info' }
+  return              { msg: 'Buena imagen — capturando…',                 kind: 'ok'   }
+}
+
+/**
+ * Captura 3 frames con 120ms de separación y devuelve el más nítido.
+ * Implementa la ráfaga del documento (sección 2.4 — Vaca en movimiento).
+ */
+async function captureBestFrame(
+  video: HTMLVideoElement,
+): Promise<{ dataUrl: string; quality: number }> {
+  const frames: { dataUrl: string; quality: number }[] = []
+  for (let i = 0; i < 3; i++) {
+    const c   = document.createElement('canvas')
+    c.width   = video.videoWidth  || 640
+    c.height  = video.videoHeight || 480
+    c.getContext('2d')?.drawImage(video, 0, 0)
+    const quality = estimateSharpness(video)
+    frames.push({ dataUrl: c.toDataURL('image/jpeg', 0.92), quality })
+    if (i < 2) await new Promise<void>(r => setTimeout(r, 120))
+  }
+  // Elegir el frame con mayor nitidez
+  return frames.reduce((best, f) => f.quality > best.quality ? f : best)
+}
+
+// ─── ArUco simulado (modo hoja) ───────────────────────────────────────────────
 const ARUCO_CYCLE = [
   { detected: [false, false, false, false], label: 'Buscando marcadores…' },
   { detected: [true,  false, false, false], label: 'Marcador 1 detectado' },
@@ -72,74 +185,117 @@ const ARUCO_CYCLE = [
   { detected: [true,  true,  true,  true],  label: 'Perspectiva corregida ✓' },
 ]
 
+// ─────────────────────────────────────────────────────────────────────────────
+
 export default function BiometriaCapturaWidget({
   onCaptura,
   onExpand,
   compact = false,
-  pipeline,
+  pipeline: pipelineExternal,
   processing = false,
   offlineQueue = 0,
   animalContext,
+  ranchoId,
 }: Props) {
-  const [mode,         setMode]         = useState<CaptureMode>('direct')
-  const [streaming,    setStreaming]     = useState(false)
-  const [capturing,    setCapturing]    = useState(false)
-  const [liveFeedback, setLiveFeedback] = useState<LiveFeedback | null>(null)
-  const [liveScore,    setLiveScore]    = useState<number | null>(null)
-  const [arucoStep,    setArucoStep]    = useState(0)
-  const [pipeOpen,     setPipeOpen]     = useState(true)
-  const [showHoja,     setShowHoja]     = useState(false)
-  const [burstMsg,     setBurstMsg]     = useState<string | null>(null)
+  const [mode,            setMode]            = useState<CaptureMode>('direct')
+  const [streaming,       setStreaming]        = useState(false)
+  const [capturing,       setCapturing]        = useState(false)
+  const [liveMsg,         setLiveMsg]          = useState<{ msg: string; kind: 'warn' | 'info' | 'ok' } | null>(null)
+  const [liveScore,       setLiveScore]        = useState<number | null>(null)
+  const [arucoStep,       setArucoStep]        = useState(0)
+  const [pipeOpen,        setPipeOpen]         = useState(true)
+  const [showHoja,        setShowHoja]         = useState(false)
+  const [burstMsg,        setBurstMsg]         = useState<string | null>(null)
+  const [backendError,    setBackendError]     = useState<string | null>(null)
+  const [backendOk,       setBackendOk]        = useState<boolean | null>(null)
+  const [gpsStatus,       setGpsStatus]        = useState<'pending' | 'ok' | 'denied' | 'idle'>('idle')
+  // Pipeline interno (se usa cuando no viene del padre)
+  const [pipelineLocal,   setPipelineLocal]    = useState<PipelineStep[]>(PIPELINE_STEPS_INIT)
+  const [processingLocal, setProcessingLocal]  = useState(false)
 
-  const videoRef      = useRef<HTMLVideoElement>(null)
-  const streamRef     = useRef<MediaStream | null>(null)
-  const feedbackTimer = useRef<ReturnType<typeof setInterval> | null>(null)
-  const arucoTimer    = useRef<ReturnType<typeof setInterval> | null>(null)
-  const autoCaptureRef = useRef(false)
+  const videoRef        = useRef<HTMLVideoElement>(null)
+  const streamRef       = useRef<MediaStream | null>(null)
+  const arucoTimer      = useRef<ReturnType<typeof setInterval> | null>(null)
+  const qualityRafRef   = useRef<number | null>(null)     // id del rAF activo
+  const lastAnalysisTs  = useRef<number>(0)               // throttle timestamp
+  const autoCaptureRef  = useRef(false)
+  const gpsRef          = useRef<{ lat: number; lon: number } | null>(null)
 
-  // ── Simular análisis en vivo ────────────────────────────────────────────
-  const startLiveAnalysis = useCallback(() => {
-    let step = 0
+  const pipeline     = pipelineExternal ?? pipelineLocal
+  const isProcessing = processing || processingLocal
+
+  // Verificar backend al montar
+  useEffect(() => {
+    setBackendOk(null)
+    checkBackendHealth().then(ok => setBackendOk(ok))
+  }, [])
+
+  // ── GPS — solicitar al montar; no bloquea la UI si rechaza ──────────────
+  useEffect(() => {
+    if (!navigator.geolocation) return
+    setGpsStatus('pending')
+    navigator.geolocation.getCurrentPosition(
+      pos => {
+        gpsRef.current = { lat: pos.coords.latitude, lon: pos.coords.longitude }
+        setGpsStatus('ok')
+      },
+      () => setGpsStatus('denied'),
+      { timeout: 12_000, maximumAge: 60_000, enableHighAccuracy: true },
+    )
+  }, [])
+
+  // ── Loop de calidad real con requestAnimationFrame ───────────────────────
+  const startQualityLoop = useCallback(() => {
     autoCaptureRef.current = false
-    feedbackTimer.current = setInterval(() => {
-      const fb = FEEDBACK_CYCLE[Math.min(step, FEEDBACK_CYCLE.length - 1)]
-      setLiveFeedback(fb)
-      setLiveScore(fb.score)
-
-      if (fb.kind === 'ok' && !autoCaptureRef.current) {
-        // Auto-captura: calidad buena → dispara en 800ms
-        autoCaptureRef.current = true
-        setTimeout(() => {
-          if (autoCaptureRef.current) triggerCapture(fb.score)
-        }, 800)
+    const loop = (ts: number) => {
+      // Throttle ~10fps para no saturar CPU en móvil
+      if (ts - lastAnalysisTs.current >= 100) {
+        lastAnalysisTs.current = ts
+        if (videoRef.current && videoRef.current.readyState >= 2) {
+          const score = estimateSharpness(videoRef.current)
+          setLiveScore(score)
+          setLiveMsg(scoreFeedback(score))
+          // Disparar auto-captura cuando se supera el umbral
+          if (score >= QUALITY_AUTO_CAPTURE && !autoCaptureRef.current) {
+            autoCaptureRef.current = true
+            // 600ms de ventana de confirmación antes de disparar
+            setTimeout(() => {
+              if (autoCaptureRef.current) triggerRef.current()
+            }, 600)
+          }
+        }
       }
-      step++
-      if (step > FEEDBACK_CYCLE.length - 1) {
-        clearInterval(feedbackTimer.current!)
-      }
-    }, 900)
-  }, []) // triggerCapture defined below with useCallback — called via ref workaround
+      qualityRafRef.current = requestAnimationFrame(loop)
+    }
+    qualityRafRef.current = requestAnimationFrame(loop)
+  }, [])
 
-  const stopLiveAnalysis = useCallback(() => {
-    if (feedbackTimer.current) { clearInterval(feedbackTimer.current); feedbackTimer.current = null }
-    if (arucoTimer.current)    { clearInterval(arucoTimer.current);    arucoTimer.current    = null }
-    setLiveFeedback(null)
+  const stopQualityLoop = useCallback(() => {
+    if (qualityRafRef.current !== null) {
+      cancelAnimationFrame(qualityRafRef.current)
+      qualityRafRef.current = null
+    }
+    autoCaptureRef.current = false
+    setLiveMsg(null)
     setLiveScore(null)
-    setArucoStep(0)
-    autoCaptureRef.current = false
   }, [])
 
   const startArucoAnalysis = useCallback(() => {
     let step = 0
     arucoTimer.current = setInterval(() => {
-      setArucoStep(step)
-      step++
+      setArucoStep(step); step++
       if (step >= ARUCO_CYCLE.length) clearInterval(arucoTimer.current!)
     }, 700)
   }, [])
 
-  // ── Cámara ──────────────────────────────────────────────────────────────
+  const stopArucoAnalysis = useCallback(() => {
+    if (arucoTimer.current) { clearInterval(arucoTimer.current); arucoTimer.current = null }
+    setArucoStep(0)
+  }, [])
+
+  // ── Cámara ───────────────────────────────────────────────────────────────
   const startCamera = useCallback(async () => {
+    setBackendError(null)
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
         video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } },
@@ -147,54 +303,129 @@ export default function BiometriaCapturaWidget({
       streamRef.current = stream
       if (videoRef.current) videoRef.current.srcObject = stream
       setStreaming(true)
-
-      if (mode === 'direct') {
-        setTimeout(startLiveAnalysis, 600)
-      } else {
-        setTimeout(startArucoAnalysis, 400)
-        setTimeout(startLiveAnalysis, 1200)
-      }
+      // Delay para que el autofoco estabilice antes de analizar
+      const delay = mode === 'direct' ? 700 : 1300
+      setTimeout(startQualityLoop, delay)
+      if (mode === 'sheet') setTimeout(startArucoAnalysis, 400)
     } catch {
-      setLiveFeedback({ msg: 'Sin acceso a la cámara — verifica permisos', kind: 'warn', score: 0 })
+      setLiveMsg({ msg: 'Sin acceso a la cámara — verifica permisos', kind: 'warn' })
     }
-  }, [mode, startLiveAnalysis, startArucoAnalysis])
+  }, [mode, startQualityLoop, startArucoAnalysis])
 
   const stopCamera = useCallback(() => {
     streamRef.current?.getTracks().forEach(t => t.stop())
     streamRef.current = null
     if (videoRef.current) videoRef.current.srcObject = null
     setStreaming(false)
-    stopLiveAnalysis()
+    stopQualityLoop()
+    stopArucoAnalysis()
     setBurstMsg(null)
-  }, [stopLiveAnalysis])
+  }, [stopQualityLoop, stopArucoAnalysis])
 
-  // ── Captura (manual o auto) ──────────────────────────────────────────────
-  const triggerCapture = useCallback((scoreOverride?: number) => {
+  // ── animarPipeline ───────────────────────────────────────────────────────
+  const animarPipeline = useCallback((): Promise<void> => {
+    return new Promise(resolve => {
+      setPipelineLocal(PIPELINE_STEPS_INIT.map(s => ({ ...s, estado: 'idle' as PipelineEstado })))
+      setProcessingLocal(true)
+      const steps = PIPELINE_STEPS_INIT.map(s => s.id)
+      let i = 0
+      const tick = () => {
+        if (i >= steps.length) { setProcessingLocal(false); resolve(); return }
+        setPipelineLocal(prev => prev.map(s =>
+          s.id === steps[i]   ? { ...s, estado: 'running' } :
+          prev.indexOf(s) < i ? { ...s, estado: 'done'    } : s
+        ))
+        const delay = ['fingerprint', 'embedding'].includes(steps[i]) ? 600 : 250
+        setTimeout(() => {
+          setPipelineLocal(prev => prev.map(s => s.id === steps[i] ? { ...s, estado: 'done' } : s))
+          i++; setTimeout(tick, 80)
+        }, delay)
+      }
+      tick()
+    })
+  }, [])
+
+  // ── triggerCapture — ráfaga de 3 frames + GPS + backend ─────────────────
+  const triggerCapture = useCallback(async () => {
     if (!videoRef.current || capturing) return
     autoCaptureRef.current = false
-    stopLiveAnalysis()
+    stopQualityLoop()
     setCapturing(true)
+    setBackendError(null)
 
-    // Burst mode visual
+    // ── Ráfaga real de 3 frames, elige el más nítido ─────────────────────
     setBurstMsg('Analizando 3 frames…')
-    setTimeout(() => setBurstMsg('Seleccionando el más nítido…'), 400)
+    const { dataUrl, quality } = await captureBestFrame(videoRef.current)
+    setBurstMsg('Seleccionando el más nítido…')
+    await new Promise<void>(r => setTimeout(r, 180))
+    setBurstMsg(null)
 
-    const canvas  = document.createElement('canvas')
-    canvas.width  = videoRef.current.videoWidth  || 640
-    canvas.height = videoRef.current.videoHeight || 480
-    canvas.getContext('2d')?.drawImage(videoRef.current, 0, 0)
-    const dataUrl = canvas.toDataURL('image/jpeg', 0.92)
-    const score   = scoreOverride ?? (0.82 + Math.random() * 0.15)
+    const gps = gpsRef.current   // coords ya resueltas en background
 
-    setTimeout(() => {
-      setBurstMsg(null)
-      onCaptura?.({ imageDataUrl: dataUrl, mode, timestamp: Date.now(), quality: score })
+    stopCamera()
+
+    const pipePromise = animarPipeline()
+
+    try {
+      const res  = await fetch(dataUrl)
+      const blob = await res.blob()
+      const form = new FormData()
+      form.append('image',     blob, 'morro.jpg')
+      form.append('rancho_id', ranchoId ?? 'unknown')
+      form.append('modo',      mode)
+      if (gps) {
+        form.append('latitud',  String(gps.lat))
+        form.append('longitud', String(gps.lon))
+      }
+
+      const response = await fetch(`${BACKEND_URL}/identify`, {
+        method: 'POST',
+        body:   form,
+      })
+
+      await pipePromise
+
+      if (!response.ok) {
+        const errData = await response.json().catch(() => ({}))
+        const msg = errData?.detail?.mensaje ?? `Error del servidor (${response.status})`
+        setBackendError(msg)
+        setCapturing(false)
+        setPipelineLocal(PIPELINE_STEPS_INIT)
+        return
+      }
+
+      const data = await response.json()
+
+      onCaptura?.({
+        imageDataUrl: dataUrl,
+        mode,
+        timestamp:    Date.now(),
+        quality:      data.calidad_imagen ?? quality,
+        latitude:     gps?.lat ?? null,
+        longitude:    gps?.lon ?? null,
+        score_cv:     data.score_cv     ?? 0,
+        score_ia:     data.score_ia     ?? 0,
+        score_final:  data.score_final  ?? 0,
+        resultado:    data.resultado    ?? 'nuevo',
+        animal_id:    data.animal_id    ?? null,
+        candidatos:   data.candidatos   ?? [],
+      })
+    } catch {
+      await pipePromise
+      // Modo offline — si el backend no responde, usar mock con datos reales del dataset
+      if (backendOk === false) {
+        const mockResult = getMockResult(dataUrl, quality, gps)
+        onCaptura?.(mockResult)
+        setBackendError('⚠️ Modo demo offline — resultado simulado con datos reales')
+      } else {
+        setBackendError('No se pudo conectar al servidor de biometría')
+        setPipelineLocal(PIPELINE_STEPS_INIT)
+      }
+    } finally {
       setCapturing(false)
-      stopCamera()
-    }, 900)
-  }, [capturing, mode, onCaptura, stopCamera, stopLiveAnalysis])
+    }
+  }, [capturing, mode, ranchoId, onCaptura, stopCamera, stopQualityLoop, animarPipeline])
 
-  // Exponer triggerCapture al timer (closure workaround)
   const triggerRef = useRef(triggerCapture)
   useEffect(() => { triggerRef.current = triggerCapture }, [triggerCapture])
 
@@ -203,21 +434,19 @@ export default function BiometriaCapturaWidget({
     setMode(m)
   }
 
-  useEffect(() => () => { stopLiveAnalysis() }, [stopLiveAnalysis])
+  useEffect(() => () => { stopQualityLoop(); stopArucoAnalysis() }, [stopQualityLoop, stopArucoAnalysis])
 
-  // ── Pipeline estado ──────────────────────────────────────────────────────
-  const hasPipeline  = !!pipeline && pipeline.length > 0
-  const pipeAllDone  = hasPipeline && pipeline!.every(s => s.estado === 'done')
-  const pipeRunning  = hasPipeline && pipeline!.some(s => s.estado === 'running')
-  const currentStep  = hasPipeline ? pipeline!.find(s => s.estado === 'running') : null
-  const doneCount    = hasPipeline ? pipeline!.filter(s => s.estado === 'done').length : 0
-  const totalSteps   = hasPipeline ? pipeline!.length : 0
-  const showPipeline = hasPipeline && (processing || pipeAllDone)
+  const hasPipeline  = pipeline.length > 0
+  const pipeAllDone  = hasPipeline && pipeline.every(s => s.estado === 'done')
+  const pipeRunning  = hasPipeline && pipeline.some(s => s.estado === 'running')
+  const currentStep  = hasPipeline ? pipeline.find(s => s.estado === 'running') : null
+  const doneCount    = hasPipeline ? pipeline.filter(s => s.estado === 'done').length : 0
+  const totalSteps   = hasPipeline ? pipeline.length : 0
+  const showPipeline = hasPipeline && (isProcessing || pipeAllDone)
 
   const aruco = ARUCO_CYCLE[Math.min(arucoStep, ARUCO_CYCLE.length - 1)]
   const arucoAllDetected = aruco.detected.every(Boolean)
 
-  // ── RENDER ───────────────────────────────────────────────────────────────
   return (
     <>
       {showHoja && (
@@ -242,7 +471,56 @@ export default function BiometriaCapturaWidget({
           </div>
         </div>
         <div className="flex items-center gap-2">
-          {/* Offline queue badge */}
+
+          {/* ── Badge Backend ── */}
+          <div className={`flex items-center gap-1 rounded-[6px] px-2 py-1 border ${
+            backendOk === null ? 'bg-stone-50 dark:bg-stone-800/40 border-stone-200 dark:border-stone-700/40' :
+            backendOk          ? 'bg-emerald-50 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-800/30' :
+                                 'bg-red-50 dark:bg-red-950/20 border-red-200 dark:border-red-800/30'
+          }`}>
+            {backendOk === null ? (
+              <svg className="w-2.5 h-2.5 animate-spin text-stone-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                <path d="M21 12a9 9 0 1 1-6.219-8.56"/>
+              </svg>
+            ) : (
+              <span className={`w-1.5 h-1.5 rounded-full ${backendOk ? 'bg-emerald-500 animate-pulse' : 'bg-red-500'}`}/>
+            )}
+            <span className={`text-[10px] font-medium ${
+              backendOk === null ? 'text-stone-400' : backendOk ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-500'
+            }`}>
+              {backendOk === null ? 'Conectando…' : backendOk ? 'Backend OK' : 'Sin backend'}
+            </span>
+          </div>
+
+          {/* ── Badge GPS ── */}
+          {gpsStatus !== 'idle' && (
+            <div className={`flex items-center gap-1 rounded-[6px] px-2 py-1 border ${
+              gpsStatus === 'ok'      ? 'bg-emerald-50 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-800/30' :
+              gpsStatus === 'pending' ? 'bg-stone-50 dark:bg-stone-800/40 border-stone-200 dark:border-stone-700/40' :
+                                        'bg-amber-50 dark:bg-amber-950/20 border-amber-200 dark:border-amber-800/30'
+            }`}>
+              {gpsStatus === 'pending' ? (
+                <svg className="w-2.5 h-2.5 animate-spin text-stone-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                  <path d="M21 12a9 9 0 1 1-6.219-8.56"/>
+                </svg>
+              ) : (
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none"
+                  stroke={gpsStatus === 'ok' ? '#10b981' : '#f59e0b'}
+                  strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
+                  <circle cx="12" cy="10" r="3"/>
+                </svg>
+              )}
+              <span className={`text-[10px] font-semibold ${
+                gpsStatus === 'ok'      ? 'text-emerald-600 dark:text-emerald-400' :
+                gpsStatus === 'pending' ? 'text-stone-400 dark:text-stone-500' :
+                                          'text-amber-600 dark:text-amber-400'
+              }`}>
+                {gpsStatus === 'ok' ? 'GPS ✓' : gpsStatus === 'pending' ? 'GPS…' : 'Sin GPS'}
+              </span>
+            </div>
+          )}
+
           {offlineQueue > 0 && (
             <div className="flex items-center gap-1 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800/30 rounded-[6px] px-2 py-1">
               <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" strokeWidth="2.5" strokeLinecap="round">
@@ -305,7 +583,43 @@ export default function BiometriaCapturaWidget({
         <video ref={videoRef} autoPlay playsInline muted
           className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-300 ${streaming ? 'opacity-100' : 'opacity-0'}`}/>
 
-        {/* Estado inactivo */}
+        {/* ── Guía óvalo animado ── */}
+        {streaming && !capturing && (
+          <svg className="absolute inset-0 w-full h-full pointer-events-none" viewBox="0 0 100 100" preserveAspectRatio="none">
+            {/* Overlay oscuro fuera del óvalo */}
+            <defs>
+              <mask id="oval-mask">
+                <rect width="100" height="100" fill="white"/>
+                <ellipse cx="50" cy="52" rx="38" ry="30" fill="black"/>
+              </mask>
+            </defs>
+            <rect width="100" height="100" fill="rgba(0,0,0,0.45)" mask="url(#oval-mask)"/>
+            {/* Óvalo guía con color dinámico */}
+            <ellipse cx="50" cy="52" rx="38" ry="30"
+              fill="none"
+              stroke={
+                !liveScore             ? 'rgba(255,255,255,0.3)' :
+                liveScore >= 0.68      ? '#2FAF8F' :
+                liveScore >= 0.48      ? '#f59e0b' :
+                                         '#ef4444'
+              }
+              strokeWidth="0.8"
+              strokeDasharray={liveScore && liveScore >= 0.68 ? 'none' : '3 2'}
+            />
+            {/* Esquinas de encuadre */}
+            {[
+              'M 12 22 L 12 17 L 17 17',
+              'M 83 22 L 83 17 L 78 17',
+              'M 12 78 L 12 83 L 17 83',
+              'M 83 78 L 83 83 L 78 83',
+            ].map((d, i) => (
+              <path key={i} d={d} fill="none"
+                stroke={liveScore && liveScore >= 0.68 ? '#2FAF8F' : 'rgba(255,255,255,0.5)'}
+                strokeWidth="1.2" strokeLinecap="round"/>
+            ))}
+          </svg>
+        )}
+
         {!streaming && (
           <div className="absolute inset-0 flex flex-col items-center justify-center gap-3">
             <div className="absolute inset-0 opacity-[0.04]"
@@ -325,15 +639,13 @@ export default function BiometriaCapturaWidget({
           </div>
         )}
 
-        {/* ── Overlay guía — modo DIRECT ── */}
         {streaming && mode === 'direct' && (
           <svg className="absolute inset-0 w-full h-full pointer-events-none" viewBox="0 0 400 300" preserveAspectRatio="xMidYMid meet">
             <ellipse cx="200" cy="155" rx="118" ry="84"
               fill="none"
-              stroke={liveFeedback?.kind === 'ok' ? 'rgba(47,175,143,0.9)' : 'rgba(47,175,143,0.55)'}
-              strokeWidth={liveFeedback?.kind === 'ok' ? '2' : '1.5'}
-              strokeDasharray={liveFeedback?.kind === 'ok' ? '0' : '8 5'}/>
-            {/* Crosshair lines */}
+              stroke={liveMsg?.kind === 'ok' ? 'rgba(47,175,143,0.9)' : 'rgba(47,175,143,0.55)'}
+              strokeWidth={liveMsg?.kind === 'ok' ? '2' : '1.5'}
+              strokeDasharray={liveMsg?.kind === 'ok' ? '0' : '8 5'}/>
             <line x1="200" y1="90"  x2="200" y2="110" stroke="rgba(47,175,143,0.25)" strokeWidth="1"/>
             <line x1="200" y1="200" x2="200" y2="220" stroke="rgba(47,175,143,0.25)" strokeWidth="1"/>
             <line x1="76"  y1="155" x2="96"  y2="155" stroke="rgba(47,175,143,0.25)" strokeWidth="1"/>
@@ -342,19 +654,15 @@ export default function BiometriaCapturaWidget({
           </svg>
         )}
 
-        {/* ── Overlay guía — modo SHEET (ArUco) ── */}
         {streaming && mode === 'sheet' && (
           <svg className="absolute inset-0 w-full h-full pointer-events-none" viewBox="0 0 400 300" preserveAspectRatio="xMidYMid meet">
-            {/* Marco exterior */}
             <rect x="50" y="50" width="300" height="200" fill="none"
               stroke={arucoAllDetected ? 'rgba(47,175,143,0.6)' : 'rgba(47,175,143,0.3)'}
               strokeWidth="1.5" strokeDasharray={arucoAllDetected ? '0' : '6 4'}/>
-            {/* Zona morro */}
             <rect x="112" y="88" width="176" height="124"
               fill={arucoAllDetected ? 'rgba(47,175,143,0.04)' : 'rgba(255,255,255,0.02)'}
               stroke="rgba(47,175,143,0.35)" strokeWidth="1" strokeDasharray="4 3"/>
             <text x="200" y="155" textAnchor="middle" fill="rgba(47,175,143,0.4)" fontSize="9" fontFamily="system-ui">ZONA MORRO</text>
-            {/* Marcadores ArUco en esquinas */}
             {[
               { x: 50, y: 50, i: 0 }, { x: 350, y: 50, i: 1 },
               { x: 50, y: 250, i: 2 }, { x: 350, y: 250, i: 3 },
@@ -378,7 +686,6 @@ export default function BiometriaCapturaWidget({
           </svg>
         )}
 
-        {/* Badges streaming */}
         {streaming && (
           <>
             <div className="absolute top-2.5 left-2.5 flex items-center gap-1.5 bg-black/50 backdrop-blur-[4px] rounded-[5px] px-2 py-1">
@@ -391,9 +698,8 @@ export default function BiometriaCapturaWidget({
           </>
         )}
 
-        {/* ArUco status badge */}
         {streaming && mode === 'sheet' && (
-          <div className={`absolute bottom-9 left-2.5 right-2.5 flex items-center gap-2 rounded-[5px] px-2.5 py-1.5 bg-black/60 backdrop-blur-[4px]`}>
+          <div className="absolute bottom-9 left-2.5 right-2.5 flex items-center gap-2 rounded-[5px] px-2.5 py-1.5 bg-black/60 backdrop-blur-[4px]">
             <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${arucoAllDetected ? 'bg-[#2FAF8F]' : 'bg-amber-400 animate-pulse'}`}/>
             <span className="text-[9px] text-white/80 font-medium">{aruco.label}</span>
             <span className="ml-auto text-[9px] font-mono text-[#2FAF8F]/70">
@@ -402,51 +708,57 @@ export default function BiometriaCapturaWidget({
           </div>
         )}
 
-        {/* Quality bar */}
         {liveScore !== null && streaming && (
           <div className="absolute bottom-2.5 left-2.5 right-2.5 flex items-center gap-2 bg-black/50 backdrop-blur-[4px] rounded-[5px] px-3 py-1.5">
             <span className="text-[9px] text-stone-400 shrink-0">Calidad</span>
             <div className="flex-1 h-1 bg-white/10 rounded-full overflow-hidden">
               <div
-                className={`h-full rounded-full transition-all duration-500 ${
-                  liveScore >= 0.80 ? 'bg-[#2FAF8F]' : liveScore >= 0.65 ? 'bg-amber-400' : 'bg-red-400'
+                className={`h-full rounded-full transition-all duration-200 ${
+                  liveScore >= QUALITY_AUTO_CAPTURE ? 'bg-[#2FAF8F]' : liveScore >= 0.55 ? 'bg-amber-400' : 'bg-red-400'
                 }`}
                 style={{ width: `${liveScore * 100}%` }}/>
             </div>
             <span className={`text-[9px] font-bold shrink-0 tabular-nums ${
-              liveScore >= 0.80 ? 'text-[#2FAF8F]' : liveScore >= 0.65 ? 'text-amber-400' : 'text-red-400'
+              liveScore >= QUALITY_AUTO_CAPTURE ? 'text-[#2FAF8F]' : liveScore >= 0.55 ? 'text-amber-400' : 'text-red-400'
             }`}>{Math.round(liveScore * 100)}%</span>
           </div>
         )}
       </div>
 
       {/* ── Feedback en vivo ── */}
-      {liveFeedback && streaming && (
+      {liveMsg && streaming && (
         <div className={`mx-3.5 mt-2 px-3 py-2 rounded-[7px] flex items-center gap-2 ${
-          liveFeedback.kind === 'ok'   ? 'bg-[#2FAF8F]/08 dark:bg-[#2FAF8F]/12 border border-[#2FAF8F]/20' :
-          liveFeedback.kind === 'warn' ? 'bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800/25' :
+          liveMsg.kind === 'ok'   ? 'bg-[#2FAF8F]/08 dark:bg-[#2FAF8F]/12 border border-[#2FAF8F]/20' :
+          liveMsg.kind === 'warn' ? 'bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800/25' :
           'bg-stone-50 dark:bg-stone-800/40 border border-stone-200 dark:border-stone-700/40'
         }`}>
-          {liveFeedback.kind === 'ok' ? (
+          {liveMsg.kind === 'ok' ? (
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#2FAF8F" strokeWidth="2.5" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>
-          ) : liveFeedback.kind === 'warn' ? (
+          ) : liveMsg.kind === 'warn' ? (
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" strokeWidth="2.5" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
           ) : (
             <span className="w-1.5 h-1.5 rounded-full bg-stone-400 animate-pulse shrink-0"/>
           )}
           <span className={`text-[12px] font-medium ${
-            liveFeedback.kind === 'ok' ? 'text-[#2FAF8F]' :
-            liveFeedback.kind === 'warn' ? 'text-amber-600 dark:text-amber-400' :
-            'text-stone-500 dark:text-stone-400'
-          }`}>{liveFeedback.msg}</span>
+            liveMsg.kind === 'ok'   ? 'text-[#2FAF8F]' :
+            liveMsg.kind === 'warn' ? 'text-amber-600 dark:text-amber-400' :
+                                      'text-stone-500 dark:text-stone-400'
+          }`}>{liveMsg.msg}</span>
         </div>
       )}
 
-      {/* Burst mode msg */}
       {burstMsg && (
         <div className="mx-3.5 mt-2 px-3 py-2 rounded-[7px] flex items-center gap-2 bg-stone-50 dark:bg-stone-800/40 border border-stone-200 dark:border-stone-700/40">
           <svg className="w-3 h-3 animate-spin text-[#2FAF8F]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
           <span className="text-[12px] text-stone-500 dark:text-stone-400">{burstMsg}</span>
+        </div>
+      )}
+
+      {/* ── Error backend ── */}
+      {backendError && (
+        <div className="mx-3.5 mt-2 px-3 py-2 rounded-[7px] flex items-center gap-2 bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800/30">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#ef4444" strokeWidth="2.5" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+          <span className="text-[12px] font-medium text-red-500">{backendError}</span>
         </div>
       )}
 
@@ -463,7 +775,7 @@ export default function BiometriaCapturaWidget({
             }
             <div className="flex-1 flex items-center gap-2 min-w-0">
               <div className="flex gap-0.5 items-center">
-                {pipeline!.map(s => (
+                {pipeline.map(s => (
                   <div key={s.id} className={`h-1 rounded-full transition-all duration-300 ${
                     s.estado === 'done'    ? 'bg-[#2FAF8F] w-3' :
                     s.estado === 'running' ? 'bg-[#2FAF8F]/60 w-3 animate-pulse' :
@@ -485,7 +797,7 @@ export default function BiometriaCapturaWidget({
           </button>
           {pipeOpen && (
             <div className="px-3 py-2.5 flex flex-col gap-0 border-t border-stone-100 dark:border-stone-800/40">
-              {pipeline!.map((step, i) => (
+              {pipeline.map((step, i) => (
                 <div key={step.id} className="flex items-center gap-2.5 py-1.5">
                   <div className="flex flex-col items-center shrink-0">
                     <div className={`w-4 h-4 rounded-full flex items-center justify-center transition-all duration-200 ${
@@ -496,7 +808,7 @@ export default function BiometriaCapturaWidget({
                       {step.estado === 'done'    && <svg width="7" height="7" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3.5" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>}
                       {step.estado === 'running' && <span className="w-1.5 h-1.5 rounded-full bg-[#2FAF8F] animate-pulse"/>}
                     </div>
-                    {i < pipeline!.length - 1 && (
+                    {i < pipeline.length - 1 && (
                       <div className={`w-px h-3 my-0.5 ${step.estado === 'done' ? 'bg-[#2FAF8F]/30' : 'bg-stone-100 dark:bg-stone-800/50'}`}/>
                     )}
                   </div>
@@ -506,9 +818,6 @@ export default function BiometriaCapturaWidget({
                     </span>
                     {!compact && <span className="text-[10px] text-stone-400 dark:text-stone-600 font-mono ml-1.5">{step.sub}</span>}
                   </div>
-                  {step.estado === 'done' && (
-                    <span className="text-[10px] text-stone-300 dark:text-stone-600 font-mono shrink-0">{78 + i * 35}ms</span>
-                  )}
                 </div>
               ))}
             </div>
@@ -519,10 +828,10 @@ export default function BiometriaCapturaWidget({
       {/* ── Footer / Acciones ── */}
       <div className={`flex items-center justify-between ${compact ? 'px-3 py-2.5' : 'px-3.5 py-3'} mt-1.5`}>
         <div className="flex items-center gap-1.5">
-          <span className={`w-1.5 h-1.5 rounded-full ${streaming ? 'bg-[#2FAF8F] animate-pulse' : 'bg-stone-300 dark:bg-stone-700'}`}/>
+          <span className={`w-1.5 h-1.5 rounded-full ${streaming ? 'bg-[#2FAF8F] animate-pulse' : capturing ? 'bg-amber-400 animate-pulse' : 'bg-stone-300 dark:bg-stone-700'}`}/>
           <span className="text-[11.5px] text-stone-400 dark:text-stone-500">
-            {streaming && liveFeedback?.kind === 'ok'
-              ? 'Auto-captura activa'
+            {capturing ? 'Enviando al servidor…'
+              : streaming && liveMsg?.kind === 'ok' ? 'Auto-captura activa'
               : streaming ? 'Analizando…'
               : 'Inactiva'}
           </span>

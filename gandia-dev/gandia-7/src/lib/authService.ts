@@ -73,18 +73,8 @@ export interface UserProfile {
 }
 
 // ─────────────────────────────────────────────
-// CONSTANTES
-// ─────────────────────────────────────────────
-
-const OTP_EXPIRY_MINUTES = 10
-const SIMULATED_CODE_LENGTH = 6
-
-// ─────────────────────────────────────────────
 // HELPERS INTERNOS
 // ─────────────────────────────────────────────
-
-const generateNumericCode = (length = SIMULATED_CODE_LENGTH): string =>
-  Array.from({ length }, () => Math.floor(Math.random() * 10)).join('')
 
 const normalizePhone = (phone: string): string => {
   const cleaned = phone.replace(/[\s\-()]/g, '')
@@ -159,7 +149,8 @@ export const registerUser = async (
     email: normalizedEmail,
     password,
     options: {
-      emailRedirectTo: undefined,
+      // Al confirmar, Supabase redirige aquí con la sesión activa
+      emailRedirectTo: `${window.location.origin}/signup/personal`,
     },
   })
 
@@ -246,40 +237,19 @@ export const verifyCode = async (
 }
 
 // ─────────────────────────────────────────────
-// 4. VERIFICACIÓN DE TELÉFONO (SIMULADA)
+// 4. VERIFICACIÓN DE TELÉFONO (REAL — Twilio vía Supabase)
 // ─────────────────────────────────────────────
 
 export const sendPhoneVerificationCode = async (phone: string): Promise<void> => {
   const normalizedPhone = normalizePhone(phone)
-  const code = generateNumericCode()
-  const expiresAt = new Date(Date.now() + OTP_EXPIRY_MINUTES * 60 * 1000).toISOString()
 
-  await supabase
-    .from('verification_codes')
-    .update({ used: true })
-    .eq('phone', normalizedPhone)
-    .eq('used', false)
-
-  const { error } = await supabase
-    .from('verification_codes')
-    .insert([
-      {
-        phone: normalizedPhone,
-        code,
-        type: 'sms',
-        expires_at: expiresAt,
-        used: false,
-      },
-    ])
+  const { error } = await supabase.auth.signInWithOtp({
+    phone: normalizedPhone,
+  })
 
   if (error) {
-    throw new Error(`Error al generar código de verificación: ${parseSupabaseError(error)}`)
+    throw new Error(parseSupabaseError(error))
   }
-
-  console.info(
-    `%c[GANDIA SMS SIMULADO] Código para ${normalizedPhone}: ${code}`,
-    'background:#2FAF8F;color:white;padding:4px 8px;border-radius:4px;font-weight:bold'
-  )
 }
 
 export const verifyPhoneCode = async (
@@ -297,46 +267,33 @@ export const verifyPhoneCode = async (
     }
   }
 
-  const { data, error } = await supabase
-    .from('verification_codes')
-    .select('id, code, expires_at, used')
-    .eq('phone', normalizedPhone)
-    .eq('type', 'sms')
-    .eq('used', false)
-    .order('created_at', { ascending: false })
-    .limit(1)
-    .single()
+  const { data, error } = await supabase.auth.verifyOtp({
+    phone: normalizedPhone,
+    token: cleanToken,
+    type: 'sms',
+  })
 
-  if (error || !data) {
-    return {
-      success: false,
-      code: 'not_found',
-      message: 'No se encontró un código activo. Solicita uno nuevo.',
+  if (error) {
+    const msg = error.message ?? ''
+    if (
+      msg.toLowerCase().includes('expired') ||
+      msg.toLowerCase().includes('invalid') ||
+      msg.toLowerCase().includes('token')
+    ) {
+      return {
+        success: false,
+        code: 'expired',
+        message: 'El código ha expirado o es inválido. Solicita uno nuevo.',
+      }
     }
-  }
-
-  if (new Date(data.expires_at) < new Date()) {
-    return {
-      success: false,
-      code: 'expired',
-      message: 'El código ha expirado. Solicita uno nuevo.',
-    }
-  }
-
-  if (data.code !== cleanToken) {
     return {
       success: false,
       code: 'invalid',
-      message: 'Código incorrecto. Verifica e intenta de nuevo.',
+      message: parseSupabaseError(error),
     }
   }
 
-  await supabase
-    .from('verification_codes')
-    .update({ used: true })
-    .eq('id', data.id)
-
-  return { success: true }
+  return { success: true, user: data.user }
 }
 
 // ─────────────────────────────────────────────

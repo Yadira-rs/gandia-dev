@@ -101,7 +101,22 @@ interface PendingUser {
 
 type AuthStep = 'credentials' | 'master-key' | '2fa' | 'authenticated'
 type FilterType = 'all' | 'pending' | 'approved' | 'rejected'
+type MainTab = 'usuarios' | 'creadores' | 'aportes'
 interface Toast { id: string; type: 'success' | 'error' | 'info'; message: string }
+
+interface CreatorRequest {
+  id: string; user_id: string; creator_type: string; nivel: number
+  status: string; estado_mx: string | null; region: string | null
+  bio: string | null; especialidades: string[] | null
+  trust_score: number; created_at: string; email?: string
+}
+
+interface Submission {
+  id: string; user_id: string; tipo: string; titulo: string
+  contenido: string; estado_mx: string | null; region: string | null
+  source_links: string[] | null; status: string
+  trust_index: number; created_at: string; email?: string
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // CONSTANTS
@@ -110,6 +125,15 @@ const ROLE_LABELS: Record<string, string> = {
   producer: 'Productor Ganadero', mvz: 'Médico Veterinario Zootecnista',
   union: 'Unión Ganadera', exporter: 'Exportador', auditor: 'Auditor / Inspector',
 }
+const CREATOR_TYPE_LABELS: Record<string, string> = {
+  productor: 'Productor ganadero', mvz: 'Médico Veterinario', asociacion: 'Asociación ganadera',
+  union: 'Unión Ganadera', exportador: 'Exportador', investigador: 'Investigador / Académico',
+  auditor: 'Auditor / Inspector',
+}
+const SUBMISSION_TYPE_LABELS: Record<string, string> = {
+  noticia: 'Noticia', alerta: 'Alerta sanitaria',
+  reporte_campo: 'Reporte de campo', correccion: 'Corrección',
+}
 const FIELD_LABELS: Record<string, string> = {
   fullName: 'Nombre completo', birthdate: 'Fecha de nacimiento', gender: 'Género',
   curp: 'CURP', phone: 'Teléfono', address: 'Domicilio', municipality: 'Municipio',
@@ -117,7 +141,7 @@ const FIELD_LABELS: Record<string, string> = {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// ADMIN SERVICE — todo real, solo 2FA simulado (sin proveedor de email aún)
+// ADMIN SERVICE — todo real, incluido 2FA por email (Resend vía Supabase)
 // ─────────────────────────────────────────────────────────────────────────────
 class AdminService {
   async verifyAdminCredentials(email: string, password: string): Promise<string | null> {
@@ -160,7 +184,7 @@ class AdminService {
             refresh_token: tokenData.refresh_token,
           })
         }
-      } catch (fetchErr) {
+      } catch {
         return authError.message
       }
     }
@@ -193,18 +217,19 @@ class AdminService {
     return key === import.meta.env.VITE_ADMIN_MASTER_KEY
   }
 
-  // 2FA simulado — código en consola hasta que configures proveedor de email
+  // 2FA real — OTP por email vía Supabase (Resend)
   async send2FA(email: string): Promise<void> {
-    await new Promise(r => setTimeout(r, 300))
-    console.info(
-      `%c[GANDIA 2FA] → ${email}: 123456`,
-      'background:#2FAF8F;color:white;padding:4px 8px;border-radius:4px;font-weight:bold',
-    )
+    const { error } = await supabase.auth.signInWithOtp({ email })
+    if (error) throw new Error(error.message)
   }
 
-  async verify2FA(_email: string, code: string): Promise<boolean> {
-    await new Promise(r => setTimeout(r, 300))
-    return code === '123456'
+  async verify2FA(email: string, code: string): Promise<boolean> {
+    const { error } = await supabase.auth.verifyOtp({
+      email,
+      token: code,
+      type: 'email',
+    })
+    return !error
   }
 }
 
@@ -355,6 +380,21 @@ const AdminPanel = () => {
   const [rejectionReason, setRejectionReason] = useState('')
   const [showRejectionModal, setShowRejectionModal] = useState<string | null>(null)
 
+  // ── Tabs principales ──
+  const [mainTab, setMainTab] = useState<MainTab>('usuarios')
+
+  // ── Creadores ──
+  const [creators, setCreators] = useState<CreatorRequest[]>([])
+  const [selectedCreator, setSelectedCreator] = useState<CreatorRequest | null>(null)
+  const [creatorsLoading, setCreatorsLoading] = useState(false)
+  const [creatorFilter, setCreatorFilter] = useState<'pendiente' | 'activo' | 'rechazado' | 'todos'>('pendiente')
+
+  // ── Aportes ──
+  const [submissions, setSubmissions] = useState<Submission[]>([])
+  const [selectedSubmission, setSelectedSubmission] = useState<Submission | null>(null)
+  const [submissionsLoading, setSubmissionsLoading] = useState(false)
+  const [submissionFilter, setSubmissionFilter] = useState<'pendiente' | 'publicado' | 'rechazado' | 'todos'>('pendiente')
+
   const showToast = useCallback((message: string, type: Toast['type'] = 'info') => {
     const id = Math.random().toString(36).substring(7)
     setToasts(p => [...p, { id, message, type }])
@@ -375,6 +415,32 @@ const AdminPanel = () => {
       console.error('[AdminPanel] loadUsers:', err)
     } finally { if (!silent) setIsLoading(false) }
   }, [showToast])
+
+  // ── Load creator requests ──
+  const loadCreators = async (silent = false) => {
+    if (!silent) setCreatorsLoading(true)
+    try {
+      const { data } = await supabase
+        .from('creator_profiles')
+        .select('*')
+        .order('created_at', { ascending: false })
+      setCreators((data as CreatorRequest[]) ?? [])
+    } catch (err) { console.error('[AdminPanel] loadCreators:', err) }
+    finally { if (!silent) setCreatorsLoading(false) }
+  }
+
+  // ── Load submissions ──
+  const loadSubmissions = async (silent = false) => {
+    if (!silent) setSubmissionsLoading(true)
+    try {
+      const { data } = await supabase
+        .from('user_submissions')
+        .select('*')
+        .order('created_at', { ascending: false })
+      setSubmissions((data as Submission[]) ?? [])
+    } catch (err) { console.error('[AdminPanel] loadSubmissions:', err) }
+    finally { if (!silent) setSubmissionsLoading(false) }
+  }
 
   // ── Realtime subscription: cualquier cambio en user_profiles → recarga ──
   const subscribeRealtime = useCallback(() => {
@@ -405,6 +471,8 @@ const AdminPanel = () => {
   useEffect(() => {
     if (authStep !== 'authenticated') return
     loadUsers()
+    loadCreators()
+    loadSubmissions()
     subscribeRealtime()
     resetInactivityTimer()
     const events = ['mousedown', 'keydown', 'scroll', 'touchstart']
@@ -460,13 +528,16 @@ const AdminPanel = () => {
     setAuthError(''); setIsAuthLoading(true)
     try {
       const ok = await adminService.verifyMasterKey(masterKey)
-      if (ok) {
-        await adminService.send2FA(adminEmail)
-        setAuthStep('2fa'); setResendCountdown(CONFIG.RESEND_COOLDOWN)
-        showToast('Código 2FA enviado — revisa la consola del navegador', 'info')
-      } else { setAuthError('Llave maestra incorrecta') }
-    } catch { setAuthError('Error al verificar llave') }
-    finally { setIsAuthLoading(false) }
+      if (!ok) { setAuthError('Llave maestra incorrecta'); setIsAuthLoading(false); return }
+    } catch { setAuthError('Error al verificar llave'); setIsAuthLoading(false); return }
+    try {
+      await adminService.send2FA(adminEmail)
+      setAuthStep('2fa'); setResendCountdown(CONFIG.RESEND_COOLDOWN)
+      showToast('Código enviado — revisa tu correo', 'info')
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Error al enviar el código 2FA'
+      setAuthError(msg.includes('rate') ? 'Demasiados intentos. Espera unos minutos.' : `Error al enviar código: ${msg}`)
+    } finally { setIsAuthLoading(false) }
   }
 
   const handle2FASubmit = async () => {
@@ -511,6 +582,81 @@ const AdminPanel = () => {
       await loadUsers(); setSelectedUser(null); setShowRejectionModal(null); setRejectionReason('')
       showToast('Solicitud rechazada', 'success')
     } catch (e: unknown) { showToast(e instanceof Error ? e.message : 'Error al rechazar', 'error') }
+    finally { setIsActionLoading(false) }
+  }
+
+  // ── Creator actions ──
+  const handleApproveCreator = async (id: string) => {
+    setIsActionLoading(true)
+    try {
+      await supabase.from('creator_profiles').update({ status: 'activo' }).eq('id', id)
+      await loadCreators(); setSelectedCreator(null)
+      showToast('Perfil de creador aprobado', 'success')
+    } catch { showToast('Error al aprobar', 'error') }
+    finally { setIsActionLoading(false) }
+  }
+
+  const handleRejectCreator = async (id: string) => {
+    setIsActionLoading(true)
+    try {
+      await supabase.from('creator_profiles').update({ status: 'rechazado' }).eq('id', id)
+      await loadCreators(); setSelectedCreator(null)
+      showToast('Solicitud de creador rechazada', 'success')
+    } catch { showToast('Error al rechazar', 'error') }
+    finally { setIsActionLoading(false) }
+  }
+
+  // ── Submission actions ──
+  const handleApproveSubmission = async (id: string) => {
+    setIsActionLoading(true)
+    try {
+      const sub = submissions.find(s => s.id === id)
+      if (!sub) throw new Error('Aporte no encontrado')
+
+      // Crear noticia en el feed
+      const slug = sub.titulo.toLowerCase()
+        .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+        .replace(/[^a-z0-9\s-]/g, '').replace(/\s+/g, '-').slice(0, 80)
+        + '-' + Date.now().toString(36)
+
+      await supabase.from('noticias').insert({
+        slug,
+        titulo:          sub.titulo,
+        cuerpo:          sub.contenido,
+        fuente:          'Comunidad Handeia',
+        fuente_origen:   'comunidad',
+        categoria:       'GENERAL',
+        urgente:         false,
+        urgencia_nivel:  'BAJA',
+        resumenes_ia:    { Productor: sub.contenido.slice(0, 200), Exportador: sub.contenido.slice(0, 200), MVZ: sub.contenido.slice(0, 200), Union: sub.contenido.slice(0, 200), Auditor: sub.contenido.slice(0, 200) },
+        resumen_general: sub.contenido.slice(0, 300),
+        acciones_ia:     '[]',
+        relevancia:      { Productor: 5, Exportador: 5, MVZ: 5, Union: 5, Auditor: 5 },
+        relacionadas:    '{}',
+        lectura_minutos: Math.max(1, Math.ceil(sub.contenido.split(' ').length / 200)),
+        activa:          true,
+        procesada_ia:    false,
+        publicada_en:    new Date().toISOString(),
+        trust_index:     sub.trust_index,
+        verification_status: 'comunitario',
+      })
+
+      // Marcar submission como publicada
+      await supabase.from('user_submissions').update({ status: 'publicado' }).eq('id', id)
+      await loadSubmissions()
+      setSelectedSubmission(null)
+      showToast('Aporte publicado en el feed', 'success')
+    } catch (e: unknown) { showToast(e instanceof Error ? e.message : 'Error al publicar', 'error') }
+    finally { setIsActionLoading(false) }
+  }
+
+  const handleRejectSubmission = async (id: string) => {
+    setIsActionLoading(true)
+    try {
+      await supabase.from('user_submissions').update({ status: 'rechazado' }).eq('id', id)
+      await loadSubmissions(); setSelectedSubmission(null)
+      showToast('Aporte rechazado', 'success')
+    } catch { showToast('Error al rechazar', 'error') }
     finally { setIsActionLoading(false) }
   }
 
@@ -644,7 +790,7 @@ const AdminPanel = () => {
                       onKeyDown={e => e.key === 'Enter' && twoFACode.length === 6 && handle2FASubmit()}
                       className={`w-full px-4 py-4 rounded-xl border outline-none font-mono text-center text-3xl tracking-[0.6em] transition-colors ${inp}`} />
                     <p className={`mt-2 text-xs ${sec}`}>
-                      💡 2FA simulado — revisa la consola del navegador para ver el código.
+                      Revisa tu correo electrónico — el código expira en 10 minutos.
                     </p>
                   </div>
                   {authError && <ErrorBanner message={authError} />}
@@ -718,6 +864,36 @@ const AdminPanel = () => {
         </div>
 
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
+
+          {/* ── MAIN TABS ── */}
+          <div className={`flex items-center gap-1 p-1 rounded-xl border mb-6 w-fit ${ isDark ? 'bg-[#121212] border-[#2A2A2A]' : 'bg-white border-[#EAEAEA]'}`}>
+            {(['usuarios', 'creadores', 'aportes'] as MainTab[]).map(t => {
+              const labels: Record<MainTab, string> = { usuarios: 'Usuarios', creadores: 'Creadores', aportes: 'Aportes' }
+              const counts: Record<MainTab, number> = {
+                usuarios: users.filter(u => u.status === 'pending').length,
+                creadores: creators.filter(c => c.status === 'pendiente').length,
+                aportes: submissions.filter(s => s.status === 'pendiente').length,
+              }
+              return (
+                <button key={t} onClick={() => setMainTab(t)}
+                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-all flex items-center gap-2 ${
+                    mainTab === t ? 'bg-[#2FAF8F] text-white shadow-md' : sec
+                  }`}>
+                  {labels[t]}
+                  {counts[t] > 0 && (
+                    <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${
+                      mainTab === t ? 'bg-white/20 text-white' : 'bg-orange-500/15 text-orange-500'
+                    }`}>
+                      {counts[t]}
+                    </span>
+                  )}
+                </button>
+              )
+            })}
+          </div>
+
+          {/* ══ USUARIOS ══ */}
+          {mainTab === 'usuarios' && (<>
           {/* Stats */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 mb-6 sm:mb-8">
             {[
@@ -821,10 +997,257 @@ const AdminPanel = () => {
               ))}
             </div>
           )}
+          </>)}
+
+          {/* ══ CREADORES ══ */}
+          {mainTab === 'creadores' && (
+            <div>
+              <div className={`flex p-1 rounded-xl border gap-1 mb-5 w-fit ${ isDark ? 'bg-[#121212] border-[#2A2A2A]' : 'bg-white border-[#EAEAEA]'}`}>
+                {(['pendiente','activo','rechazado','todos'] as const).map(f => (
+                  <button key={f} onClick={() => setCreatorFilter(f)}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all capitalize ${
+                      creatorFilter === f ? 'bg-[#2FAF8F] text-white shadow-md' : sec
+                    }`}>
+                    {f === 'todos' ? 'Todos' : f.charAt(0).toUpperCase() + f.slice(1)}
+                  </button>
+                ))}
+              </div>
+              {creatorsLoading ? <SkeletonLoader isDark={isDark} /> : (
+                <div className="space-y-3">
+                  {creators
+                    .filter(c => creatorFilter === 'todos' || c.status === creatorFilter)
+                    .map(c => (
+                      <div key={c.id} className={`p-4 sm:p-5 rounded-2xl border transition-all hover:scale-[1.002] ${card}`}>
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="flex items-start gap-3 flex-1 min-w-0">
+                            <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${
+                              c.status === 'activo' ? 'bg-[#2FAF8F]/10' : c.status === 'rechazado' ? 'bg-red-500/10' : 'bg-orange-500/10'
+                            }`}>
+                              <User className={`w-5 h-5 ${
+                                c.status === 'activo' ? 'text-[#2FAF8F]' : c.status === 'rechazado' ? 'text-red-500' : 'text-orange-500'
+                              }`} />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2 flex-wrap mb-0.5">
+                                <h3 className="font-semibold text-sm">{CREATOR_TYPE_LABELS[c.creator_type] ?? c.creator_type}</h3>
+                                <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${
+                                  c.status === 'activo' ? 'bg-[#2FAF8F]/15 text-[#2FAF8F]'
+                                  : c.status === 'rechazado' ? 'bg-red-500/15 text-red-500'
+                                  : 'bg-orange-500/15 text-orange-500'
+                                }`}>{c.status}</span>
+                              </div>
+                              <p className={`text-xs mb-1 ${sec}`}>
+                                {c.estado_mx ?? ''}{c.region ? ` · ${c.region}` : ''}
+                              </p>
+                              {c.especialidades && c.especialidades.length > 0 && (
+                                <p className={`text-xs ${sec}`}>{c.especialidades.join(', ')}</p>
+                              )}
+                              {c.bio && <p className={`text-xs mt-1 italic ${sec}`}>{c.bio}</p>}
+                              <p className={`text-xs mt-1 ${sec}`}><Clock className="w-3 h-3 inline mr-1" />{timeAgo(c.created_at)}</p>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-1.5 shrink-0">
+                            <button onClick={() => setSelectedCreator(c)} title="Ver"
+                              className={`p-2.5 rounded-xl border transition-all hover:scale-110 ${ isDark ? 'border-[#2A2A2A] hover:bg-[#1A1A1A]' : 'border-[#EAEAEA] hover:bg-stone-50'}`}>
+                              <Eye className="w-4 h-4" strokeWidth={2} />
+                            </button>
+                            {c.status === 'pendiente' && (
+                              <>
+                                <button onClick={() => handleApproveCreator(c.id)} disabled={isActionLoading}
+                                  className="p-2.5 rounded-xl bg-[#2FAF8F]/10 text-[#2FAF8F] hover:bg-[#2FAF8F]/25 transition-all hover:scale-110 disabled:opacity-50">
+                                  <CheckCircle className="w-4 h-4" strokeWidth={2} />
+                                </button>
+                                <button onClick={() => handleRejectCreator(c.id)} disabled={isActionLoading}
+                                  className="p-2.5 rounded-xl bg-red-500/10 text-red-500 hover:bg-red-500/25 transition-all hover:scale-110 disabled:opacity-50">
+                                  <XCircle className="w-4 h-4" strokeWidth={2} />
+                                </button>
+                              </>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    ))
+                  }
+                  {creators.filter(c => creatorFilter === 'todos' || c.status === creatorFilter).length === 0 && (
+                    <div className={`py-20 rounded-2xl border text-center ${card}`}>
+                      <p className="font-semibold text-lg mb-1">Sin solicitudes</p>
+                      <p className={`text-sm ${sec}`}>No hay solicitudes de creador en este estado</p>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* ══ APORTES ══ */}
+          {mainTab === 'aportes' && (
+            <div>
+              <div className={`flex p-1 rounded-xl border gap-1 mb-5 w-fit ${ isDark ? 'bg-[#121212] border-[#2A2A2A]' : 'bg-white border-[#EAEAEA]'}`}>
+                {(['pendiente','publicado','rechazado','todos'] as const).map(f => (
+                  <button key={f} onClick={() => setSubmissionFilter(f)}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                      submissionFilter === f ? 'bg-[#2FAF8F] text-white shadow-md' : sec
+                    }`}>
+                    {f === 'todos' ? 'Todos' : f.charAt(0).toUpperCase() + f.slice(1)}
+                  </button>
+                ))}
+              </div>
+              {submissionsLoading ? <SkeletonLoader isDark={isDark} /> : (
+                <div className="space-y-3">
+                  {submissions
+                    .filter(s => submissionFilter === 'todos' || s.status === submissionFilter)
+                    .map(s => (
+                      <div key={s.id} className={`p-4 sm:p-5 rounded-2xl border transition-all hover:scale-[1.002] ${card}`}>
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="flex items-start gap-3 flex-1 min-w-0">
+                            <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${
+                              s.status === 'publicado' ? 'bg-[#2FAF8F]/10' : s.status === 'rechazado' ? 'bg-red-500/10' : 'bg-orange-500/10'
+                            }`}>
+                              <FileText className={`w-5 h-5 ${
+                                s.status === 'publicado' ? 'text-[#2FAF8F]' : s.status === 'rechazado' ? 'text-red-500' : 'text-orange-500'
+                              }`} />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2 flex-wrap mb-0.5">
+                                <h3 className="font-semibold text-sm truncate max-w-[400px]">{s.titulo}</h3>
+                                <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full shrink-0 ${
+                                  s.status === 'publicado' ? 'bg-[#2FAF8F]/15 text-[#2FAF8F]'
+                                  : s.status === 'rechazado' ? 'bg-red-500/15 text-red-500'
+                                  : 'bg-orange-500/15 text-orange-500'
+                                }`}>{s.status}</span>
+                              </div>
+                              <p className={`text-xs mb-1 ${sec}`}>
+                                {SUBMISSION_TYPE_LABELS[s.tipo] ?? s.tipo}
+                                {s.estado_mx ? ` · ${s.estado_mx}` : ''}
+                                {s.region ? ` · ${s.region}` : ''}
+                              </p>
+                              <p className={`text-xs ${sec} line-clamp-2`}>{s.contenido}</p>
+                              <p className={`text-xs mt-1 ${sec}`}><Clock className="w-3 h-3 inline mr-1" />{timeAgo(s.created_at)}</p>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-1.5 shrink-0">
+                            <button onClick={() => setSelectedSubmission(s)} title="Ver"
+                              className={`p-2.5 rounded-xl border transition-all hover:scale-110 ${ isDark ? 'border-[#2A2A2A] hover:bg-[#1A1A1A]' : 'border-[#EAEAEA] hover:bg-stone-50'}`}>
+                              <Eye className="w-4 h-4" strokeWidth={2} />
+                            </button>
+                            {s.status === 'pendiente' && (
+                              <>
+                                <button onClick={() => handleApproveSubmission(s.id)} disabled={isActionLoading}
+                                  className="p-2.5 rounded-xl bg-[#2FAF8F]/10 text-[#2FAF8F] hover:bg-[#2FAF8F]/25 transition-all hover:scale-110 disabled:opacity-50">
+                                  <CheckCircle className="w-4 h-4" strokeWidth={2} />
+                                </button>
+                                <button onClick={() => handleRejectSubmission(s.id)} disabled={isActionLoading}
+                                  className="p-2.5 rounded-xl bg-red-500/10 text-red-500 hover:bg-red-500/25 transition-all hover:scale-110 disabled:opacity-50">
+                                  <XCircle className="w-4 h-4" strokeWidth={2} />
+                                </button>
+                              </>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    ))
+                  }
+                  {submissions.filter(s => submissionFilter === 'todos' || s.status === submissionFilter).length === 0 && (
+                    <div className={`py-20 rounded-2xl border text-center ${card}`}>
+                      <p className="font-semibold text-lg mb-1">Sin aportes</p>
+                      <p className={`text-sm ${sec}`}>No hay aportes en este estado</p>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+
         </div>
       </div>
 
-      {/* Modal: detalle */}
+      {/* Modal detalle creador */}
+      {selectedCreator && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-md z-[100] flex items-center justify-center p-4" onClick={() => setSelectedCreator(null)}>
+          <div onClick={(e: React.MouseEvent) => e.stopPropagation()} className={`w-full max-w-lg rounded-2xl border shadow-2xl overflow-hidden flex flex-col ${ isDark ? 'bg-[#0c0a09] border-[#2A2A2A]' : 'bg-white border-stone-200'}`}>
+            <div className={`px-6 py-5 border-b flex items-start justify-between ${ isDark ? 'border-[#2A2A2A]' : 'border-stone-200'}`}>
+              <div>
+                <h2 className="text-lg font-semibold mb-0.5">{CREATOR_TYPE_LABELS[selectedCreator.creator_type] ?? selectedCreator.creator_type}</h2>
+                <p className={`text-sm ${sec}`}>{selectedCreator.estado_mx ?? ''}{selectedCreator.region ? ` · ${selectedCreator.region}` : ''}</p>
+              </div>
+              <button onClick={() => setSelectedCreator(null)} className={`p-2 rounded-xl ${ isDark ? 'hover:bg-[#1A1A1A]' : 'hover:bg-stone-100'}`}>
+                <CloseIcon className="w-5 h-5" strokeWidth={2} />
+              </button>
+            </div>
+            <div className="p-6 space-y-4 overflow-y-auto">
+              {selectedCreator.bio && (
+                <div><p className={`text-xs font-semibold uppercase tracking-wider mb-1 ${sec}`}>Bio</p>
+                <p className="text-sm">{selectedCreator.bio}</p></div>
+              )}
+              {selectedCreator.especialidades && selectedCreator.especialidades.length > 0 && (
+                <div><p className={`text-xs font-semibold uppercase tracking-wider mb-2 ${sec}`}>Especialidades</p>
+                <div className="flex flex-wrap gap-1.5">{selectedCreator.especialidades.map(e => (
+                  <span key={e} className={`text-xs px-2.5 py-1 rounded-full border ${ isDark ? 'border-[#2A2A2A]' : 'border-stone-200'}`}>{e}</span>
+                ))}</div></div>
+              )}
+              <div className="grid grid-cols-2 gap-3">
+                <div><p className={`text-xs font-semibold uppercase tracking-wider mb-1 ${sec}`}>Trust Score</p><p className="text-lg font-bold">{selectedCreator.trust_score}</p></div>
+                <div><p className={`text-xs font-semibold uppercase tracking-wider mb-1 ${sec}`}>Nivel</p><p className="text-lg font-bold">{selectedCreator.nivel}</p></div>
+              </div>
+            </div>
+            {selectedCreator.status === 'pendiente' && (
+              <div className={`px-6 py-4 border-t flex gap-3 ${ isDark ? 'border-[#2A2A2A]' : 'border-stone-200'}`}>
+                <button onClick={() => handleApproveCreator(selectedCreator.id)} disabled={isActionLoading}
+                  className="flex-1 h-11 bg-[#2FAF8F] text-white rounded-xl font-semibold text-sm hover:bg-[#278F75] disabled:opacity-50 flex items-center justify-center gap-2">
+                  {isActionLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <><CheckCircle className="w-4 h-4" />Aprobar</>}
+                </button>
+                <button onClick={() => handleRejectCreator(selectedCreator.id)} disabled={isActionLoading}
+                  className="flex-1 h-11 bg-red-500 text-white rounded-xl font-semibold text-sm hover:bg-red-600 disabled:opacity-50 flex items-center justify-center gap-2">
+                  <XCircle className="w-4 h-4" />Rechazar
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Modal detalle aporte */}
+      {selectedSubmission && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-md z-[100] flex items-center justify-center p-4" onClick={() => setSelectedSubmission(null)}>
+          <div onClick={(e: React.MouseEvent) => e.stopPropagation()} className={`w-full max-w-lg rounded-2xl border shadow-2xl overflow-hidden flex flex-col ${ isDark ? 'bg-[#0c0a09] border-[#2A2A2A]' : 'bg-white border-stone-200'}`}>
+            <div className={`px-6 py-5 border-b flex items-start justify-between ${ isDark ? 'border-[#2A2A2A]' : 'border-stone-200'}`}>
+              <div>
+                <h2 className="text-lg font-semibold mb-0.5">{selectedSubmission.titulo}</h2>
+                <p className={`text-sm ${sec}`}>{SUBMISSION_TYPE_LABELS[selectedSubmission.tipo] ?? selectedSubmission.tipo}{selectedSubmission.estado_mx ? ` · ${selectedSubmission.estado_mx}` : ''}</p>
+              </div>
+              <button onClick={() => setSelectedSubmission(null)} className={`p-2 rounded-xl ${ isDark ? 'hover:bg-[#1A1A1A]' : 'hover:bg-stone-100'}`}>
+                <CloseIcon className="w-5 h-5" strokeWidth={2} />
+              </button>
+            </div>
+            <div className="p-6 space-y-4 overflow-y-auto max-h-[60vh]">
+              <div><p className={`text-xs font-semibold uppercase tracking-wider mb-1 ${sec}`}>Contenido</p>
+              <p className="text-sm leading-relaxed">{selectedSubmission.contenido}</p></div>
+              {selectedSubmission.source_links && selectedSubmission.source_links.length > 0 && (
+                <div><p className={`text-xs font-semibold uppercase tracking-wider mb-2 ${sec}`}>Fuentes</p>
+                {selectedSubmission.source_links.map((l: string, i: number) => (
+                  <a key={i} href={l} target="_blank" rel="noopener noreferrer"
+                    className="block text-xs text-[#2FAF8F] hover:underline truncate mb-1">{l}</a>
+                ))}</div>
+              )}
+              <div><p className={`text-xs font-semibold uppercase tracking-wider mb-1 ${sec}`}>HTI Inicial</p><p className="text-lg font-bold">{selectedSubmission.trust_index}</p></div>
+            </div>
+            {selectedSubmission.status === 'pendiente' && (
+              <div className={`px-6 py-4 border-t flex gap-3 ${ isDark ? 'border-[#2A2A2A]' : 'border-stone-200'}`}>
+                <button onClick={() => handleApproveSubmission(selectedSubmission.id)} disabled={isActionLoading}
+                  className="flex-1 h-11 bg-[#2FAF8F] text-white rounded-xl font-semibold text-sm hover:bg-[#278F75] disabled:opacity-50 flex items-center justify-center gap-2">
+                  {isActionLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <><CheckCircle className="w-4 h-4" />Publicar</>}
+                </button>
+                <button onClick={() => handleRejectSubmission(selectedSubmission.id)} disabled={isActionLoading}
+                  className="flex-1 h-11 bg-red-500 text-white rounded-xl font-semibold text-sm hover:bg-red-600 disabled:opacity-50 flex items-center justify-center gap-2">
+                  <XCircle className="w-4 h-4" />Rechazar
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Modal: detalle usuario */}
       {selectedUser && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-md z-[100] flex items-center justify-center p-4 animate-[fadeIn_0.2s]" onClick={() => setSelectedUser(null)}>
           <div onClick={e => e.stopPropagation()} className={`w-full max-w-3xl max-h-[90vh] rounded-2xl border shadow-2xl overflow-hidden flex flex-col ${isDark ? 'bg-[#0c0a09] border-[#2A2A2A]' : 'bg-white border-stone-200'}`}>

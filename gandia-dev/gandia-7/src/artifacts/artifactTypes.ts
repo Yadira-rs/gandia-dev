@@ -22,6 +22,7 @@ export type ArtifactDomain =
   | 'biometria'      // Identificación por huella de morro
   | 'exportacion'    // Solicitud de aretes de exportación SENASICA
   | 'vinculacion'    // Vinculaciones entre entidades institucionales
+  | 'documentos'     // Gestión documental y expedientes
 
 // ─── NIVEL 1 · DORMIDO ────────────────────────────────────────────────────────
 
@@ -40,10 +41,26 @@ export type WidgetArtifactId =
   | 'monitoring:mapa'
   | 'monitoring:sensor'
   | 'monitoring:anomalia'
+  | 'monitoring:trazabilidad'
+  | 'monitoring:anomalia:registrar'
+  | 'monitoring:caso'
+  | 'monitoring:drones'
+  | 'monitoring:reporte'
+  | 'mapa:corral-detalle'
+  | 'anomalia:detalle'
+  | 'anomalia:config-umbral'
+  | 'camara:lista'
+  | 'camara:feed'
+  | 'camara:config'
+  | 'camara:agregar'
+  | 'config:camaras'
+  | 'config:corrales'
+  | 'sensor:calibracion'
   // Certification
   | 'certification:card'
   // Trámites
   | 'tramites:status'
+  | 'tramites:nuevo'
   // Sanidad
   | 'sanidad:gusano'
   // Biometría de morro
@@ -72,6 +89,13 @@ export type WidgetArtifactId =
   | 'vinculacion:pendientes'
   | 'vinculacion:nueva'
   | 'vinculacion:historial'
+  // Documentos
+  | 'documentos:subida'
+  | 'documentos:validacion'
+  | 'documentos:expedientes'
+  | 'documentos:empacar'
+  | 'documentos:revision'
+  | 'documentos:panel'
 
 export interface WidgetArtifact {
   kind: 'widget'
@@ -106,6 +130,8 @@ export type ModuleArtifactId =
   | 'exportacion:form'
   // Vinculación
   | 'vinculacion:panel'
+  // Documentos
+  | 'documentos:panel'
 
 export interface ModuleArtifact {
   kind: 'module'
@@ -241,9 +267,24 @@ export function widgetToModule(dormantId: WidgetArtifactId): ModuleArtifact {
     'twins:feed': { kind: 'module', id: 'twins:historial', domain: 'twins', dormants: ['twins:timeline', 'twins:feed'] },
     'twins:alimentacion': { kind: 'module', id: 'twins:alimentacion', domain: 'twins', dormants: ['twins:alimentacion'] },
     // Monitoring
-    'monitoring:mapa': { kind: 'module', id: 'monitoring:dashboard', domain: 'monitoring', dormants: ['monitoring:mapa', 'monitoring:sensor', 'monitoring:anomalia'] },
-    'monitoring:sensor': { kind: 'module', id: 'monitoring:dashboard', domain: 'monitoring', dormants: ['monitoring:mapa', 'monitoring:sensor', 'monitoring:anomalia'] },
-    'monitoring:anomalia': { kind: 'module', id: 'monitoring:dashboard', domain: 'monitoring', dormants: ['monitoring:mapa', 'monitoring:sensor', 'monitoring:anomalia'] },
+    'monitoring:mapa':               { kind: 'module', id: 'monitoring:dashboard', domain: 'monitoring', dormants: ['monitoring:mapa', 'monitoring:sensor', 'monitoring:anomalia'] },
+    'monitoring:sensor':             { kind: 'module', id: 'monitoring:dashboard', domain: 'monitoring', dormants: ['monitoring:mapa', 'monitoring:sensor', 'monitoring:anomalia'] },
+    'monitoring:anomalia':           { kind: 'module', id: 'monitoring:dashboard', domain: 'monitoring', dormants: ['monitoring:mapa', 'monitoring:sensor', 'monitoring:anomalia'] },
+    'monitoring:trazabilidad':       { kind: 'module', id: 'monitoring:dashboard', domain: 'monitoring', dormants: ['monitoring:trazabilidad'] },
+    'monitoring:anomalia:registrar': { kind: 'module', id: 'monitoring:dashboard', domain: 'monitoring', dormants: ['monitoring:anomalia', 'monitoring:anomalia:registrar'] },
+    'monitoring:caso':               { kind: 'module', id: 'monitoring:dashboard', domain: 'monitoring', dormants: ['monitoring:anomalia', 'monitoring:caso'] },
+    'monitoring:drones':             { kind: 'module', id: 'monitoring:dashboard', domain: 'monitoring', dormants: ['monitoring:drones'] },
+    'monitoring:reporte':            { kind: 'module', id: 'monitoring:dashboard', domain: 'monitoring', dormants: ['monitoring:reporte'] },
+    'mapa:corral-detalle':           { kind: 'module', id: 'monitoring:dashboard', domain: 'monitoring', dormants: ['monitoring:mapa', 'mapa:corral-detalle'] },
+    'anomalia:detalle':              { kind: 'module', id: 'monitoring:dashboard', domain: 'monitoring', dormants: ['monitoring:anomalia', 'anomalia:detalle'] },
+    'anomalia:config-umbral':        { kind: 'module', id: 'monitoring:dashboard', domain: 'monitoring', dormants: ['monitoring:anomalia', 'anomalia:config-umbral'] },
+    'camara:lista':                  { kind: 'module', id: 'monitoring:dashboard', domain: 'monitoring', dormants: ['monitoring:sensor', 'camara:lista'] },
+    'camara:feed':                   { kind: 'module', id: 'monitoring:dashboard', domain: 'monitoring', dormants: ['monitoring:sensor', 'camara:feed'] },
+    'camara:config':                 { kind: 'module', id: 'monitoring:dashboard', domain: 'monitoring', dormants: ['monitoring:sensor', 'camara:config'] },
+    'camara:agregar':                { kind: 'module', id: 'monitoring:dashboard', domain: 'monitoring', dormants: ['monitoring:sensor', 'camara:agregar'] },
+    'config:camaras':                { kind: 'module', id: 'monitoring:dashboard', domain: 'monitoring', dormants: ['monitoring:sensor', 'config:camaras'] },
+    'config:corrales':               { kind: 'module', id: 'monitoring:dashboard', domain: 'monitoring', dormants: ['monitoring:mapa', 'config:corrales'] },
+    'sensor:calibracion':            { kind: 'module', id: 'monitoring:dashboard', domain: 'monitoring', dormants: ['monitoring:sensor', 'sensor:calibracion'] },
     'sanidad:gusano': { kind: 'module', id: 'sanidad:detail', domain: 'sanidad', dormants: ['sanidad:gusano'] },
     'certification:card': { kind: 'module', id: 'certification:detail', domain: 'certification', dormants: ['certification:card', 'certification:elegibilidad', 'certification:checklist'] },
     'certification:elegibilidad': { kind: 'module', id: 'certification:detail', domain: 'certification', dormants: ['certification:card', 'certification:elegibilidad', 'certification:checklist'] },
@@ -251,6 +292,7 @@ export function widgetToModule(dormantId: WidgetArtifactId): ModuleArtifact {
     'certification:documentos': { kind: 'module', id: 'certification:expediente', domain: 'certification', dormants: ['certification:documentos', 'certification:checklist'] },
     'certification:vencimientos': { kind: 'module', id: 'certification:detail', domain: 'certification', dormants: ['certification:vencimientos'] },
     'tramites:status': { kind: 'module', id: 'tramites:detail', domain: 'tramites', dormants: ['tramites:status'] },
+    'tramites:nuevo':  { kind: 'module', id: 'tramites:detail', domain: 'tramites', dormants: ['tramites:nuevo'] },
     'biometria:captura': { kind: 'module', id: 'biometria:dashboard', domain: 'biometria', dormants: ['biometria:captura', 'biometria:resultado', 'biometria:historial'] },
     'biometria:resultado': { kind: 'module', id: 'biometria:dashboard', domain: 'biometria', dormants: ['biometria:captura', 'biometria:resultado', 'biometria:historial'] },
     'biometria:historial': { kind: 'module', id: 'biometria:dashboard', domain: 'biometria', dormants: ['biometria:captura', 'biometria:resultado', 'biometria:historial'] },
@@ -270,6 +312,13 @@ export function widgetToModule(dormantId: WidgetArtifactId): ModuleArtifact {
     'vinculacion:pendientes': { kind: 'module', id: 'vinculacion:panel', domain: 'vinculacion', dormants: ['vinculacion:lista', 'vinculacion:pendientes', 'vinculacion:nueva', 'vinculacion:historial'] },
     'vinculacion:nueva': { kind: 'module', id: 'vinculacion:panel', domain: 'vinculacion', dormants: ['vinculacion:lista', 'vinculacion:pendientes', 'vinculacion:nueva', 'vinculacion:historial'] },
     'vinculacion:historial': { kind: 'module', id: 'vinculacion:panel', domain: 'vinculacion', dormants: ['vinculacion:lista', 'vinculacion:pendientes', 'vinculacion:nueva', 'vinculacion:historial'] },
+    // Documentos
+    'documentos:subida':      { kind: 'module', id: 'documentos:panel', domain: 'documentos', dormants: ['documentos:subida', 'documentos:validacion', 'documentos:expedientes', 'documentos:empacar'] },
+    'documentos:validacion':  { kind: 'module', id: 'documentos:panel', domain: 'documentos', dormants: ['documentos:subida', 'documentos:validacion', 'documentos:expedientes', 'documentos:empacar'] },
+    'documentos:expedientes': { kind: 'module', id: 'documentos:panel', domain: 'documentos', dormants: ['documentos:subida', 'documentos:validacion', 'documentos:expedientes', 'documentos:empacar'] },
+    'documentos:empacar':     { kind: 'module', id: 'documentos:panel', domain: 'documentos', dormants: ['documentos:subida', 'documentos:validacion', 'documentos:expedientes', 'documentos:empacar'] },
+    'documentos:revision':    { kind: 'module', id: 'documentos:panel', domain: 'documentos', dormants: ['documentos:panel', 'documentos:revision', 'documentos:validacion', 'documentos:expedientes'] },
+    'documentos:panel':       { kind: 'module', id: 'documentos:panel', domain: 'documentos', dormants: ['documentos:panel', 'documentos:revision', 'documentos:validacion', 'documentos:expedientes'] },
   }
   return map[dormantId]
 }
@@ -343,6 +392,7 @@ export function domainToAnima(domain: ArtifactDomain): AnimaArtifact {
     biometria: { kind: 'anima', domain: 'biometria', awakes: ['biometria:dashboard'] },
     exportacion: { kind: 'anima', domain: 'exportacion', awakes: ['exportacion:form'] },
     vinculacion: { kind: 'anima', domain: 'vinculacion', awakes: ['vinculacion:panel'] },
+    documentos:  { kind: 'anima', domain: 'documentos',  awakes: ['documentos:panel'] },
   }
   return map[domain]
 }

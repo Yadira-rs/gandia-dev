@@ -1,17 +1,60 @@
 /**
  * CamaraFeedWidget — REDISEÑO PRO
- * Estética: Field Camera · AI Detection · Drone Ops
+ * Si no recibe `camara`, fetcha la primera online de Supabase.
  */
+import { useState, useEffect } from 'react'
+import { supabase } from '../../../lib/supabaseClient'
 import type { Camara } from './CamaraListaWidget'
 
-interface Props { camara: Camara }
+interface Props { camara?: Camara }
 
 const BOXES = [
   [8,28,9,28],[20,36,8,26],[34,26,10,32],
   [50,33,9,27],[64,28,11,30],[79,36,8,24]
 ]
 
-export default function CamaraFeedWidget({ camara }: Props) {
+export default function CamaraFeedWidget({ camara: camaraProp }: Props) {
+  const [fetched, setFetched] = useState<Camara | null>(null)
+  const [loaded,  setLoaded]  = useState(false)
+
+  useEffect(() => {
+    if (camaraProp) return
+    async function load() {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session) { setLoaded(true); return }
+      const { data: rancho } = await supabase.from('ranch_extended_profiles').select('id').eq('user_id', session.user.id).single()
+      if (!rancho) { setLoaded(true); return }
+      const { data: corrales } = await supabase.from('corrales').select('id, label').eq('rancho_id', rancho.id)
+      const { data: cams } = await supabase.from('camaras').select('*').eq('rancho_id', rancho.id)
+      if (cams && cams.length > 0) {
+        const c = (cams as Record<string,unknown>[]).find(x => x.estado === 'online') ?? (cams as Record<string,unknown>[])[0]
+        const corral = corrales?.find((cr: Record<string,unknown>) => cr.id === c.corral_id)
+        setFetched({ id: 1, label: c.label as string, corral: (corral as Record<string,unknown>)?.label as string ?? '—', estado: c.estado as 'online'|'offline', detectados: (c.detectados as number) ?? 0, inventario: (c.inventario as number) ?? 0, fps: (c.fps_analisis as number) ?? 24 })
+      }
+      setLoaded(true)
+    }
+    load()
+  }, [camaraProp])
+
+  const camara = camaraProp ?? fetched
+
+  if (!camaraProp && !loaded) return (
+    <div style={{ display:'flex', alignItems:'center', justifyContent:'center', height:180, background:'#111', border:'1px solid #1E1E1E', borderRadius:14 }}>
+      <div style={{ width:20, height:20, border:'2px solid #2FAF8F', borderTopColor:'transparent', borderRadius:'50%', animation:'spin 0.8s linear infinite' }} />
+      <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
+    </div>
+  )
+
+  if (!camara) return (
+    <div style={{ display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:10, height:180, background:'#111', border:'1px solid #1E1E1E', borderRadius:14 }}>
+      <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#333" strokeWidth="1.5" strokeLinecap="round">
+        <path d="M23 7l-7 5 7 5V7z"/><rect x="1" y="5" width="15" height="14" rx="2"/>
+        <line x1="1" y1="1" x2="23" y2="23"/>
+      </svg>
+      <p style={{ fontSize:12, color:'#444', margin:0 }}>Sin cámaras registradas</p>
+    </div>
+  )
+
   const match      = camara.inventario > 0 ? Math.round(camara.detectados / camara.inventario * 100) : 0
   const diferencia = Math.abs(camara.detectados - camara.inventario)
   const matchColor = match === 100 ? '#2FAF8F' : match >= 90 ? '#F5A623' : '#E5484D'

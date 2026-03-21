@@ -19,7 +19,7 @@ interface Form {
   mainBreeds: string; productionType: string; certifications: string
   phone: string; email: string; website: string
   monthlyMortality: string; dailyWeightGain: string; exportableAnimals: string
-  address: string; latitude: string; longitude: string; altitude: string
+  address: string; latitude: string; longitude: string; altitude: string; ancho_m: string; largo_m: string
   grazingSystem: string; supplementation: string; waterSupply: string
 }
 
@@ -286,7 +286,7 @@ const EMPTY_FORM: Form = {
   mainBreeds:'', productionType:'', certifications:'',
   phone:'', email:'', website:'',
   monthlyMortality:'', dailyWeightGain:'', exportableAnimals:'',
-  address:'', latitude:'', longitude:'', altitude:'',
+  address:'', latitude:'', longitude:'', altitude:'', ancho_m:'', largo_m:'',
   grazingSystem:'', supplementation:'', waterSupply:'',
 }
 
@@ -376,6 +376,8 @@ export default function PerfilRanchoEdit() {
           latitude:          re?.lat               ? String(re.lat)               : '',
           longitude:         re?.lng               ? String(re.lng)               : '',
           altitude:          re?.altitude          ? String(re.altitude)          : '',
+          ancho_m:           re?.ancho_m           ? String(re.ancho_m)           : '',
+          largo_m:           re?.largo_m           ? String(re.largo_m)           : '',
           grazingSystem:     re?.grazing_system    ?? '',
           supplementation:   re?.supplementation   ?? '',
           waterSupply:       re?.water_supply      ?? '',
@@ -459,6 +461,8 @@ export default function PerfilRanchoEdit() {
         lat:                  form.latitude   ? parseFloat(form.latitude)  : null,
         lng:                  form.longitude  ? parseFloat(form.longitude) : null,
         altitude:             form.altitude   ? parseFloat(form.altitude)  : null,
+        ancho_m:              form.ancho_m    ? parseFloat(form.ancho_m)   : null,
+        largo_m:              form.largo_m    ? parseFloat(form.largo_m)   : null,
 
         // Contacto
         phone:                form.phone    || null,
@@ -646,6 +650,13 @@ export default function PerfilRanchoEdit() {
                     <Field label="Longitud" value={form.longitude} onChange={f('longitude')} placeholder="-104.8042" type="number" step="0.0001" disabled={!perm.location} hint="GPS E/O" />
                     <Field label="Altitud (msnm)" value={form.altitude} onChange={f('altitude')} placeholder="1890" type="number" disabled={!perm.location} />
                   </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <Field label="Ancho del rancho (m)" value={form.ancho_m} onChange={f('ancho_m')} placeholder="Ej: 2000" type="number" step="10" disabled={!perm.location} hint="Este → Oeste" />
+                    <Field label="Largo del rancho (m)" value={form.largo_m} onChange={f('largo_m')} placeholder="Ej: 3500" type="number" step="10" disabled={!perm.location} hint="Norte → Sur" />
+                  </div>
+                  <p className="text-[10px] text-stone-400 dark:text-stone-500 leading-relaxed">
+                    El ancho y largo definen el límite del rancho en el mapa. Los corrales solo pueden ubicarse dentro de estos límites. Si no los conoces, usa la superficie en hectáreas como referencia (1 ha ≈ 100m × 100m).
+                  </p>
                 </div>
               </Section>
 

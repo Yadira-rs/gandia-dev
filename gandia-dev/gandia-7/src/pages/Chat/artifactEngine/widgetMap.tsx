@@ -6,13 +6,6 @@ import React from 'react'
 
 import {
   MOCK_PASSPORT,
-  CORRALES,
-  CAMARAS,
-  CAMARA_ACTIVA,
-  CORRAL_DETALLE,
-  ANOMALIAS,
-  ANOMALIA_DETALLE,
-  SENSOR_STATS,
   MOCK_EVENTOS_TWINS,
   MOCK_AUDITORIAS_TWINS,
   MOCK_ALIMENTACION_TWINS,
@@ -26,19 +19,23 @@ import FichaHuellaWidget from '../../../artifacts/Ficha/widgets/FichaHuellaWidge
 import FichaNuevoWidget from '../../../artifacts/Ficha/widgets/FichaNuevoWidget'
 
 // ── Monitoring widgets ────────────────────────────────────────────────────────
-import MapaVistaGeneralWidget from '../../../artifacts/monitoring/widgets/MapaVistaGeneralWidget'
-import MapaCorralDetalleWidget from '../../../artifacts/monitoring/widgets/MapaCorralDetalleWidget'
-import SensorConteoLiveWidget from '../../../artifacts/monitoring/widgets/SensorConteoLiveWidget'
-import SensorCalibracionWidget from '../../../artifacts/monitoring/widgets/SensorCalibracionWidget'
-import AnomaliaFeedWidget from '../../../artifacts/monitoring/widgets/AnomaliaFeedWidget'
-import AnomaliaDetalleWidget from '../../../artifacts/monitoring/widgets/AnomaliaDetalleWidget'
+import MapaVistaGeneralWidget   from '../../../artifacts/monitoring/widgets/MapaVistaGeneralWidget'
+import MapaCorralDetalleWidget  from '../../../artifacts/monitoring/widgets/MapaCorralDetalleWidget'
+import SensorConteoLiveWidget   from '../../../artifacts/monitoring/widgets/SensorConteoLiveWidget'
+import SensorCalibracionWidget  from '../../../artifacts/monitoring/widgets/SensorCalibracionWidget'
+import AnomaliaFeedWidget       from '../../../artifacts/monitoring/widgets/AnomaliaFeedWidget'
+import AnomaliaDetalleWidget    from '../../../artifacts/monitoring/widgets/AnomaliaDetalleWidget'
 import AnomaliaConfigUmbralWidget from '../../../artifacts/monitoring/widgets/AnomaliaConfigUmbralWidget'
-import CamaraListaWidget from '../../../artifacts/monitoring/widgets/CamaraListaWidget'
-import CamaraFeedWidget from '../../../artifacts/monitoring/widgets/CamaraFeedWidget'
-import CamaraConfigWidget from '../../../artifacts/monitoring/widgets/CamaraConfigWidget'
-import CamaraAgregarWidget from '../../../artifacts/monitoring/widgets/CamaraAgregarWidget'
-import ConfigCamarasWidget from '../../../artifacts/monitoring/widgets/ConfigCamarasWidget'
-import ConfigCorralesWidget from '../../../artifacts/monitoring/widgets/ConfigCorralesWidget'
+import AnomaliaRegistrarWidget  from '../../../artifacts/monitoring/widgets/AnomaliaRegistrarWidget'
+import TrazabilidadWidget       from '../../../artifacts/monitoring/widgets/TrazabilidadWidget'
+import ConfigDronesWidget       from '../../../artifacts/monitoring/widgets/ConfigDronesWidget'
+import ReporteSanitarioWidget   from '../../../artifacts/monitoring/widgets/ReporteSanitarioWidget'
+import CamaraListaWidget        from '../../../artifacts/monitoring/widgets/CamaraListaWidget'
+import CamaraFeedWidget         from '../../../artifacts/monitoring/widgets/CamaraFeedWidget'
+import CamaraConfigWidget       from '../../../artifacts/monitoring/widgets/CamaraConfigWidget'
+import CamaraAgregarWidget      from '../../../artifacts/monitoring/widgets/CamaraAgregarWidget'
+import ConfigCamarasWidget      from '../../../artifacts/monitoring/widgets/ConfigCamarasWidget'
+import ConfigCorralesWidget     from '../../../artifacts/monitoring/widgets/ConfigCorralesWidget'
 
 // ── Sanidad ───────────────────────────────────────────────────────────────────
 import GusanoWidget from '../../../artifacts/sanidad/widgets/GusanoWidget'
@@ -80,6 +77,17 @@ import VinculacionListaWidget from '../../../artifacts/vinculacion/widgets/Vincu
 import VinculacionPendientesWidget from '../../../artifacts/vinculacion/widgets/VinculacionPendientesWidget'
 import VinculacionNuevaWidget from '../../../artifacts/vinculacion/widgets/VinculacionNuevaWidget'
 import VinculacionHistorialWidget from '../../../artifacts/vinculacion/widgets/VinculacionHistorialWidget'
+
+// ── Documentos ────────────────────────────────────────────────────────────────
+import DocSubidaWidget       from '../../../artifacts/documentos/widgets/DocSubidaWidget'
+import DocValidacionWidget   from '../../../artifacts/documentos/widgets/DocValidacionWidget'
+import DocExpedienteWidget   from '../../../artifacts/documentos/widgets/DocExpedienteWidget'
+import DocEmpaqueWidget      from '../../../artifacts/documentos/widgets/DocEmpaqueWidget'
+import DocRevisionWidget     from '../../../artifacts/documentos/widgets/DocRevisionWidget'
+import DocPanelGeneralWidget from '../../../artifacts/documentos/widgets/DocPanelGeneralWidget'
+
+// ── Trámites ──────────────────────────────────────────────────────────────────
+import TramiteNuevoWidget from '../../../artifacts/documentos/widgets/TramiteNuevoWidget'
 import {
   MOCK_CERT_CARDS,
   MOCK_ELEGIBILIDAD,
@@ -105,10 +113,25 @@ const EXPANDABLE_WIDGETS = new Set([
   'passport:perfiles',
   'passport:documentos',
   'passport:biometria',
-  // Monitoring
+  // Monitoring — todos
   'monitoring:mapa',
   'monitoring:sensor',
   'monitoring:anomalia',
+  'monitoring:trazabilidad',
+  'monitoring:anomalia:registrar',
+  'monitoring:caso',
+  'monitoring:drones',
+  'monitoring:reporte',
+  'mapa:corral-detalle',
+  'anomalia:detalle',
+  'anomalia:config-umbral',
+  'camara:lista',
+  'camara:feed',
+  'camara:config',
+  'camara:agregar',
+  'config:camaras',
+  'config:corrales',
+  'sensor:calibracion',
   // Twins
   'twins:timeline',
   'twins:feed',
@@ -141,6 +164,15 @@ const EXPANDABLE_WIDGETS = new Set([
   'vinculacion:pendientes',
   'vinculacion:nueva',
   'vinculacion:historial',
+  // Documentos
+  'documentos:subida',
+  'documentos:validacion',
+  'documentos:expedientes',
+  'documentos:empacar',
+  'documentos:revision',
+  'documentos:panel',
+  // Trámites
+  'tramites:nuevo',
 ])
 
 export function renderWidget(
@@ -220,56 +252,78 @@ function getWidgetNode(widgetId: string, onExpand: () => void): React.ReactNode 
       return <FichaPerfilesWidget onNuevo={onExpand} onSelectAnimal={onExpand} />
 
     case 'passport:documentos':
-      return <FichaDocumentosWidget onSubir={onExpand} />
+      return <FichaDocumentosWidget animalId="" animalNombre="—" animalArete="—" />
 
     case 'passport:biometria':
-      return <FichaHuellaWidget onVerHistorial={onExpand} />
+      return <FichaHuellaWidget />
 
     case 'passport:nuevo':
-      return <FichaNuevoWidget />
+      return <FichaNuevoWidget onCancelar={onExpand} onGuardar={onExpand} />
 
     // ── Mapa ──
     case 'monitoring:mapa':
-      return <MapaVistaGeneralWidget corrales={CORRALES} />
+      return <MapaVistaGeneralWidget />
 
     case 'mapa:corral-detalle':
-      return <MapaCorralDetalleWidget corral={CORRAL_DETALLE} />
+      return <MapaCorralDetalleWidget />
 
     // ── Sensor ──
     case 'monitoring:sensor':
-      return <SensorConteoLiveWidget stats={SENSOR_STATS} />
+      return <SensorConteoLiveWidget />
 
     case 'sensor:calibracion':
       return <SensorCalibracionWidget />
 
     // ── Anomalía ──
     case 'monitoring:anomalia':
-      return <AnomaliaFeedWidget anomalias={ANOMALIAS} />
+      return <AnomaliaFeedWidget />
+
+    case 'monitoring:anomalia:registrar':
+      return <AnomaliaRegistrarWidget corrales={[]} onGuardar={async () => {}} onCancelar={() => {}} />
+
+    case 'monitoring:caso':
+      return <AnomaliaFeedWidget />
 
     case 'anomalia:detalle':
-      return <AnomaliaDetalleWidget anomalia={ANOMALIA_DETALLE} />
+      return <AnomaliaDetalleWidget />
 
     case 'anomalia:config-umbral':
       return <AnomaliaConfigUmbralWidget />
 
+    // ── Trazabilidad ──
+    case 'monitoring:trazabilidad':
+      return <TrazabilidadWidget />
+
+    // ── Drones ──
+    case 'monitoring:drones':
+      return <ConfigDronesWidget />
+
+    // ── Reporte PDF ──
+    case 'monitoring:reporte':
+      return <ReporteSanitarioWidget />
+
     // ── Cámara ──
     case 'camara:lista':
-      return <CamaraListaWidget camaras={CAMARAS} />
+      return <CamaraListaWidget />
 
     case 'camara:feed':
-      return <CamaraFeedWidget camara={CAMARA_ACTIVA} />
+      return <CamaraFeedWidget />
 
     case 'camara:config':
-      return <CamaraConfigWidget camara={CAMARA_ACTIVA} corrales={CORRALES} />
+      return <CamaraConfigWidget />
 
     case 'camara:agregar':
-      return <CamaraAgregarWidget corrales={CORRALES} />
+      return <CamaraAgregarWidget />
 
     case 'config:camaras':
-      return <ConfigCamarasWidget camaras={CAMARAS} />
+      return <ConfigCamarasWidget />
 
     case 'config:corrales':
-      return <ConfigCorralesWidget corrales={CORRALES} />
+      return <ConfigCorralesWidget />
+
+    // ── Trámites ──
+    case 'tramites:nuevo':
+      return <TramiteNuevoWidget />
 
     // ── Sanidad ──
     case 'sanidad:gusano':
@@ -358,6 +412,25 @@ function getWidgetNode(widgetId: string, onExpand: () => void): React.ReactNode 
 
     case 'vinculacion:historial':
       return <VinculacionHistorialWidget historial={MOCK_VINCULACIONES_HISTORIAL} />
+
+    // ── Documentos ──
+    case 'documentos:subida':
+      return <DocSubidaWidget />
+
+    case 'documentos:validacion':
+      return <DocValidacionWidget />
+
+    case 'documentos:expedientes':
+      return <DocExpedienteWidget />
+
+    case 'documentos:empacar':
+      return <DocEmpaqueWidget />
+
+    case 'documentos:revision':
+      return <DocRevisionWidget />
+
+    case 'documentos:panel':
+      return <DocPanelGeneralWidget />
 
     default:
       return null

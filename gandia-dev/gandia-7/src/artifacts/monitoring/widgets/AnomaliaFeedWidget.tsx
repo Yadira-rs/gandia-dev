@@ -1,23 +1,84 @@
 /**
- * AnomaliaFeedWidget — REDISEÑO v2
- * Sin fondos de color en badges. Negro real. Clean.
+ * AnomaliaFeedWidget — v4
+ * Anomalías desde Gandia Vision API (primario) o Supabase (fallback).
  */
+import { useState, useEffect } from 'react'
+import { supabase } from '../../../lib/supabaseClient'
+import { getVisionAnomalias } from '../../../lib/visionApi'
+
 export interface Anomalia {
-  id:        number
+  id:        number | string
   ts:        string
   animal:    string
   corral:    string
   tipo:      string
   severidad: 'alta' | 'media'
   resuelto:  boolean
+  _dbId?:    string
+  notas?:    string
 }
 
 interface Props {
-  anomalias:         Anomalia[]
-  onSelectAnomalia?: (a: Anomalia) => void
+  anomalias?:         Anomalia[]
+  onSelectAnomalia?:  (a: Anomalia) => void
+  onAbrirCaso?:       (a: Anomalia) => void
+  onRegistrar?:       () => void
 }
 
-export default function AnomaliaFeedWidget({ anomalias, onSelectAnomalia }: Props) {
+export default function AnomaliaFeedWidget({ anomalias: anomaliasProp, onSelectAnomalia, onAbrirCaso, onRegistrar }: Props) {
+  const [fetched, setFetched] = useState<Anomalia[]>([])
+
+  useEffect(() => {
+    if (anomaliasProp) return
+    async function load() {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session) return
+      const { data: rancho } = await supabase.from('ranch_extended_profiles').select('id').eq('user_id', session.user.id).single()
+      if (!rancho) return
+
+      // Primario: Gandia Vision API
+      const visionAnomalias = await getVisionAnomalias(rancho.id)
+      if (visionAnomalias.length > 0) {
+        const { data: corrales } = await supabase.from('corrales').select('id, label').eq('rancho_id', rancho.id)
+        setFetched(visionAnomalias.map(a => {
+          const corral = corrales?.find((c: Record<string,unknown>) => c.id === a.corral_id)
+          const ts = new Date(a.created_at).toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' })
+          return {
+            id:       a.id, ts,
+            animal:   a.animal_id ? `#${a.animal_id.slice(-4).toUpperCase()}` : '—',
+            corral:   (corral as Record<string,unknown>)?.label as string ?? '—',
+            tipo:     a.tipo,
+            severidad:(a.severidad === 'baja' ? 'media' : a.severidad) as 'alta'|'media',
+            resuelto: a.resuelto,
+            _dbId:    a.id,
+          } as Anomalia
+        }))
+        return
+      }
+
+      // Fallback: Supabase directo
+      const { data: corrales } = await supabase.from('corrales').select('id, label').eq('rancho_id', rancho.id)
+      const { data: dbA } = await supabase.from('anomalias_monitoreo').select('*').eq('rancho_id', rancho.id).order('created_at', { ascending: false }).limit(30)
+      if (dbA) {
+        setFetched(dbA.map((a: Record<string,unknown>) => {
+          const corral = corrales?.find((c: Record<string,unknown>) => c.id === a.corral_id)
+          const ts = new Date(a.created_at as string).toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' })
+          return {
+            id: a.id, ts,
+            animal:    a.animal_id ? `#${(a.animal_id as string).slice(-4).toUpperCase()}` : '—',
+            corral:    (corral as Record<string,unknown>)?.label as string ?? '—',
+            tipo:      a.tipo as string,
+            severidad: (a.severidad === 'baja' ? 'media' : a.severidad) as 'alta'|'media',
+            resuelto:  a.resuelto as boolean,
+            _dbId:     a.id as string,
+          } as Anomalia
+        }))
+      }
+    }
+    load()
+  }, [anomaliasProp])
+
+  const anomalias = anomaliasProp ?? fetched
   const activas   = anomalias.filter(a => !a.resuelto)
   const resueltas = anomalias.filter(a =>  a.resuelto)
 
@@ -29,7 +90,6 @@ export default function AnomaliaFeedWidget({ anomalias, onSelectAnomalia }: Prop
         <p style={{ fontSize: 13, fontWeight: 600, color: '#F0F0F0', margin: 0 }}>Anomalías</p>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           {activas.length > 0 && (
-            /* Badge: solo texto con color, sin fondo */
             <span style={{ fontSize: 11, color: '#E5484D', fontWeight: 600 }}>
               {activas.length} activa{activas.length > 1 ? 's' : ''}
             </span>
@@ -38,6 +98,26 @@ export default function AnomaliaFeedWidget({ anomalias, onSelectAnomalia }: Prop
             <span style={{ width: 5, height: 5, borderRadius: '50%', background: '#2FAF8F', animation: 'apulse 2s ease-in-out infinite' }} />
             En vivo
           </span>
+          {onRegistrar && (
+            <button
+              onClick={onRegistrar}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 5,
+                padding: '5px 10px', borderRadius: 7,
+                background: '#191919', border: '1px solid #222',
+                color: '#777', fontSize: 10, fontWeight: 600,
+                cursor: 'pointer', transition: 'all 0.15s',
+                fontFamily: 'monospace',
+              }}
+              onMouseEnter={e => { e.currentTarget.style.borderColor = 'rgba(47,175,143,0.4)'; e.currentTarget.style.color = '#2FAF8F' }}
+              onMouseLeave={e => { e.currentTarget.style.borderColor = '#222'; e.currentTarget.style.color = '#777' }}
+            >
+              <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+              </svg>
+              Registrar
+            </button>
+          )}
         </div>
       </div>
 
@@ -47,7 +127,7 @@ export default function AnomaliaFeedWidget({ anomalias, onSelectAnomalia }: Prop
         {activas.map(a => {
           const color = a.severidad === 'alta' ? '#E5484D' : '#F5A623'
           return (
-            <div key={a.id} onClick={() => onSelectAnomalia?.(a)} style={{
+            <div key={String(a.id)} style={{
               background: '#171717',
               border: '1px solid #252525',
               borderLeft: `3px solid ${color}`,
@@ -59,20 +139,56 @@ export default function AnomaliaFeedWidget({ anomalias, onSelectAnomalia }: Prop
             onMouseEnter={e => { e.currentTarget.style.background = '#1C1C1C' }}
             onMouseLeave={e => { e.currentTarget.style.background = '#171717' }}>
 
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
+              {/* Fila superior: click abre detalle */}
+              <div
+                onClick={() => onSelectAnomalia?.(a)}
+                style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}
+              >
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                   <span style={{ width: 7, height: 7, borderRadius: '50%', background: color, animation: 'apulse 1.5s ease-in-out infinite', flexShrink: 0 }} />
                   <span style={{ fontSize: 12, fontWeight: 600, color: '#F0F0F0' }}>{a.corral}</span>
-                  {/* Severidad: solo texto con color, sin fondo */}
-                  <span style={{ fontSize: 10, color, fontWeight: 600 }}>
-                    · {a.severidad}
-                  </span>
+                  <span style={{ fontSize: 10, color, fontWeight: 600 }}>· {a.severidad}</span>
                 </div>
                 <span style={{ fontSize: 10, color: '#555' }}>{a.ts}</span>
               </div>
 
-              <p style={{ fontSize: 12, color: '#CCC', margin: '0 0 3px', lineHeight: 1.4 }}>{a.tipo}</p>
-              <p style={{ fontSize: 10, color: '#555', margin: 0 }}>Animal {a.animal}</p>
+              <p
+                onClick={() => onSelectAnomalia?.(a)}
+                style={{ fontSize: 12, color: '#CCC', margin: '0 0 3px', lineHeight: 1.4 }}
+              >
+                {a.tipo}
+              </p>
+              <p
+                onClick={() => onSelectAnomalia?.(a)}
+                style={{ fontSize: 10, color: '#555', margin: '0 0 0' }}
+              >
+                Animal {a.animal}
+              </p>
+
+              {/* NUEVO: botón "Abrir caso" — solo en alertas altas */}
+              {a.severidad === 'alta' && onAbrirCaso && (
+                <div style={{ marginTop: 8, paddingTop: 8, borderTop: '1px solid #1E1E1E' }}>
+                  <button
+                    onClick={e => { e.stopPropagation(); onAbrirCaso(a) }}
+                    style={{
+                      display: 'flex', alignItems: 'center', gap: 6,
+                      padding: '5px 10px', borderRadius: 7,
+                      background: 'transparent',
+                      border: '1px solid rgba(229,72,77,0.3)',
+                      color: '#E5484D', fontSize: 10, fontWeight: 700,
+                      cursor: 'pointer', transition: 'all 0.15s',
+                      fontFamily: 'monospace', letterSpacing: '0.03em',
+                    }}
+                    onMouseEnter={e => { e.currentTarget.style.background = 'rgba(229,72,77,0.08)'; e.currentTarget.style.borderColor = 'rgba(229,72,77,0.5)' }}
+                    onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.borderColor = 'rgba(229,72,77,0.3)' }}
+                  >
+                    <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                      <path d="M22 12h-4l-3 9L9 3l-3 9H2"/>
+                    </svg>
+                    ABRIR CASO SANITARIO
+                  </button>
+                </div>
+              )}
             </div>
           )
         })}
@@ -85,12 +201,9 @@ export default function AnomaliaFeedWidget({ anomalias, onSelectAnomalia }: Prop
               <span style={{ flex: 1, height: 1, background: '#222' }} />
             </div>
             {resueltas.map(a => (
-              <div key={a.id} style={{
-                background: '#111',
-                border: '1px solid #1E1E1E',
-                borderRadius: 9,
-                padding: '9px 12px',
-                opacity: 0.5,
+              <div key={String(a.id)} style={{
+                background: '#111', border: '1px solid #1E1E1E',
+                borderRadius: 9, padding: '9px 12px', opacity: 0.5,
               }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 3 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>

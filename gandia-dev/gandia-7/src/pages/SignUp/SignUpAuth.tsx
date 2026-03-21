@@ -409,8 +409,10 @@ const SignUpAuth = () => {
   const [showSubtitle, setShowSubtitle] = useState(false)
   const [loadingProvider, setLoadingProvider] = useState<'google' | 'apple' | 'azure' | null>(null)
   const [showEmailChat, setShowEmailChat] = useState(false)
-  const [emailStep, setEmailStep] = useState<'email' | 'password' | 'confirm-password'>('email')
+  const [emailStep, setEmailStep] = useState<'email' | 'password' | 'confirm-password' | 'email-sent'>('email')
   const [emailForm, setEmailForm] = useState({ email: '', password: '' })
+  const [resendCooldown, setResendCooldown] = useState(0)
+  const [resendLoading, setResendLoading] = useState(false)
   const [userInput, setUserInput] = useState('')
   const [passwordInput, setPasswordInput] = useState('')
   const [showPassword, setShowPassword] = useState(false)
@@ -439,6 +441,11 @@ const SignUpAuth = () => {
 
 
   useEffect(() => { messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }) }, [messages])
+  useEffect(() => {
+    if (resendCooldown <= 0) return
+    const t = setTimeout(() => setResendCooldown(c => c - 1), 1000)
+    return () => clearTimeout(t)
+  }, [resendCooldown])
   useEffect(() => {
     if (!showEmailChat) return
     setTimeout(() => { if (emailStep === 'password' || emailStep === 'confirm-password') passwordInputRef.current?.focus(); else inputRef.current?.focus() }, 100)
@@ -483,6 +490,24 @@ const SignUpAuth = () => {
       { label: 'Muy fuerte', color: '#2FAF8F', pct: 100 },
     ]
     return { score, ...map[Math.min(score, 5)] }
+  }
+
+  const handleResendConfirmation = async () => {
+    if (resendCooldown > 0 || resendLoading) return
+    setResendLoading(true)
+    try {
+      const { error } = await supabase.auth.resend({
+        type: 'signup',
+        email: emailForm.email,
+        options: { emailRedirectTo: `${window.location.origin}/signup/personal` },
+      })
+      if (error) throw error
+      setResendCooldown(60)
+    } catch {
+      // silencioso — no exponer errores internos
+    } finally {
+      setResendLoading(false)
+    }
   }
 
   const handleSend = async () => {
@@ -530,7 +555,7 @@ const SignUpAuth = () => {
           setIsProcessing(false); return
         }
 
-        // ── PASO 3: CONFIRMAR CONTRASEÑA + CREAR CUENTA + SESIÓN REAL ────────
+        // ── PASO 3: CONFIRMAR CONTRASEÑA + CREAR CUENTA ──────────────────────
         if (emailStep === 'confirm-password') {
           if (value !== emailForm.password) {
             setMessages(p => [...p, { type: 'assistant', text: 'Las contraseñas no coinciden. Intenta de nuevo.' }])
@@ -539,25 +564,17 @@ const SignUpAuth = () => {
           setMessages(p => [...p, { type: 'assistant', text: 'Creando tu cuenta...' }])
           setIsTyping(true)
 
-          // 1. Crear usuario en Supabase Auth
+          // Crear usuario en Supabase Auth — envía email de confirmación real (Resend)
           const { userId, email } = await registerUser(emailForm.email, emailForm.password)
           localStorage.setItem('signup-user-id', userId)
           localStorage.setItem('signup-email', email)
 
-          // 2. Establecer sesión real inmediatamente (evita RLS 401 en confirmation)
-          const { error: signInError } = await supabase.auth.signInWithPassword({
-            email: emailForm.email,
-            password: emailForm.password,
-          })
-          if (signInError) {
-            // Supabase tiene email confirmation ON — guardar creds de respaldo
-            sessionStorage.setItem('signup-temp-email', emailForm.email)
-            sessionStorage.setItem('signup-temp-pwd', emailForm.password)
-          }
-
           setIsTyping(false)
-          setMessages(p => [...p, { type: 'assistant', text: '¡Cuenta creada! Continuemos con tu perfil.' }])
-          setTimeout(() => navigate('/signup/personal'), 1200)
+          setMessages(p => [...p, { type: 'assistant', text: '¡Cuenta creada! Revisa tu correo para activarla.' }])
+
+          // Iniciar cooldown de reenvío (60s)
+          setResendCooldown(60)
+          setTimeout(() => setEmailStep('email-sent'), 1200)
           setIsProcessing(false); return
         }
       } catch (err: unknown) {
@@ -597,6 +614,94 @@ const SignUpAuth = () => {
       <AlreadyRegisteredScreen status={existingStatus} accountId={existingAccountId} rejectionReason={existingRejectionReason} onGoHome={() => navigate('/home')} onGoLogin={() => navigate('/login')} />
       <style>{`@keyframes scaleIn{from{opacity:0;transform:scale(0.5)}to{opacity:1;transform:scale(1)}}@keyframes ringPulse{0%{opacity:1;transform:scale(1)}100%{opacity:0;transform:scale(1.6)}}`}</style>
     </>
+  )
+
+  if (emailStep === 'email-sent') return (
+    <div className="min-h-screen bg-[#fafaf9] dark:bg-[#0c0a09] flex items-center justify-center px-4">
+      <div className="w-full max-w-sm">
+        {/* Card */}
+        <div className="relative">
+          <div className="h-[2px] bg-gradient-to-r from-transparent via-[#2FAF8F]/60 to-transparent rounded-t-3xl" />
+          <div className="bg-white dark:bg-[#0f0f0e] border border-stone-200 dark:border-white/8 rounded-b-3xl rounded-t-none px-7 pt-8 pb-7">
+
+            {/* Ícono */}
+            <div className="flex justify-center mb-5">
+              <div className="w-16 h-16 rounded-2xl bg-[#2FAF8F]/10 border border-[#2FAF8F]/20 flex items-center justify-center">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="#2FAF8F" className="w-8 h-8">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                </svg>
+              </div>
+            </div>
+
+            {/* Texto */}
+            <div className="text-center mb-6">
+              <div className="inline-flex items-center gap-2 bg-[#2FAF8F]/10 border border-[#2FAF8F]/20 rounded-full px-3 py-1 mb-3">
+                <div className="w-1.5 h-1.5 rounded-full bg-[#2FAF8F] animate-pulse" />
+                <span className="text-xs font-semibold text-[#2FAF8F]">Correo enviado</span>
+              </div>
+              <h2 className="text-[17px] font-semibold text-stone-900 dark:text-white mb-2 tracking-tight">
+                Confirma tu correo electrónico
+              </h2>
+              <p className="text-[13px] text-stone-500 dark:text-stone-400 leading-relaxed">
+                Enviamos un enlace de activación a
+              </p>
+              <p className="text-[13px] font-semibold text-stone-800 dark:text-stone-100 mt-1">
+                {emailForm.email}
+              </p>
+            </div>
+
+            {/* Pasos */}
+            <div className="bg-stone-50 dark:bg-white/4 border border-stone-100 dark:border-white/6 rounded-2xl px-4 py-4 mb-6 space-y-3">
+              {[
+                { n: '1', text: 'Abre tu correo electrónico' },
+                { n: '2', text: 'Busca el mensaje de GANDIA 7' },
+                { n: '3', text: 'Haz clic en "Confirmar correo"' },
+              ].map(step => (
+                <div key={step.n} className="flex items-center gap-3">
+                  <div className="w-5 h-5 rounded-full bg-[#2FAF8F]/15 border border-[#2FAF8F]/25 flex items-center justify-center shrink-0">
+                    <span className="text-[10px] font-bold text-[#2FAF8F]">{step.n}</span>
+                  </div>
+                  <span className="text-[12.5px] text-stone-600 dark:text-stone-400">{step.text}</span>
+                </div>
+              ))}
+            </div>
+
+            {/* Spam note */}
+            <p className="text-[11.5px] text-stone-400 dark:text-stone-600 text-center mb-5">
+              ¿No lo encuentras? Revisa la carpeta de <span className="font-medium text-stone-500 dark:text-stone-500">spam o correo no deseado</span>.
+            </p>
+
+            {/* Reenviar */}
+            <button
+              onClick={handleResendConfirmation}
+              disabled={resendCooldown > 0 || resendLoading}
+              className={`w-full h-11 rounded-xl text-[13px] font-semibold transition-all mb-3 flex items-center justify-center gap-2
+                ${resendCooldown > 0 || resendLoading
+                  ? 'bg-stone-100 dark:bg-white/5 text-stone-400 dark:text-stone-600 cursor-not-allowed'
+                  : 'bg-[#2FAF8F] hover:bg-[#27a07f] text-white active:scale-[0.98]'}`}
+            >
+              {resendLoading
+                ? <><div className="w-3.5 h-3.5 border-[1.5px] border-current border-t-transparent rounded-full animate-spin" /> Enviando...</>
+                : resendCooldown > 0
+                  ? `Reenviar en ${resendCooldown}s`
+                  : 'Reenviar correo de confirmación'}
+            </button>
+
+            <button
+              onClick={() => {
+                setEmailStep('email')
+                setEmailForm({ email: '', password: '' })
+                setMessages([])
+              }}
+              className="w-full h-10 rounded-xl bg-transparent text-[12.5px] text-stone-400 dark:text-stone-600 hover:text-stone-600 dark:hover:text-stone-400 transition-colors"
+            >
+              Usar otro correo
+            </button>
+          </div>
+        </div>
+      </div>
+      <style>{`@keyframes modalIn{from{opacity:0;transform:scale(0.95) translateY(8px)}to{opacity:1;transform:scale(1) translateY(0)}}`}</style>
+    </div>
   )
 
   if (showEmailChat) return (

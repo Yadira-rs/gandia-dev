@@ -1,0 +1,22 @@
+# Dockerfile.worker — Para RunPod (con GPU + YOLO)
+FROM pytorch/pytorch:2.3.0-cuda11.8-cudnn8-runtime
+
+WORKDIR /app
+
+# Dependencias del sistema para OpenCV
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libglib2.0-0 libsm6 libxrender1 libxext6 libgl1 \
+    && rm -rf /var/lib/apt/lists/*
+
+# Todas las dependencias incluyendo visión
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+COPY . .
+
+# Pre-descargar modelo base si no hay modelo fine-tuned
+RUN python -c "from ultralytics import YOLO; YOLO('yolo11n.pt')" || true
+
+CMD ["celery", "-A", "workers.celery_app", "worker", \
+     "--queues=vision,rfid", "--concurrency=1", \
+     "--loglevel=info", "--pool=solo"]

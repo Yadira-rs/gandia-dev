@@ -1,0 +1,6 @@
+venv/
+__pycache__/
+*.pyc
+.env
+BeefCattle_Muzzle_Individualized/
+*.csv
