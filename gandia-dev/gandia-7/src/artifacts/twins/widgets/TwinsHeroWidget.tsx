@@ -146,14 +146,10 @@ const ESTADO_CFG = {
 
 export default function TwinsHeroWidget({ perfil }: Props) {
   const estado = ESTADO_CFG[perfil.estado];
-  const progPeso = Math.min(
-    100,
-    Math.round(
-      ((perfil.pesoActual - perfil.pesoNacimiento) /
-        (perfil.pesoMeta - perfil.pesoNacimiento)) *
-        100,
-    ),
-  );
+  const _rangoPeso = perfil.pesoMeta - perfil.pesoNacimiento
+  const progPeso = _rangoPeso > 0
+    ? Math.min(100, Math.round(((perfil.pesoActual - perfil.pesoNacimiento) / _rangoPeso) * 100))
+    : 0
   const diasMeta =
     perfil.gananciaDiaria > 0
       ? Math.ceil((perfil.pesoMeta - perfil.pesoActual) / perfil.gananciaDiaria)

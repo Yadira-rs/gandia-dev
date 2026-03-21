@@ -6,6 +6,7 @@
  * Sin emojis. Conectado a Supabase via useTwinsData.ts
  */
 import { useState } from "react";
+import { registrarAlimentacion } from "../../../lib/twinsService";
 
 // ─── TIPOS ────────────────────────────────────────────────────────────────────
 
@@ -29,6 +30,8 @@ export interface DatosAlimentacion {
 
 interface Props {
   datos: DatosAlimentacion;
+  siniiga?: string;       // si se pasa, habilita formulario de captura semanal
+  onRefresh?: () => void;
 }
 
 type Vista = "consumo" | "conversion";
@@ -47,7 +50,7 @@ const V_MIN = 50,
   V_MAX = 100;
 
 function gx(i: number, n: number) {
-  return PL + (i / (n - 1)) * DW;
+  return n <= 1 ? PL + DW / 2 : PL + (i / (n - 1)) * DW;
 }
 function gy(v: number) {
   return PT + (1 - (v - V_MIN) / (V_MAX - V_MIN)) * DH;
@@ -67,6 +70,11 @@ interface LineChartProps {
 }
 
 function LineChart({ semanas }: LineChartProps) {
+  if (!semanas.length) return (
+    <div className="flex items-center justify-center py-8 text-[12px] text-stone-400 dark:text-stone-500">
+      Sin registros de consumo aún
+    </div>
+  );
   const rev = [...semanas].reverse();
   const n = rev.length;
   const F = rev.map((s, i) => [gx(i, n), gy(s.forraje)]);
@@ -329,31 +337,104 @@ function CAGauge({ caActual, caObjetivo, caIndustria }: GaugeProps) {
 
 // ─── COMPONENTE PRINCIPAL ─────────────────────────────────────────────────────
 
-export default function TwinsAlimentacionWidget({ datos }: Props) {
-  const [vista, setVista] = useState<Vista>("consumo");
+export default function TwinsAlimentacionWidget({ datos, siniiga, onRefresh }: Props) {
+  const [vista,     setVista]     = useState<Vista>("consumo");
+  const [showForm,  setShowForm]  = useState(false);
+  const [saving,    setSaving]    = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [semForm, setSemForm] = useState({
+    forraje_pct:     "",
+    concentrado_pct: "",
+    suplemento_pct:  "",
+    ca_valor:        "",
+  });
 
-  const promedioF = Math.round(
-    datos.semanas.reduce((s, r) => s + r.forraje, 0) / datos.semanas.length,
-  );
-  const promedioC = Math.round(
-    datos.semanas.reduce((s, r) => s + r.concentrado, 0) / datos.semanas.length,
-  );
-  const promedioS = Math.round(
-    datos.semanas.reduce((s, r) => s + r.suplemento, 0) / datos.semanas.length,
-  );
+  const inputCls = "w-full px-2.5 py-1.5 text-[12px] bg-white dark:bg-stone-800/60 border border-stone-200/70 dark:border-stone-700 rounded-lg text-stone-700 dark:text-stone-200 placeholder-stone-300 dark:placeholder-stone-600 outline-none focus:border-[#2FAF8F]/50 transition-colors";
+
+  const handleGuardarSemana = async () => {
+    if (!siniiga) return;
+    setSaving(true);
+    setSaveError(null);
+    const { ok, error } = await registrarAlimentacion({
+      siniiga,
+      forraje_pct:     semForm.forraje_pct     ? Number(semForm.forraje_pct)     : undefined,
+      concentrado_pct: semForm.concentrado_pct ? Number(semForm.concentrado_pct) : undefined,
+      suplemento_pct:  semForm.suplemento_pct  ? Number(semForm.suplemento_pct)  : undefined,
+      ca_valor:        semForm.ca_valor         ? Number(semForm.ca_valor)         : undefined,
+    });
+    setSaving(false);
+    if (!ok) { setSaveError(error); return; }
+    setShowForm(false);
+    setSemForm({ forraje_pct: "", concentrado_pct: "", suplemento_pct: "", ca_valor: "" });
+    onRefresh?.();
+  };
+
+  const n = datos.semanas.length || 1  // evita división entre 0
+  const promedioF = Math.round(datos.semanas.reduce((s, r) => s + r.forraje, 0)      / n);
+  const promedioC = Math.round(datos.semanas.reduce((s, r) => s + r.concentrado, 0)  / n);
+  const promedioS = Math.round(datos.semanas.reduce((s, r) => s + r.suplemento, 0)   / n);
   const supWarn = promedioS < 85;
 
   const mejorQueObj = datos.caActual < datos.caObjetivo;
-  const pctDif = Math.abs(
-    ((datos.caObjetivo - datos.caActual) / datos.caObjetivo) * 100,
-  ).toFixed(0);
-  const progPeso = Math.min(
-    100,
-    Math.round((datos.pesoActual / datos.pesoMeta) * 100),
-  );
+  const pctDif = datos.caObjetivo > 0
+    ? Math.abs(((datos.caObjetivo - datos.caActual) / datos.caObjetivo) * 100).toFixed(0)
+    : "0";
+  const progPeso = datos.pesoMeta > 0
+    ? Math.min(100, Math.round((datos.pesoActual / datos.pesoMeta) * 100))
+    : 0;
 
   return (
     <div className="flex flex-col gap-4">
+      {/* Botón registrar semana */}
+      {siniiga && (
+        <div className="flex justify-end">
+          <button
+            onClick={() => { setShowForm(v => !v); setSaveError(null); }}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#2FAF8F] text-white text-[11px] font-semibold hover:bg-[#27a07f] transition-colors border-0 cursor-pointer"
+          >
+            <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+              <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+            </svg>
+            Registrar semana
+          </button>
+        </div>
+      )}
+
+      {/* Formulario registro semanal */}
+      {showForm && siniiga && (
+        <div className="flex flex-col gap-3 p-4 rounded-xl border border-stone-200/70 dark:border-stone-800 bg-stone-50 dark:bg-stone-900/40">
+          <p className="text-[11.5px] font-semibold text-stone-600 dark:text-stone-300">Consumo de esta semana</p>
+          <div className="grid grid-cols-2 gap-2">
+            {[
+              { label: "Forraje %",     key: "forraje_pct",     placeholder: "ej: 90" },
+              { label: "Concentrado %", key: "concentrado_pct", placeholder: "ej: 85" },
+              { label: "Suplemento %",  key: "suplemento_pct",  placeholder: "ej: 80" },
+              { label: "CA actual",     key: "ca_valor",        placeholder: "ej: 6.8" },
+            ].map(f => (
+              <div key={f.key} className="flex flex-col gap-1">
+                <label className="text-[10.5px] font-medium text-stone-400 dark:text-stone-500">{f.label}</label>
+                <input
+                  type="number"
+                  placeholder={f.placeholder}
+                  value={semForm[f.key as keyof typeof semForm]}
+                  onChange={e => setSemForm(p => ({ ...p, [f.key]: e.target.value }))}
+                  className={inputCls}
+                />
+              </div>
+            ))}
+          </div>
+          {saveError && <p className="text-[11px] text-rose-500">{saveError}</p>}
+          <div className="flex gap-2">
+            <button onClick={() => { setShowForm(false); setSaveError(null); }} className="flex-1 py-2 rounded-lg border border-stone-200/70 dark:border-stone-800 text-[11.5px] text-stone-500 hover:text-stone-700 transition-colors bg-transparent cursor-pointer">
+              Cancelar
+            </button>
+            <button onClick={handleGuardarSemana} disabled={saving} className="flex-1 py-2 rounded-lg bg-[#2FAF8F] text-white text-[11.5px] font-semibold hover:bg-[#27a07f] transition-colors border-0 cursor-pointer disabled:opacity-50 flex items-center justify-center gap-1.5">
+              {saving ? <><div className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin"/>Guardando…</> : "Guardar semana"}
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Toggle */}
       <div className="flex items-center justify-between">
         <p className="text-[13.5px] font-semibold text-stone-800 dark:text-stone-100">

@@ -26,7 +26,6 @@ import {
 } from "../../hooks/useTwinsData";
 
 import {
-  useAnimalesList,
   useRanchoId,
   getAuthUserId,
 } from "../../hooks/useAnimales";
@@ -115,19 +114,15 @@ export default function GemelosAnima({ onClose, onEscalate }: Props) {
   // 3. Lista de animales
   const { animales, loading: loadingAnimales } = useTwinsAnimales(ranchoId);
 
-  // 4. UUID del animal seleccionado
-  const { animales: animalesDB } = useAnimalesList(ranchoId);
-  const animalUUID = selectedAnimal
-    ? (animalesDB.find((a) => a.siniiga === selectedAnimal.perfil.arete)?.id ??
-      null)
-    : null;
+  // 4. Siniiga del animal seleccionado (todos los hooks twins usan siniiga)
   const animalSiniiga = selectedAnimal?.perfil.arete ?? null;
 
   // 5. Datos por widget
-  const { registros, loading: loadingPesos } = useTwinsPesos(animalUUID);
+  // NOTA: twins_pesos y twins_alimentacion usan siniiga como animal_id (no UUID)
+  const { registros, loading: loadingPesos } = useTwinsPesos(animalSiniiga);
   const { eventos, loading: loadingTimeline } = useTwinsTimeline(animalSiniiga);
   const { datos, loading: loadingAlim } = useTwinsAlimentacion(
-    animalUUID,
+    animalSiniiga,
     selectedAnimal?.perfil.pesoActual,
     selectedAnimal?.perfil.pesoMeta,
     selectedAnimal?.perfil.gananciaDiaria,
@@ -307,10 +302,11 @@ export default function GemelosAnima({ onClose, onEscalate }: Props) {
           {activeTab === "alimentacion" &&
             (loadingAlim ? (
               <LoadingState mensaje="Cargando alimentación..." />
-            ) : datos ? (
-              <TwinsAlimentacionWidget datos={datos} />
             ) : (
-              <EmptyState mensaje="Sin datos de alimentación" />
+              <TwinsAlimentacionWidget
+                datos={datos ?? { semanas: [], caActual: 0, caObjetivo: 7.0, caIndustria: 8.2, proyDias: 0, proyFecha: '—', pesoMeta: selectedAnimal?.perfil.pesoMeta ?? 500, pesoActual: selectedAnimal?.perfil.pesoActual ?? 0 }}
+                siniiga={animalSiniiga ?? undefined}
+              />
             ))}
 
           {/* ── AUDITORÍAS ── */}

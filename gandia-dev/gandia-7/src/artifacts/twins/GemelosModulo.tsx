@@ -22,7 +22,7 @@ import {
   useTwinsFeed,
 } from '../../hooks/useTwinsData'
 
-import { useAnimalesList, useRanchoId, getAuthUserId } from '../../hooks/useAnimales'
+import { useRanchoId, getAuthUserId } from '../../hooks/useAnimales'
 
 // ─── TIPOS ────────────────────────────────────────────────────────────────────
 
@@ -67,19 +67,15 @@ export default function GemelosModulo({ onClose, onEscalate }: Props) {
   // 3. Lista de animales → TwinsPerfilesWidget + TwinsHeroWidget
   const { animales, loading: loadingAnimales } = useTwinsAnimales(ranchoId)
 
-  // 4. UUID del animal seleccionado (para las queries twins_*)
-  //    animal_id en twins_pesos/alimentacion es UUID, en twins_eventos es siniiga (text)
-  const { animales: animalesDB } = useAnimalesList(ranchoId)
-  const animalUUID = selectedAnimal
-    ? (animalesDB.find(a => a.siniiga === selectedAnimal.perfil.arete)?.id ?? null)
-    : null
+  // 4. Siniiga del animal seleccionado (todos los hooks twins usan siniiga)
   const animalSiniiga = selectedAnimal?.perfil.arete ?? null
 
   // 5. Datos por widget del animal seleccionado
-  const { registros, loading: loadingPesos  } = useTwinsPesos(animalUUID)
+  // NOTA: twins_pesos y twins_alimentacion usan siniiga como animal_id (no UUID)
+  const { registros, loading: loadingPesos  } = useTwinsPesos(animalSiniiga)
   const { eventos,   loading: loadingTimeline } = useTwinsTimeline(animalSiniiga)
   const { datos,     loading: loadingAlim    } = useTwinsAlimentacion(
-    animalUUID,
+    animalSiniiga,
     selectedAnimal?.perfil.pesoActual,
     selectedAnimal?.perfil.pesoMeta,
     selectedAnimal?.perfil.gananciaDiaria,
@@ -138,13 +134,19 @@ export default function GemelosModulo({ onClose, onEscalate }: Props) {
           <TwinsTimelineWidget
             eventos={eventos}
             ubicacionActual={selectedAnimal?.perfil.corral ?? '—'}
+            siniiga={animalSiniiga ?? undefined}
           />
         )
 
       case 'alimentacion':
         if (loadingAlim) return <LoadingState mensaje="Cargando alimentación..." />
-        if (!datos)      return <EmptyState mensaje="Sin datos de alimentación" />
-        return <TwinsAlimentacionWidget datos={datos} />
+        if (!datos) return (
+          <TwinsAlimentacionWidget
+            datos={{ semanas: [], caActual: 0, caObjetivo: 7.0, caIndustria: 8.2, proyDias: 0, proyFecha: '—', pesoMeta: selectedAnimal?.perfil.pesoMeta ?? 500, pesoActual: selectedAnimal?.perfil.pesoActual ?? 0 }}
+            siniiga={animalSiniiga ?? undefined}
+          />
+        )
+        return <TwinsAlimentacionWidget datos={datos} siniiga={animalSiniiga ?? undefined} />
 
       case 'auditorias':
         return (

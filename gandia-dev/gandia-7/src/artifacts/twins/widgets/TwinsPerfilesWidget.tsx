@@ -58,11 +58,10 @@ export default function TwinsPerfilesWidget({
 
       {/* Lista */}
       {animales.map((item) => {
-        const prog = Math.round(
-          ((item.perfil.pesoActual - item.perfil.pesoNacimiento) /
-            (item.perfil.pesoMeta - item.perfil.pesoNacimiento)) *
-            100,
-        );
+        const _rango = item.perfil.pesoMeta - item.perfil.pesoNacimiento
+        const prog = _rango > 0
+          ? Math.min(100, Math.round(((item.perfil.pesoActual - item.perfil.pesoNacimiento) / _rango) * 100))
+          : 0
         const estadoCfg = ESTADO_CFG[item.perfil.estado] ?? {
           label: item.perfil.estado,
           color: "text-stone-400",

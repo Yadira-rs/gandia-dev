@@ -80,18 +80,21 @@ export interface DocumentoDB {
 }
 
 export interface NuevoAnimalInput {
-  siniiga:          string
-  rfid?:            string
-  nombre?:          string
-  raza:             string
-  especie?:         string
-  sexo:             'macho' | 'hembra'
-  fecha_nacimiento: string   // 'YYYY-MM-DD'
-  peso_kg?:         number
-  upp?:             string
-  estado_mx:        string
-  municipio?:       string
-  export_label?:    string
+  siniiga:            string
+  rfid?:              string
+  nombre?:            string
+  raza:               string
+  especie?:           string
+  sexo:               'macho' | 'hembra'
+  fecha_nacimiento:   string   // 'YYYY-MM-DD'
+  peso_kg?:           number
+  peso_nacimiento?:   number   // kg al nacer — base para curva de crecimiento twins
+  peso_meta?:         number   // kg objetivo de engorda (exportación/venta)
+  ganancia_diaria_kg?: number  // kg/día esperado — proyección de salida twins
+  upp?:               string
+  estado_mx:          string
+  municipio?:         string
+  export_label?:      string
 }
 
 // ─── CONVERSIÓN DB → PassportData (compatible con FichaCard existente) ────────
@@ -263,14 +266,15 @@ export async function registrarAnimal(
 // ─── ACCIÓN: subir documento ──────────────────────────────────────────────────
 
 export async function subirDocumento(params: {
-  file:       File
-  animalId:   string
-  ranchoId:   string
-  userId:     string
-  tipo:       DocumentoDB['tipo']
+  file:         File
+  animalId:     string
+  ranchoId:     string
+  userId:       string
+  tipo:         DocumentoDB['tipo']
+  siniiga?:     string   // ← para auto-evento en timeline twins
   descripcion?: string
-  emisor?:    string
-  fechaDoc?:  string   // 'YYYY-MM-DD'
+  emisor?:      string
+  fechaDoc?:    string   // 'YYYY-MM-DD'
 }): Promise<{ doc: DocumentoDB | null; error: string | null }> {
   const { file, animalId, ranchoId, userId, tipo, descripcion, emisor, fechaDoc } = params
 
@@ -316,6 +320,32 @@ export async function subirDocumento(params: {
       .single()
 
     if (insertErr) throw insertErr
+
+    // ── Auto-evento en timeline twins ─────────────────────────────────────────
+    // Cuando se sube un documento, se registra automáticamente en el timeline
+    // del Gemelo Digital del animal como auditoría pendiente.
+    if (params.siniiga) {
+      const TIPO_LABEL: Record<string, string> = {
+        factura:       'Factura',        cuvq:          'CUVQ',
+        reemo:         'Guía REEMO',     resultado_lab: 'Resultado de laboratorio',
+        vacunacion:    'Vacunación',     foto_oficial:  'Foto oficial',
+        foto_campo:    'Foto campo',     identificacion: 'Identificación',
+        firma_mvz:     'Firma MVZ',      otro:          'Documento',
+      }
+      // Fire-and-forget — no bloquea la respuesta al usuario
+      void supabase.from('twins_eventos').insert({
+        animal_id: params.siniiga,
+        tipo:      'auditoria',
+        fecha:     new Date().toISOString(),
+        data: {
+          titulo:    `Documento subido: ${TIPO_LABEL[params.tipo] ?? params.tipo}`,
+          valor:     file.name,
+          cert:      'pendiente',
+          ubicacion: '',
+          hash:      hashHex,
+        },
+      })
+    }
 
     return { doc: data, error: null }
   } catch (e: unknown) {

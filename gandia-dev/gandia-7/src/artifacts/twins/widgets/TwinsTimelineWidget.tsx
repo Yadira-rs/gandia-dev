@@ -6,6 +6,7 @@
  * Sin emojis. Conectado a Supabase via useTwinsData.ts
  */
 import { useState } from "react";
+import { registrarEvento } from "../../../lib/twinsService";
 
 // ─── TIPOS ────────────────────────────────────────────────────────────────────
 
@@ -34,6 +35,8 @@ export type Movilizacion = EventoTimeline;
 interface Props {
   eventos: EventoTimeline[];
   ubicacionActual?: string;
+  siniiga?: string;         // si se pasa, habilita el formulario de captura
+  onRefresh?: () => void;   // para recargar eventos tras guardar
 }
 
 // ─── CONFIG ───────────────────────────────────────────────────────────────────
@@ -197,9 +200,42 @@ const FILTROS: { key: EventoTipo | "todos"; label: string }[] = [
 export default function TwinsTimelineWidget({
   eventos,
   ubicacionActual,
+  siniiga,
+  onRefresh,
 }: Props) {
-  const [expanded, setExpanded] = useState<number | null>(null);
+  const [expanded,   setExpanded]   = useState<number | null>(null);
   const [filtroTipo, setFiltroTipo] = useState<EventoTipo | "todos">("todos");
+  const [showForm,   setShowForm]   = useState(false);
+  const [saving,     setSaving]     = useState(false);
+  const [saveError,  setSaveError]  = useState<string | null>(null);
+  const [form, setForm] = useState({
+    tipo:      "movilizacion" as EventoTipo,
+    titulo:    "",
+    valor:     "",
+    ubicacion: "",
+    cert:      "pendiente" as EventoCert,
+  });
+
+  const handleGuardar = async () => {
+    if (!siniiga || !form.titulo.trim()) return;
+    setSaving(true);
+    setSaveError(null);
+    const { ok, error } = await registrarEvento({
+      siniiga,
+      tipo:      form.tipo,
+      titulo:    form.titulo.trim(),
+      valor:     form.valor   || undefined,
+      cert:      form.cert,
+      ubicacion: form.ubicacion || undefined,
+    });
+    setSaving(false);
+    if (!ok) { setSaveError(error); return; }
+    setShowForm(false);
+    setForm({ tipo: "movilizacion", titulo: "", valor: "", ubicacion: "", cert: "pendiente" });
+    onRefresh?.();
+  };
+
+  const inputCls = "w-full px-2.5 py-1.5 text-[12px] bg-white dark:bg-stone-800/60 border border-stone-200/70 dark:border-stone-700 rounded-lg text-stone-700 dark:text-stone-200 placeholder-stone-300 dark:placeholder-stone-600 outline-none focus:border-[#2FAF8F]/50 transition-colors";
 
   const tiposPresentes = new Set(eventos.map((e) => e.tipo));
   const filtrados =
@@ -211,6 +247,80 @@ export default function TwinsTimelineWidget({
 
   return (
     <div className="flex flex-col gap-4">
+      {/* Header con botón nuevo evento */}
+      {siniiga && (
+        <div className="flex items-center justify-between">
+          <p className="text-[13.5px] font-semibold text-stone-800 dark:text-stone-100">Timeline</p>
+          <button
+            onClick={() => { setShowForm(v => !v); setSaveError(null); }}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#2FAF8F] text-white text-[11px] font-semibold hover:bg-[#27a07f] transition-colors border-0 cursor-pointer"
+          >
+            <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+              <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+            </svg>
+            Registrar evento
+          </button>
+        </div>
+      )}
+
+      {/* Formulario nuevo evento */}
+      {showForm && siniiga && (
+        <div className="flex flex-col gap-3 p-4 rounded-xl border border-stone-200/70 dark:border-stone-800 bg-stone-50 dark:bg-stone-900/40">
+          <p className="text-[11.5px] font-semibold text-stone-600 dark:text-stone-300">Nuevo evento</p>
+
+          {/* Tipo */}
+          <div className="flex flex-col gap-1">
+            <label className="text-[10.5px] font-medium text-stone-400 dark:text-stone-500">Tipo</label>
+            <select value={form.tipo} onChange={e => setForm(p => ({ ...p, tipo: e.target.value as EventoTipo }))} className={inputCls}>
+              <option value="movilizacion">Movilización</option>
+              <option value="vacunacion">Vacunación</option>
+              <option value="pesaje">Pesaje</option>
+              <option value="tratamiento">Tratamiento</option>
+              <option value="auditoria">Auditoría</option>
+            </select>
+          </div>
+
+          {/* Título */}
+          <div className="flex flex-col gap-1">
+            <label className="text-[10.5px] font-medium text-stone-400 dark:text-stone-500">Descripción *</label>
+            <input type="text" placeholder="ej: Traslado a Corral 3" value={form.titulo} onChange={e => setForm(p => ({ ...p, titulo: e.target.value }))} className={inputCls} />
+          </div>
+
+          {/* Valor */}
+          <div className="flex flex-col gap-1">
+            <label className="text-[10.5px] font-medium text-stone-400 dark:text-stone-500">Valor / detalle (opcional)</label>
+            <input type="text" placeholder="ej: 450 kg · 2 ml IM" value={form.valor} onChange={e => setForm(p => ({ ...p, valor: e.target.value }))} className={inputCls} />
+          </div>
+
+          {/* Ubicación */}
+          <div className="flex flex-col gap-1">
+            <label className="text-[10.5px] font-medium text-stone-400 dark:text-stone-500">Ubicación (opcional)</label>
+            <input type="text" placeholder="ej: Corral 3" value={form.ubicacion} onChange={e => setForm(p => ({ ...p, ubicacion: e.target.value }))} className={inputCls} />
+          </div>
+
+          {/* Certificación */}
+          <div className="flex flex-col gap-1">
+            <label className="text-[10.5px] font-medium text-stone-400 dark:text-stone-500">Certificación</label>
+            <select value={form.cert} onChange={e => setForm(p => ({ ...p, cert: e.target.value as EventoCert }))} className={inputCls}>
+              <option value="pendiente">Pendiente</option>
+              <option value="parcial">Parcial</option>
+              <option value="completa">Completa</option>
+            </select>
+          </div>
+
+          {saveError && <p className="text-[11px] text-rose-500">{saveError}</p>}
+
+          <div className="flex gap-2">
+            <button onClick={() => { setShowForm(false); setSaveError(null); }} className="flex-1 py-2 rounded-lg border border-stone-200/70 dark:border-stone-800 text-[11.5px] text-stone-500 hover:text-stone-700 transition-colors bg-transparent cursor-pointer">
+              Cancelar
+            </button>
+            <button onClick={handleGuardar} disabled={saving || !form.titulo.trim()} className="flex-1 py-2 rounded-lg bg-[#2FAF8F] text-white text-[11.5px] font-semibold hover:bg-[#27a07f] transition-colors border-0 cursor-pointer disabled:opacity-50 flex items-center justify-center gap-1.5">
+              {saving ? <><div className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin"/>Guardando…</> : "Guardar evento"}
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Stats */}
       <div className="grid grid-cols-4 gap-2">
         {[
