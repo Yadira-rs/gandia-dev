@@ -15,6 +15,16 @@ interface CreatorProfile {
   badges:          string[]
 }
 
+interface WikiPropuestaPreview {
+  id:              string
+  tipo_propuesta:  string
+  afirmacion:      string
+  dominio:         string
+  status:          string
+  created_at:      string
+  hecho_creado_id: string | null
+}
+
 const NIVELES = [
   {
     nivel:       1,
@@ -61,6 +71,10 @@ export default function CreadorHomePage() {
   const [creatorProfile, setCreatorProfile] = useState<CreatorProfile | null>(null)
   const [loading,        setLoading]        = useState(true)
 
+  // ── Wiki state ──────────────────────────────────────────────────────────────
+  const [wikiPropuestas, setWikiPropuestas] = useState<WikiPropuestaPreview[]>([])
+  const [wikiLoading,    setWikiLoading]    = useState(false)
+
   useEffect(() => {
     const fetchCreator = async () => {
       if (!profile?.user_id) { setLoading(false); return }
@@ -71,6 +85,17 @@ export default function CreadorHomePage() {
         .single()
       setCreatorProfile(data as CreatorProfile ?? null)
       setLoading(false)
+
+      // Cargar propuestas Wiki del usuario
+      setWikiLoading(true)
+      const { data: props } = await supabase
+        .from('wiki_propuestas')
+        .select('id,tipo_propuesta,afirmacion,dominio,status,created_at,hecho_creado_id')
+        .eq('user_id', profile.user_id)
+        .order('created_at', { ascending: false })
+        .limit(10)
+      setWikiPropuestas((props as WikiPropuestaPreview[]) ?? [])
+      setWikiLoading(false)
     }
     void fetchCreator()
   }, [profile?.user_id])
@@ -232,6 +257,120 @@ export default function CreadorHomePage() {
               >
                 Enviar aporte
               </button>
+            </div>
+          )}
+
+          {/* ── WIKI HANDEIA ─────────────────────────────────────────────────── */}
+          {!loading && (
+            <div className="mb-10">
+              <div className="flex items-center justify-between mb-5">
+                <div>
+                  <p className="text-[10.5px] font-semibold text-stone-400 dark:text-stone-500 uppercase tracking-[0.1em] mb-0.5">
+                    Wiki Handeia
+                  </p>
+                  <p className="text-[12.5px] text-stone-500 dark:text-stone-400">
+                    Propuestas de Hechos verificables para la base de conocimiento.
+                  </p>
+                </div>
+                <button
+                  onClick={() => navigate('/wiki')}
+                  className="text-[12px] font-medium text-[#2FAF8F] hover:underline"
+                >
+                  Ver Wiki →
+                </button>
+              </div>
+
+              {creatorProfile && creatorProfile.nivel >= 3 && creatorProfile.status === 'activo' ? (
+                /* Nivel 3+ activo: mostrar historial + botón proponer */
+                <div className="p-5 rounded-2xl border border-stone-200/70 dark:border-stone-800/60 bg-white dark:bg-[#141210]">
+                  <div className="flex items-center justify-between mb-4">
+                    <p className="text-[13px] font-semibold text-stone-800 dark:text-stone-100">
+                      Tus propuestas
+                    </p>
+                    <button
+                      onClick={() => navigate('/creadores/wiki/nuevo')}
+                      className="h-8 px-4 rounded-xl bg-[#2FAF8F] hover:bg-[#27a07f] text-white text-[12px] font-semibold transition-colors flex items-center gap-1.5"
+                    >
+                      <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                        <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+                      </svg>
+                      Proponer Hecho
+                    </button>
+                  </div>
+
+                  {wikiLoading ? (
+                    <div className="flex justify-center py-6">
+                      <div className="w-4 h-4 border-[1.5px] border-[#2FAF8F] border-t-transparent rounded-full animate-spin" />
+                    </div>
+                  ) : wikiPropuestas.length === 0 ? (
+                    <div className="text-center py-8 border border-dashed border-stone-200 dark:border-stone-800/60 rounded-xl">
+                      <p className="text-[13px] text-stone-400 dark:text-stone-500 mb-1">
+                        No has enviado propuestas aún.
+                      </p>
+                      <p className="text-[12px] text-stone-300 dark:text-stone-700">
+                        Cada Hecho aprobado suma a tu reputación como Creador.
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="divide-y divide-stone-100 dark:divide-stone-800/50">
+                      {wikiPropuestas.map(p => (
+                        <div key={p.id} className="py-3 flex items-center justify-between gap-3">
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 mb-0.5">
+                              <span className="text-[9.5px] font-semibold text-stone-400 dark:text-stone-500 uppercase tracking-[0.06em] capitalize">
+                                {p.dominio} · {p.tipo_propuesta}
+                              </span>
+                            </div>
+                            <p className="text-[13px] font-medium text-stone-700 dark:text-stone-300 leading-snug line-clamp-1">
+                              {p.afirmacion}
+                            </p>
+                          </div>
+                          <div className="shrink-0 flex items-center gap-2">
+                            <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${
+                              p.status === 'aprobado'  ? 'text-[#2FAF8F] bg-[#2FAF8F]/10' :
+                              p.status === 'rechazado' ? 'text-red-500 bg-red-500/10' :
+                                                         'text-amber-500 bg-amber-500/10'
+                            }`}>
+                              {p.status === 'aprobado' ? 'Publicado' : p.status === 'rechazado' ? 'Rechazado' : 'En revisión'}
+                            </span>
+                            {p.status === 'aprobado' && p.hecho_creado_id && (
+                              <button
+                                onClick={() => navigate(`/wiki/hecho/${p.hecho_creado_id}`)}
+                                className="text-[10.5px] text-[#2FAF8F] hover:underline"
+                              >
+                                Ver →
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ) : creatorProfile && creatorProfile.nivel < 3 ? (
+                /* Nivel < 3: teaser */
+                <div className="p-5 rounded-2xl border border-stone-200/60 dark:border-stone-800/50 bg-stone-50 dark:bg-stone-900/40 text-center">
+                  <p className="text-[13px] font-medium text-stone-700 dark:text-stone-300 mb-1">
+                    Alcanza el Nivel 3 para proponer Hechos a Wiki Handeia
+                  </p>
+                  <p className="text-[12px] text-stone-400 dark:text-stone-500">
+                    Tu nivel actual es {creatorProfile.nivel}. Sube tu reputación enviando aportes verificados.
+                  </p>
+                </div>
+              ) : (
+                /* Sin perfil de creador */
+                <div className="p-5 rounded-2xl border border-stone-200/60 dark:border-stone-800/50 bg-stone-50 dark:bg-stone-900/40 flex items-center justify-between gap-4">
+                  <p className="text-[12.5px] text-stone-500 dark:text-stone-400">
+                    Solicita ser Creador Nivel 3 para proponer Hechos verificados a la Wiki.
+                  </p>
+                  <button
+                    onClick={() => navigate('/creadores/solicitar')}
+                    className="shrink-0 h-8 px-4 rounded-lg text-[12px] font-medium text-[#2FAF8F] border border-[#2FAF8F]/30 hover:bg-[#2FAF8F]/10 transition-colors whitespace-nowrap"
+                  >
+                    Solicitar
+                  </button>
+                </div>
+              )}
             </div>
           )}
 

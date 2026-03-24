@@ -97,6 +97,9 @@ export default function NoticiasPage() {
   const [scrolled,    setScrolled]    = useState(false)
   const [hasCreatorProfile, setHasCreatorProfile] = useState(false)
 
+  // Wiki: IDs de noticias que tienen Hechos vinculados
+  const [hechoNoticiaIds, setHechoNoticiaIds] = useState<Set<string>>(new Set())
+
   // Noticias
   const [noticias,        setNoticias]        = useState<Noticia[]>([])
   const [loadingNoticias, setLoadingNoticias] = useState(true)
@@ -128,6 +131,14 @@ export default function NoticiasPage() {
       const { data, error } = await q
       if (error) throw error
       setNoticias((data as Noticia[]) ?? [])
+
+      // Cargar vinculaciones Wiki en paralelo
+      const { data: vinculos } = await supabase
+        .from('wiki_hecho_noticias')
+        .select('noticia_id')
+      if (vinculos) {
+        setHechoNoticiaIds(new Set((vinculos as { noticia_id: string }[]).map(v => v.noticia_id)))
+      }
     } catch (err) {
       console.error('Error al cargar noticias:', err)
       setErrorNoticias('No se pudieron cargar las noticias.')
@@ -517,6 +528,14 @@ export default function NoticiasPage() {
                     <span className="text-[11px] text-stone-400 dark:text-stone-500">
                       {n.tiempo_relativo}
                     </span>
+                    {hechoNoticiaIds.has(n.id) && (
+                      <span className="inline-flex items-center gap-1 text-[9.5px] font-semibold text-[#2FAF8F] bg-[#2FAF8F]/10 px-1.5 py-0.5 rounded-full">
+                        <svg className="w-2.5 h-2.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                          <polyline points="20 6 9 17 4 12"/>
+                        </svg>
+                        Wiki
+                      </span>
+                    )}
                   </div>
 
                   <h3 className="text-[16px] font-semibold tracking-[-0.022em]
@@ -595,9 +614,12 @@ export default function NoticiasPage() {
                       {m === 'radar' ? 'Radar' : 'Search'}
                     </button>
                   ))}
-                  <span className="h-7 px-3 flex items-center text-[11.5px] font-medium text-stone-200 dark:text-stone-700 select-none">
-                    Wiki · pronto
-                  </span>
+                  <button
+                    onMouseDown={() => navigate('/wiki')}
+                    className="shrink-0 h-7 px-3 rounded-full text-[11.5px] font-medium text-stone-400 dark:text-stone-500 hover:text-[#2FAF8F] transition-colors"
+                  >
+                    Wiki
+                  </button>
                 </div>
               )}
 

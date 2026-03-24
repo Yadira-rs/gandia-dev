@@ -654,7 +654,7 @@ const AdminPanel = () => {
         titulo:          sub.titulo,
         cuerpo:          sub.contenido,
         fuente:          'Comunidad Handeia',
-        fuente_origen:   'comunidad',
+        fuente_origen:   'MANUAL',
         categoria:       'GENERAL',
         urgente:         false,
         urgencia_nivel:  'BAJA',

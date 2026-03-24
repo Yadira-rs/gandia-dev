@@ -111,15 +111,87 @@ Después de implementar:
 4. **Vercel/Netlify:** Deploy automático
 5. **Supabase:** Ya funciona con datos existentes
 
-## Módulos que funcionarán automáticamente:
-- ✅ **Subida** (ya tiene tipos cert)
-- ✅ **Expedientes** (nuevo filtro) 
-- ✅ **Validación** (ve docs filtrados)
-- ✅ **Revisión** (todos los módulos usan mismo hook)
-- ✅ **Empaque** (mismo data source)
+## 🚨 IMPLEMENTAR MÓDULOS COMPLETOS DE CERTIFICACIONES (REAL, NO SIMULADO)
 
-**TODO está listo para PRODUCCIÓN con este cambio.**
+**El filtro en Expedientes es el NÚCLEO. Ahora agrega tabs específicas para certificaciones en el sistema completo:**
 
-¡Hazlo ya! 👍
+### 1. **DocumentosModulo.tsx & DocumentosAnima.tsx** 
+**Agrega tab "Certificaciones" DESPUÉS de 'expedientes':**
+```tsx
+// En TABS_PRODUCTOR y TABS_UNION
+{ id: 'certificaciones', label: 'Certificaciones' },
+```
+
+**Renderiza DocExpedienteWidget con filtro auto-cert:**
+```tsx
+{ tab === 'certificaciones' && <DocExpedienteWidget filtroCert="certificado_sanitario" /> }
+```
+
+**Pasa prop `filtroCert?: string` a DocExpedienteWidget.**
+
+### 2. **tramitesPanel.tsx** (Unión Ganadera)
+**Agrega en bandeja de municipios: filtro "Solo certificaciones":**
+```tsx
+// Query con WHERE tipo_tramite = 'certificacion'
+const tramitesCert = tramites.filter(t => t.tipo === 'certificacion')
+```
+
+**Nueva vista "Certificaciones" similar a municipios/bandeja.**
+
+### 3. **NUEVAS FUNCIONALIDADES REALES:**
+
+**a) Perfiles (DocPanelGeneralWidget.tsx)**
+Filtrar productores SOLO con certificaciones pendientes:
+```tsx
+const productoresCert = grupos.filter(g => g.expedientes.some(e => 
+  e.tipo_tramite === 'certificacion' && 
+  e.estado === 'en_revision'
+))
+```
+
+**b) Elegibilidad** 
+En checklist de tramitesPanel: item "Certificaciones vigentes" → query DB real.
+
+**c) Checklist** 
+Agregar "Certificado sanitario vigente" → validar fecha_documento vs hoy.
+
+**d) Vencimientos** 
+Nueva columna en bandeja:
+```tsx
+const vencidos = docs.filter(d => 
+  d.tipo === 'certificado_sanitario' && 
+  new Date(d.fecha_documento) < new Date()
+)
+```
+
+### 4. **BASE DE DATOS REAL** (NO SIMULAR)
+**Migración inmediata:**
+```sql
+-- Agregar campo es_certificacion a expediente_documentos
+ALTER TABLE expediente_documentos ADD COLUMN es_certificacion boolean DEFAULT false;
+
+-- Marcar existentes
+UPDATE expediente_documentos 
+SET es_certificacion = true 
+WHERE tipo IN ('certificado_sanitario','constancia_upp');
+
+-- Query vencimientos
+SELECT * FROM expediente_documentos 
+WHERE es_certificacion AND fecha_documento < CURRENT_DATE;
+```
+
+## ✅ VERIFICACIÓN PRODUCCIÓN REAL:
+```
+1. Sube certificado → aparece en tab Certificaciones
+2. tramitesPanel filtra solo tipo='certificacion'  
+3. PanelGeneral solo productores con cert pendientes
+4. Checklist valida cert vigentes (query DB)
+5. Alertas vencimientos (query fecha_documento)
+6. TODO con datos REALES de Supabase PROD
+```
+
+**NO SIMULES NADA. Usa queries SQL reales arriba. Todo debe funcionar con datos de producción YA.**
+
+¡IMPLEMENTA COMPLETO HOY! 🔥
 
 

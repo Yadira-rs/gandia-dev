@@ -371,7 +371,7 @@ export function ChatInputBar({
                 {modelOpen && (
                   <div className="ch-dd absolute bottom-full left-0 mb-2 w-52 bg-white dark:bg-[#1c1917] rounded-xl border border-stone-200/80 dark:border-stone-800 shadow-[0_8px_28px_rgba(0,0,0,0.10)] dark:shadow-[0_8px_36px_rgba(0,0,0,0.40)] overflow-hidden py-1 z-40">
                     {(mode === 'asistente' ? MODELS_ASISTENTE : MODELS_EXTERNOS).map(m => (
-                      <button key={m.id} onClick={() => { onSetModel(m.id); onSetModelOpen(false) }} className={`w-full flex items-center justify-between px-4 py-2.5 text-left transition-colors ${model === m.id ? 'text-[#2FAF8F]' : 'text-stone-600 dark:text-stone-300 hover:bg-stone-50 dark:hover:bg-stone-800/60'}`}>
+                      <button key={m.id} onClick={() => { if (m.desc === 'No disponible') return; onSetModel(m.id); onSetModelOpen(false) }} className={`w-full flex items-center justify-between px-4 py-2.5 text-left transition-colors ${m.desc === 'No disponible' ? 'opacity-40 cursor-not-allowed text-stone-600 dark:text-stone-300' : model === m.id ? 'text-[#2FAF8F]' : 'text-stone-600 dark:text-stone-300 hover:bg-stone-50 dark:hover:bg-stone-800/60'}`}>
                         <span>
                           <span className="block text-[12px] font-semibold">{m.label}</span>
                           <span className="block text-[11px] text-stone-400 dark:text-stone-500">{m.desc}</span>

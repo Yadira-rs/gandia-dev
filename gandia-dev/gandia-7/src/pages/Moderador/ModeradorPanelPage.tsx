@@ -122,37 +122,34 @@ export default function ModeradorPanelPage() {
         .replace(/[^a-z0-9\s-]/g, '').replace(/\s+/g, '-').slice(0, 80)
         + '-' + Date.now().toString(36)
 
-      // Si tiene metadatos del pipeline IA, usarlos
-      let meta: Record<string, unknown> = {}
-      try {
-        if (s.adjuntos) meta = JSON.parse(s.adjuntos as unknown as string)
-      } catch { /* sin metadatos */ }
+      // Leer metadatos del pipeline si existen
+      let adj: Record<string, unknown> = {}
+      try { if (s.adjuntos) adj = JSON.parse(s.adjuntos as unknown as string) } catch { /* ok */ }
+      const hasMeta = adj.origen === 'pipeline_ia'
 
-      const isPipeline = meta.origen === 'pipeline_ia'
-
-      await supabase.from('noticias').insert({
+      const { error: insertErr } = await supabase.from('noticias').insert({
         slug,
-        titulo:           s.titulo,
-        cuerpo:           s.contenido,
-        fuente:           isPipeline ? (meta.fuente as string ?? 'Handeia Radar') : 'Comunidad Handeia',
-        fuente_origen:    isPipeline ? 'api' : 'comunidad',
-        categoria:        isPipeline ? (meta.categoria as string ?? 'GENERAL') : 'GENERAL',
-        urgente:          isPipeline ? (meta.urgente as boolean ?? false) : false,
-        urgencia_nivel:   isPipeline ? (meta.urgencia_nivel as string ?? 'BAJA') : 'BAJA',
-        resumenes_ia:     isPipeline ? meta.resumenes_ia : { Productor: s.contenido.slice(0,200), Exportador: s.contenido.slice(0,200), MVZ: s.contenido.slice(0,200), Union: s.contenido.slice(0,200), Auditor: s.contenido.slice(0,200) },
-        resumen_general:  isPipeline ? (meta.resumen_general as string ?? s.contenido.slice(0,300)) : s.contenido.slice(0,300),
-        impacto_ia:       isPipeline ? (meta.impacto_ia as string ?? '') : '',
-        acciones_ia:      isPipeline ? JSON.stringify(meta.acciones_ia ?? []) : '[]',
-        relevancia:       isPipeline ? meta.relevancia : { Productor:5, Exportador:5, MVZ:5, Union:5, Auditor:5 },
-        relacionadas:     '{}',
-        lectura_minutos:  Math.max(1, Math.ceil(s.contenido.split(' ').length / 200)),
-        activa:           true,
-        procesada_ia:     isPipeline,
-        publicada_en:     new Date().toISOString(),
-        trust_index:      s.trust_index,
-        verification_status: isPipeline ? (meta.verification_status as string ?? 'en_revision') : 'comunitario',
-        url_original:     s.source_links?.[0] ?? null,
+        titulo:          s.titulo,
+        cuerpo:          hasMeta ? (adj.resumen_general as string ?? s.contenido) : s.contenido,
+        fuente:          hasMeta ? (adj.fuente as string ?? 'Handeia Radar') : 'Comunidad Handeia',
+        fuente_origen:   'NEWSAPI',
+        categoria:       hasMeta ? (adj.categoria as string ?? 'GENERAL') : 'GENERAL',
+        urgente:         hasMeta ? (adj.urgente as boolean ?? false) : false,
+        urgencia_nivel:  hasMeta ? String(adj.urgencia_nivel ?? 'baja').toLowerCase() : 'baja',
+        resumenes_ia:    hasMeta ? (adj.resumenes_ia ?? { Productor: s.contenido.slice(0,200), Exportador: s.contenido.slice(0,200), MVZ: s.contenido.slice(0,200), Union: s.contenido.slice(0,200), Auditor: s.contenido.slice(0,200) }) : { Productor: s.contenido.slice(0,200), Exportador: s.contenido.slice(0,200), MVZ: s.contenido.slice(0,200), Union: s.contenido.slice(0,200), Auditor: s.contenido.slice(0,200) },
+        resumen_general: hasMeta ? (adj.resumen_general as string ?? s.contenido.slice(0,300)) : s.contenido.slice(0,300),
+        impacto_ia:      hasMeta ? (adj.impacto_ia as string ?? '') : '',
+        acciones_ia:     '[]',
+        relevancia:      hasMeta ? (adj.relevancia ?? { Productor:5, Exportador:5, MVZ:5, Union:5, Auditor:5 }) : { Productor:5, Exportador:5, MVZ:5, Union:5, Auditor:5 },
+        relacionadas:    '{}',
+        lectura_minutos: Math.max(1, Math.ceil(s.contenido.split(' ').length / 200)),
+        activa:          true,
+        procesada_ia:    hasMeta,
+        publicada_en:    new Date().toISOString(),
+        trust_index:     s.trust_index,
+        url_original:    s.source_links?.[0] ?? null,
       })
+      if (insertErr) throw new Error('INSERT noticias: ' + insertErr.message)
       await supabase.from('user_submissions').update({ status: 'publicado' }).eq('id', s.id)
       await supabase.from('moderation_log').insert({
         accion:      'aporte_publicado',
@@ -162,8 +159,10 @@ export default function ModeradorPanelPage() {
       await loadSubmissions(); await loadLog()
       setSelected(null)
       showToast('Noticia publicada en el feed')
-    } catch { showToast('Error al publicar') }
-    finally { setActionLoading(false) }
+    } catch (err) {
+      console.error('[ModeradorPanel] approve error:', err)
+      showToast('Error al publicar: ' + (err instanceof Error ? err.message : JSON.stringify(err)))
+    } finally { setActionLoading(false) }
   }
 
   const reject = async (id: string) => {

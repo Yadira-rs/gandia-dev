@@ -53,7 +53,7 @@ const CANALES = [
     icon: Headphones,
     titulo: 'Soporte Técnico',
     subtitulo: 'Incidencias y asistencia operativa',
-    email: 'soporte@gandia.mx',
+    email: 'soporte@gandia7.com',
     color: '#2FAF8F',
     badge: 'Respuesta prioritaria',
     tiempoRespuesta: '24–48 hrs hábiles',
@@ -71,7 +71,7 @@ const CANALES = [
     icon: Building2,
     titulo: 'Vinculación Institucional',
     subtitulo: 'Alianzas y convenios del sector',
-    email: 'vinculacion@gandia.mx',
+    email: 'vinculacion@gandia7.com',
     color: '#007AFF',
     badge: '3–5 días hábiles',
     tiempoRespuesta: '3–5 días hábiles',
@@ -89,7 +89,7 @@ const CANALES = [
     icon: FileText,
     titulo: 'Coordinación con Autoridades',
     subtitulo: 'Canal regulatorio y sanitario',
-    email: 'autoridades@gandia.mx',
+    email: 'autoridades@gandia7.com',
     color: '#FF3B30',
     badge: 'Canal exclusivo',
     tiempoRespuesta: '24–72 hrs hábiles',
@@ -107,7 +107,7 @@ const CANALES = [
     icon: Mail,
     titulo: 'Información General',
     subtitulo: 'Consultas comerciales e información',
-    email: 'contacto@gandia.mx',
+    email: 'contacto@gandia7.com',
     color: '#AF52DE',
     badge: '48–72 hrs hábiles',
     tiempoRespuesta: '48–72 hrs hábiles',
@@ -123,9 +123,9 @@ const CANALES = [
 ]
 
 const CANALES_ESP = [
-  { icon: Scale,     titulo: 'Legal y Contratos',  email: 'legal@gandia.mx',      desc: 'Asuntos legales, contratos y derechos ARCO' },
-  { icon: Shield,    titulo: 'Privacidad',          email: 'privacidad@gandia.mx', desc: 'Ejercicio de derechos ARCO · LFPDPPP' },
-  { icon: Newspaper, titulo: 'Prensa y Medios',     email: 'prensa@gandia.mx',     desc: 'Comunicados, entrevistas, material gráfico' },
+  { icon: Scale,     titulo: 'Legal y Contratos',  email: 'legal@gandia7.com',      desc: 'Asuntos legales, contratos y derechos ARCO' },
+  { icon: Shield,    titulo: 'Privacidad',          email: 'privacidad@gandia7.com', desc: 'Ejercicio de derechos ARCO · LFPDPPP' },
+  { icon: Newspaper, titulo: 'Prensa y Medios',     email: 'prensa@gandia7.com',     desc: 'Comunicados, entrevistas, material gráfico' },
 ]
 
 // ─── MAIN ─────────────────────────────────────────────────────────────────────
@@ -271,8 +271,8 @@ export default function ContactoPage() {
           <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 72, zIndex: 1, pointerEvents: 'none', background: `linear-gradient(to right, ${bg}, transparent)` }} />
           <div style={{ position: 'absolute', right: 0, top: 0, bottom: 0, width: 72, zIndex: 1, pointerEvents: 'none', background: `linear-gradient(to left, ${bg}, transparent)` }} />
           <div className="mq flex items-center" style={{ gap: 20 }}>
-            {[...['soporte@gandia.mx','vinculacion@gandia.mx','autoridades@gandia.mx','contacto@gandia.mx','legal@gandia.mx','privacidad@gandia.mx','prensa@gandia.mx',
-                  'soporte@gandia.mx','vinculacion@gandia.mx','autoridades@gandia.mx','contacto@gandia.mx','legal@gandia.mx','privacidad@gandia.mx','prensa@gandia.mx']].map((o, i) => (
+            {[...['soporte@gandia7.com','vinculacion@gandia7.com','autoridades@gandia7.com','contacto@gandia7.com','legal@gandia7.com','privacidad@gandia7.com','prensa@gandia7.com',
+                  'soporte@gandia7.com','vinculacion@gandia7.com','autoridades@gandia7.com','contacto@gandia7.com','legal@gandia7.com','privacidad@gandia7.com','prensa@gandia7.com']].map((o, i) => (
               <div key={i} className="flex items-center gap-2" style={{
                 padding: '4px 12px', borderRadius: 8, flexShrink: 0,
                 border: `1px solid ${bdr}`,
@@ -522,15 +522,15 @@ export default function ContactoPage() {
                 {/* Right — información en línea */}
                 <div>
                   <p className="s" style={{ fontSize: 'clamp(1.4rem, 2.8vw, 2rem)', fontStyle: 'italic', lineHeight: 1.5, color: tx1, margin: '0 0 28px' }}>
-                    Blvd. Francisco Villa 1234, Col. Tierra Blanca,<br />
-                    C.P. 34080 · Durango, Durango · México
+                    Carretera Durango – Mezquital, Km. 4.5,<br />
+                    C.P. 34308 · Durango, Durango · México
                   </p>
 
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0', borderTop: `1px solid ${bdr}` }}>
                     {[
                       { label: 'Horario', value: 'Lun – Vie · 9:00 – 18:00 (GMT-6)' },
-                      { label: 'Teléfono', value: '+52 (618) 123-4567', href: 'tel:+526181234567' },
-                      { label: 'RFC', value: 'GAN260213ABC', mono: true },
+                      { label: 'Teléfono', value: 'No disponible' },
+                      { label: 'RFC', value: 'No disponible', mono: true },
                     ].map((item, i, arr) => (
                       <div key={i} style={{
                         padding: '18px 0',
@@ -540,13 +540,7 @@ export default function ContactoPage() {
                         display: 'flex', flexDirection: 'column', gap: 4,
                       }}>
                         <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: tx2 }}>{item.label}</span>
-                        {item.href
-                          ? <a href={item.href} style={{ fontSize: 13.5, color: tx1, textDecoration: 'none', transition: 'color 150ms' }}
-                              onMouseEnter={e => (e.currentTarget.style.color = '#2FAF8F')}
-                              onMouseLeave={e => (e.currentTarget.style.color = tx1)}
-                            >{item.value}</a>
-                          : <span style={{ fontSize: 13.5, color: tx1, fontFamily: item.mono ? 'monospace' : 'inherit' }}>{item.value}</span>
-                        }
+                        <span style={{ fontSize: 13.5, color: tx1, fontFamily: item.mono ? 'monospace' : 'inherit' }}>{item.value}</span>
                       </div>
                     ))}
                   </div>
@@ -584,7 +578,7 @@ export default function ContactoPage() {
 
                   <div style={{ borderTop: `1px solid ${bdr}`, paddingTop: 24, display: 'flex', flexDirection: 'column', gap: 11 }}>
                     {[
-                      'Correos corporativos terminan en @gandia.mx',
+                      'Correos corporativos terminan en @gandia7.com',
                       'Registros auditables de toda comunicación oficial',
                       'Tiempos de respuesta garantizados por canal',
                       'Sin intermediarios · Sin formularios anónimos',
@@ -598,7 +592,7 @@ export default function ContactoPage() {
 
                   <p style={{ marginTop: 28, fontSize: 12.5, lineHeight: 1.72, color: tx2, borderTop: `1px solid ${bdr}`, paddingTop: 20, maxWidth: 560 }}>
                     GANDIA 7 nunca solicita datos sensibles por canales externos ni redes sociales. Ante cualquier duda, escribe a{' '}
-                    <code style={{ fontFamily: 'monospace', fontWeight: 600, color: isDark ? '#6ee7b7' : '#065f46' }}>soporte@gandia.mx</code>.
+                    <code style={{ fontFamily: 'monospace', fontWeight: 600, color: isDark ? '#6ee7b7' : '#065f46' }}>soporte@gandia7.com</code>.
                   </p>
                 </div>
 
@@ -669,7 +663,7 @@ export default function ContactoPage() {
           </div>
         </section>
 
-        <Footer isDark={isDark} />
+        <Footer />
       </div>
     </>
   )
