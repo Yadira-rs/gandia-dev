@@ -10,7 +10,7 @@ import {
   useMarketplacePartners,
   type PartnerConProductos,
   type ProductDB,
-} from '../../../hooks/marketplaceData'
+} from '../../../hooks/useMarketplace'
 
 // ─── ÍCONO POR PARTNER (por nombre, no por ID hardcodeado) ───────────────────
 
@@ -21,20 +21,20 @@ function PartnerIcon({ nombre, color }: { nombre: string; color: string }) {
 
   if (n.includes('nvidia')) return (
     <svg className={cls} style={style} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
-      <rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/>
-      <circle cx="12" cy="10" r="3"/>
+      <rect x="2" y="3" width="20" height="14" rx="2" /><path d="M8 21h8M12 17v4" />
+      <circle cx="12" cy="10" r="3" />
     </svg>
   )
   if (n.includes('fermaca')) return (
     <svg className={cls} style={style} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
-      <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
-      <polyline points="9 22 9 12 15 12 15 22"/>
+      <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+      <polyline points="9 22 9 12 15 12 15 22" />
     </svg>
   )
   return (
     <svg className={cls} style={style} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
-      <circle cx="12" cy="12" r="3"/>
-      <path d="M12 2v3M12 19v3M4.22 4.22l2.12 2.12M17.66 17.66l2.12 2.12M2 12h3M19 12h3M4.22 19.78l2.12-2.12M17.66 6.34l2.12-2.12"/>
+      <circle cx="12" cy="12" r="3" />
+      <path d="M12 2v3M12 19v3M4.22 4.22l2.12 2.12M17.66 17.66l2.12 2.12M2 12h3M19 12h3M4.22 19.78l2.12-2.12M17.66 6.34l2.12-2.12" />
     </svg>
   )
 }
@@ -47,7 +47,7 @@ function ProductRow({ product, color }: { product: ProductDB; color: string }) {
       href={product.url}
       target="_blank"
       rel="noopener noreferrer"
-      className="group flex items-center gap-3 p-3 rounded-[10px] border border-stone-200/70 dark:border-stone-800 hover:border-stone-300 dark:hover:border-stone-700 bg-white dark:bg-[#1c1917] transition-all no-underline"
+      className="group flex items-center gap-2 sm:gap-3 p-3 rounded-[10px] border border-stone-200/70 dark:border-stone-800 hover:border-stone-300 dark:hover:border-stone-700 bg-white dark:bg-[#1c1917] transition-all no-underline"
     >
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2">
@@ -66,7 +66,7 @@ function ProductRow({ product, color }: { product: ProductDB; color: string }) {
           className="w-3 h-3 text-stone-300 dark:text-stone-600 group-hover:text-stone-500 dark:group-hover:text-stone-400 transition-colors"
           viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"
         >
-          <line x1="7" y1="17" x2="17" y2="7"/><polyline points="7 7 17 7 17 17"/>
+          <line x1="7" y1="17" x2="17" y2="7" /><polyline points="7 7 17 7 17 17" />
         </svg>
       </div>
     </a>
@@ -80,7 +80,7 @@ function PartnerCard({
   expanded,
   onToggle,
 }: {
-  partner:  PartnerConProductos
+  partner: PartnerConProductos
   expanded: boolean
   onToggle: () => void
 }) {
@@ -93,7 +93,7 @@ function PartnerCard({
     >
       <button
         onClick={onToggle}
-        className="w-full flex items-center gap-4 p-4 bg-white dark:bg-[#1c1917] hover:bg-stone-50 dark:hover:bg-stone-900/40 transition-colors text-left cursor-pointer border-0"
+        className="w-full flex items-start gap-3 sm:gap-4 p-4 bg-white dark:bg-[#1c1917] hover:bg-stone-50 dark:hover:bg-stone-900/40 transition-colors text-left cursor-pointer border-0"
         style={{ borderBottom: expanded ? `1px solid ${color}20` : undefined }}
       >
         <div className="w-10 h-10 rounded-[10px] flex items-center justify-center shrink-0" style={{ background: `${color}15` }}>
@@ -114,7 +114,7 @@ function PartnerCard({
             className={`w-4 h-4 text-stone-300 dark:text-stone-600 transition-transform duration-200 ${expanded ? 'rotate-180' : ''}`}
             viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"
           >
-            <polyline points="6 9 12 15 18 9"/>
+            <polyline points="6 9 12 15 18 9" />
           </svg>
         </div>
       </button>
@@ -125,7 +125,7 @@ function PartnerCard({
             <p className="text-[12px] text-stone-600 dark:text-stone-300 leading-[1.7]">{partner.descripcion}</p>
             <div className="flex items-start gap-2 p-2.5 rounded-[8px]" style={{ background: `${color}08`, border: `1px solid ${color}20` }}>
               <svg className="w-3 h-3 mt-0.5 shrink-0" style={{ color }} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
-                <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
+                <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
               </svg>
               <p className="text-[11px] leading-[1.6]" style={{ color }}>{partner.aporte}</p>
             </div>
@@ -140,7 +140,7 @@ function PartnerCard({
             </div>
           </div>
 
-          <div className="flex items-center gap-2 pt-1">
+          <div className="flex items-center gap-2 pt-1 flex-wrap">
             <a
               href={partner.url}
               target="_blank"
@@ -150,7 +150,7 @@ function PartnerCard({
             >
               Visitar {partner.nombre}
               <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
-                <line x1="7" y1="17" x2="17" y2="7"/><polyline points="7 7 17 7 17 17"/>
+                <line x1="7" y1="17" x2="17" y2="7" /><polyline points="7 7 17 7 17 17" />
               </svg>
             </a>
             <a

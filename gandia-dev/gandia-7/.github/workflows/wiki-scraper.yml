@@ -1,0 +1,49 @@
+name: Handeia Wiki Scraper
+
+on:
+  schedule:
+    # Cada lunes a las 7:00 UTC (antes del pipeline de noticias)
+    - cron: '0 7 * * 1'
+  workflow_dispatch:
+    # Permite correr manualmente desde GitHub Actions
+
+jobs:
+  wiki-scraper:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Run Wiki Scraper
+        env:
+          SUPABASE_URL:         ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+        run: |
+          echo "Iniciando Wiki Scraper - $(date)" >> $GITHUB_STEP_SUMMARY
+
+          RESPONSE=$(curl -s -w "\n%{http_code}" \
+            -X POST \
+            "$SUPABASE_URL/functions/v1/wiki-scraper" \
+            -H "Authorization: Bearer $SUPABASE_SERVICE_KEY" \
+            -H "Content-Type: application/json" \
+            -d '{}' \
+            --max-time 120)
+
+          HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
+          BODY=$(echo "$RESPONSE" | head -n -1)
+
+          echo "HTTP Status: $HTTP_CODE" >> $GITHUB_STEP_SUMMARY
+          echo "Respuesta: $BODY" >> $GITHUB_STEP_SUMMARY
+
+          if [ "$HTTP_CODE" != "200" ]; then
+            echo "❌ Wiki Scraper falló con código $HTTP_CODE" >> $GITHUB_STEP_SUMMARY
+            exit 1
+          fi
+
+          # Mostrar cuántos hechos nuevos se encontraron
+          NUEVOS=$(echo "$BODY" | grep -o '"items_nuevos":[0-9]*' | grep -o '[0-9]*' | awk '{s+=$1}END{print s}')
+          echo "✅ Hechos nuevos en revisión: ${NUEVOS:-0}" >> $GITHUB_STEP_SUMMARY
+
+      - name: Notify on failure
+        if: failure()
+        run: |
+          echo "❌ Wiki Scraper falló en $(date)" >> $GITHUB_STEP_SUMMARY

@@ -16,88 +16,91 @@ import type { ArtifactDomain } from './artifactTypes'
 // ─── TIPOS ────────────────────────────────────────────────────────────────────
 
 interface CopiloAction {
-  id:    string
+  id: string
   label: string
-  icon:  React.ReactNode
+  icon: React.ReactNode
 }
 
 // Mini historial de conversación
 interface HistoryEntry {
-  id:     string
-  role:   'user' | 'agent'
-  text:   string
+  id: string
+  role: 'user' | 'agent'
+  text: string
   status: 'ok' | 'error'
 }
 
 interface Props {
-  domain:    ArtifactDomain
+  domain: ArtifactDomain
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   onAction?: (actionId: string, payload?: any) => void
 }
 
 // ─── SVG ICONS ────────────────────────────────────────────────────────────────
 
-const IcoPlus      = () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-const IcoStar      = () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
-const IcoDownload  = () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-const IcoClock     = () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-const IcoLeaf      = () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M2 22 16 8M17.5 3.5C15 2 11 2 8 5c-3 3-3 7-1.5 9.5"/><path d="M6.5 14.5C8 17 12 19 16 17c4-2 5-6 3.5-9.5"/></svg>
-const IcoAlert     = () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
-const IcoRefresh   = () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
-const IcoBadge     = () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="8" r="6"/><path d="M15.477 12.89L17 22l-5-3-5 3 1.523-9.11"/></svg>
-const IcoTimer     = () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2 2"/><path d="M5 3 2 6"/><path d="m22 6-3-3"/><path d="M6.38 18.7 4 21"/><path d="M17.64 18.67 20 21"/></svg>
-const IcoFile      = () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-const IcoPending   = () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-const IcoSearch    = () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-const IcoShield    = () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-const IcoCamera    = () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
-const IcoClipboard = () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/></svg>
-const IcoReport    = () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+const IcoPlus = () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></svg>
+const IcoStar = () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" /></svg>
+const IcoDownload = () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="7 10 12 15 17 10" /><line x1="12" y1="15" x2="12" y2="3" /></svg>
+const IcoClock = () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" /></svg>
+const IcoLeaf = () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M2 22 16 8M17.5 3.5C15 2 11 2 8 5c-3 3-3 7-1.5 9.5" /><path d="M6.5 14.5C8 17 12 19 16 17c4-2 5-6 3.5-9.5" /></svg>
+const IcoAlert = () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" /><line x1="12" y1="9" x2="12" y2="13" /><line x1="12" y1="17" x2="12.01" y2="17" /></svg>
+const IcoRefresh = () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M23 4v6h-6" /><path d="M1 20v-6h6" /><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" /></svg>
+const IcoBadge = () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="8" r="6" /><path d="M15.477 12.89L17 22l-5-3-5 3 1.523-9.11" /></svg>
+const IcoTimer = () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="13" r="8" /><path d="M12 9v4l2 2" /><path d="M5 3 2 6" /><path d="m22 6-3-3" /><path d="M6.38 18.7 4 21" /><path d="M17.64 18.67 20 21" /></svg>
+const IcoFile = () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" /></svg>
+const IcoPending = () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" /></svg>
+const IcoSearch = () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" /></svg>
+const IcoShield = () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" /></svg>
+const IcoCamera = () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" /><circle cx="12" cy="13" r="4" /></svg>
+const IcoClipboard = () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2" /><rect x="8" y="2" width="8" height="4" rx="1" ry="1" /></svg>
+const IcoReport = () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" /><line x1="16" y1="13" x2="8" y2="13" /><line x1="16" y1="17" x2="8" y2="17" /><polyline points="10 9 9 9 8 9" /></svg>
 
 // ─── ACCIONES SUGERIDAS POR DOMINIO ──────────────────────────────────────────
 
 const SUGGESTED_ACTIONS: Record<ArtifactDomain, CopiloAction[]> = {
-  passport:      [{ id: 'create_passport', label: 'Crear pasaporte',  icon: <IcoPlus /> },  { id: 'filter_eligible',  label: 'Solo elegibles',   icon: <IcoStar /> },     { id: 'export_list',     label: 'Exportar lista',   icon: <IcoDownload /> }],
-  twins:         [{ id: 'view_timeline',   label: 'Ver historial',    icon: <IcoClock /> }, { id: 'add_event',        label: 'Registrar evento', icon: <IcoPlus /> },     { id: 'view_feeding',    label: 'Ver alimentación', icon: <IcoLeaf /> }],
-  monitoring:    [{ id: 'view_alerts',     label: 'Ver alertas',      icon: <IcoAlert /> }, { id: 'refresh_sensors',  label: 'Actualizar',       icon: <IcoRefresh /> }],
-  certification: [{ id: 'new_cert',        label: 'Nueva cert.',      icon: <IcoBadge /> }, { id: 'expiring',         label: 'Por vencer',       icon: <IcoTimer /> }],
-  tramites:      [{ id: 'new_tramite',     label: 'Nuevo trámite',    icon: <IcoFile /> },  { id: 'pending',          label: 'Pendientes',       icon: <IcoPending /> }],
-  verification:  [{ id: 'new_audit',       label: 'Nueva auditoría',  icon: <IcoSearch /> },{ id: 'history',          label: 'Ver historial',    icon: <IcoClock /> }],
-  sanidad:       [{ id: 'check_risk',      label: 'Riesgo zona',      icon: <IcoShield /> },{ id: 'report_senasica',  label: 'Reportar',         icon: <IcoReport /> },   { id: 'view_protocol',   label: 'Protocolo',        icon: <IcoClipboard /> }],
-  biometria:     [{ id: 'capture_morro',   label: 'Nueva captura',    icon: <IcoCamera /> },{ id: 'view_historial',   label: 'Historial',        icon: <IcoClock /> },    { id: 'register_animal', label: 'Registrar',        icon: <IcoPlus /> }],
-  exportacion:   [{ id: 'nueva_solicitud', label: 'Nueva solicitud',  icon: <IcoPlus /> },  { id: 'escanear_aretes',  label: 'Escanear aretes',  icon: <IcoCamera /> },   { id: 'validar_aretes',  label: 'Validar aretes',   icon: <IcoBadge /> },   { id: 'exportar_excel',  label: 'Exportar Excel',   icon: <IcoDownload /> }],
-  vinculacion:   [{ id: 'nueva_vinculacion', label: 'Nueva vinculación', icon: <IcoPlus /> }, { id: 'ver_pendientes', label: 'Ver pendientes', icon: <IcoTimer /> }, { id: 'ver_activas', label: 'Ver activas', icon: <IcoBadge /> }, { id: 'ver_historial', label: 'Historial', icon: <IcoClock /> }],
-  documentos:    [{ id: 'subir_documento',  label: 'Subir documento',  icon: <IcoPlus /> }, { id: 'mis_expedientes', label: 'Mis expedientes', icon: <IcoFile /> },  { id: 'validar_docs',   label: 'Qué me falta',    icon: <IcoClipboard /> }, { id: 'empacar_docs', label: 'Empacar docs', icon: <IcoDownload /> }],
+  passport: [{ id: 'create_passport', label: 'Crear pasaporte', icon: <IcoPlus /> }, { id: 'filter_eligible', label: 'Solo elegibles', icon: <IcoStar /> }, { id: 'export_list', label: 'Exportar lista', icon: <IcoDownload /> }],
+  twins: [{ id: 'view_timeline', label: 'Ver historial', icon: <IcoClock /> }, { id: 'add_event', label: 'Registrar evento', icon: <IcoPlus /> }, { id: 'view_feeding', label: 'Ver alimentación', icon: <IcoLeaf /> }],
+  monitoring: [{ id: 'view_alerts', label: 'Ver alertas', icon: <IcoAlert /> }, { id: 'refresh_sensors', label: 'Actualizar', icon: <IcoRefresh /> }],
+  certification: [{ id: 'new_cert', label: 'Nueva cert.', icon: <IcoBadge /> }, { id: 'expiring', label: 'Por vencer', icon: <IcoTimer /> }],
+  tramites: [{ id: 'new_tramite', label: 'Nuevo trámite', icon: <IcoFile /> }, { id: 'pending', label: 'Pendientes', icon: <IcoPending /> }],
+  verification: [{ id: 'new_audit', label: 'Nueva auditoría', icon: <IcoSearch /> }, { id: 'history', label: 'Ver historial', icon: <IcoClock /> }],
+  sanidad: [{ id: 'check_risk', label: 'Riesgo zona', icon: <IcoShield /> }, { id: 'report_senasica', label: 'Reportar', icon: <IcoReport /> }, { id: 'view_protocol', label: 'Protocolo', icon: <IcoClipboard /> }],
+  biometria: [{ id: 'capture_morro', label: 'Nueva captura', icon: <IcoCamera /> }, { id: 'view_historial', label: 'Historial', icon: <IcoClock /> }, { id: 'register_animal', label: 'Registrar', icon: <IcoPlus /> }],
+  exportacion: [{ id: 'nueva_solicitud', label: 'Nueva solicitud', icon: <IcoPlus /> }, { id: 'escanear_aretes', label: 'Escanear aretes', icon: <IcoCamera /> }, { id: 'validar_aretes', label: 'Validar aretes', icon: <IcoBadge /> }, { id: 'exportar_excel', label: 'Exportar Excel', icon: <IcoDownload /> }],
+  vinculacion: [{ id: 'nueva_vinculacion', label: 'Nueva vinculación', icon: <IcoPlus /> }, { id: 'ver_pendientes', label: 'Ver pendientes', icon: <IcoTimer /> }, { id: 'ver_activas', label: 'Ver activas', icon: <IcoBadge /> }, { id: 'ver_historial', label: 'Historial', icon: <IcoClock /> }],
+  documentos: [{ id: 'subir_documento', label: 'Subir documento', icon: <IcoPlus /> }, { id: 'mis_expedientes', label: 'Mis expedientes', icon: <IcoFile /> }, { id: 'validar_docs', label: 'Qué me falta', icon: <IcoClipboard /> }, { id: 'empacar_docs', label: 'Empacar docs', icon: <IcoDownload /> }],
+  marketplace: [{ id: 'ver_soluciones', label: 'Ver soluciones', icon: <IcoStar /> }, { id: 'ver_partners', label: 'Ver partners', icon: <IcoSearch /> }, { id: 'kit_vision_ia', label: 'Kit Visión IA', icon: <IcoCamera /> }, { id: 'kit_sensores', label: 'Kit Sensores IoT', icon: <IcoLeaf /> }],
 }
 
 // ─── fix #5 — hint contextual por dominio ────────────────────────────────────
 
 const DOMAIN_HINT: Record<ArtifactDomain, string> = {
-  passport:      'Gestiona fichas y expedientes ganaderos',
-  twins:         'Consulta eventos, dieta e historial del animal',
-  monitoring:    'Revisa alertas y estado de sensores en campo',
+  passport: 'Gestiona fichas y expedientes ganaderos',
+  twins: 'Consulta eventos, dieta e historial del animal',
+  monitoring: 'Revisa alertas y estado de sensores en campo',
   certification: 'Administra certificaciones y vencimientos',
-  tramites:      'Sigue trámites activos ante SENASICA',
-  verification:  'Audita y verifica registros del sistema',
-  sanidad:       'Monitorea riesgos sanitarios y protocolos',
-  biometria:     'Captura y consulta huellas de morro',
-  exportacion:   'Gestiona solicitudes de aretes azules SENASICA',
-  vinculacion:   'Administra tu red de acceso institucional',
-  documentos:    'Organiza y valida tus documentos por trámite',
+  tramites: 'Sigue trámites activos ante SENASICA',
+  verification: 'Audita y verifica registros del sistema',
+  sanidad: 'Monitorea riesgos sanitarios y protocolos',
+  biometria: 'Captura y consulta huellas de morro',
+  exportacion: 'Gestiona solicitudes de aretes azules SENASICA',
+  vinculacion: 'Administra tu red de acceso institucional',
+  documentos: 'Organiza y valida tus documentos por trámite',
+  marketplace: 'Explora hardware, partners e IoT para tu rancho',
 }
 
 const DOMAIN_LABEL: Record<ArtifactDomain, string> = {
-  passport:      'Ficha',
-  twins:         'Gemelo',
-  monitoring:    'Monitor',
+  passport: 'Ficha',
+  twins: 'Gemelo',
+  monitoring: 'Monitor',
   certification: 'Certif.',
-  tramites:      'Trámites',
-  verification:  'Verif.',
-  sanidad:       'Sanidad',
-  biometria:     'Biometría',
-  exportacion:   'Exportación',
-  vinculacion:   'Vinculaciones',
-  documentos:    'Documentos',
+  tramites: 'Trámites',
+  verification: 'Verif.',
+  sanidad: 'Sanidad',
+  biometria: 'Biometría',
+  exportacion: 'Exportación',
+  vinculacion: 'Vinculaciones',
+  documentos: 'Documentos',
+  marketplace: 'Marketplace',
 }
 
 // ─── ESTADO ───────────────────────────────────────────────────────────────────
@@ -107,29 +110,29 @@ type CopiloState = 'idle' | 'thinking' | 'done' | 'error'
 // ─── COMPONENTE ──────────────────────────────────────────────────────────────
 
 export default function CopiloAnima({ domain, onAction }: Props) {
-  const [open,         setOpen]         = useState(false)
-  const [closing,      setClosing]      = useState(false)
-  const [input,        setInput]        = useState('')
-  const [copiloState,  setCopiloState]  = useState<CopiloState>('idle')
-  const [thinkText,    setThinkText]    = useState('')
-  const [resultText,   setResultText]   = useState('')
-  const [errorText,    setErrorText]    = useState('')
-  const [activeChip,   setActiveChip]   = useState('')
-  const [history,      setHistory]      = useState<HistoryEntry[]>([])
+  const [open, setOpen] = useState(false)
+  const [closing, setClosing] = useState(false)
+  const [input, setInput] = useState('')
+  const [copiloState, setCopiloState] = useState<CopiloState>('idle')
+  const [thinkText, setThinkText] = useState('')
+  const [resultText, setResultText] = useState('')
+  const [errorText, setErrorText] = useState('')
+  const [activeChip, setActiveChip] = useState('')
+  const [history, setHistory] = useState<HistoryEntry[]>([])
   const [panelVisible, setPanelVisible] = useState(false)
-  const [kbOffset,     setKbOffset]     = useState(0)
+  const [kbOffset, setKbOffset] = useState(0)
 
   // Drag-to-reposition
-  const [pos,      setPos]      = useState<{x:number,y:number}|null>(null)
+  const [pos, setPos] = useState<{ x: number, y: number } | null>(null)
   const [dragging, setDragging] = useState(false)
-  const dragOrigin = useRef<{mx:number,my:number,ex:number,ey:number}|null>(null)
-  const fabRef     = useRef<HTMLButtonElement>(null)
+  const dragOrigin = useRef<{ mx: number, my: number, ex: number, ey: number } | null>(null)
+  const fabRef = useRef<HTMLButtonElement>(null)
 
-  const inputRef  = useRef<HTMLTextAreaElement>(null)
-  const panelRef  = useRef<HTMLDivElement>(null)
-  const actions   = SUGGESTED_ACTIONS[domain]
-  const label     = DOMAIN_LABEL[domain]
-  const hint      = DOMAIN_HINT[domain]
+  const inputRef = useRef<HTMLTextAreaElement>(null)
+  const panelRef = useRef<HTMLDivElement>(null)
+  const actions = SUGGESTED_ACTIONS[domain]
+  const label = DOMAIN_LABEL[domain]
+  const hint = DOMAIN_HINT[domain]
 
   // #4 — domain change: reset durante el render (patrón recomendado por React
   //      para sincronizar estado derivado de props, sin useEffect).
@@ -181,7 +184,7 @@ export default function CopiloAnima({ domain, onAction }: Props) {
     if (!dragging && Math.hypot(dx, dy) < 6) return   // treat as click if < 6px
     setDragging(true)
     const FAB_W = 44; const FAB_H = 44
-    const newX = Math.min(Math.max(dragOrigin.current.ex + dx, 8), window.innerWidth  - FAB_W - 8)
+    const newX = Math.min(Math.max(dragOrigin.current.ex + dx, 8), window.innerWidth - FAB_W - 8)
     const newY = Math.min(Math.max(dragOrigin.current.ey + dy, 8), window.innerHeight - FAB_H - 8)
     setPos({ x: newX, y: newY })
   }, [dragging])
@@ -207,7 +210,7 @@ export default function CopiloAnima({ domain, onAction }: Props) {
       if (!els.length) return
       const first = els[0]; const last = els[els.length - 1]
       if (e.shiftKey) { if (document.activeElement === first) { e.preventDefault(); last.focus() } }
-      else            { if (document.activeElement === last)  { e.preventDefault(); first.focus() } }
+      else { if (document.activeElement === last) { e.preventDefault(); first.focus() } }
     }
     document.addEventListener('keydown', trap)
     return () => document.removeEventListener('keydown', trap)
@@ -328,8 +331,8 @@ export default function CopiloAnima({ domain, onAction }: Props) {
                         bg-white dark:bg-[#111010]
                         border border-stone-200/60 dark:border-white/[0.07]
                         ${panelVisible && !closing ? 'copilo-enter' : ''}
-                        ${closing                  ? 'copilo-exit'  : ''}
-                        ${!panelVisible && !closing ? 'opacity-0'   : ''}`}
+                        ${closing ? 'copilo-exit' : ''}
+                        ${!panelVisible && !closing ? 'opacity-0' : ''}`}
             style={{
               boxShadow: `
                 0 0 0 1px rgba(255,255,255,0.04),
@@ -352,9 +355,9 @@ export default function CopiloAnima({ domain, onAction }: Props) {
                   stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
                   className="shrink-0 text-stone-400 dark:text-stone-500"
                 >
-                  <path d="M2 17l10 5 10-5"/>
-                  <path d="M2 12l10 5 10-5"/>
-                  <path d="M12 2L2 7l10 5 10-5-10-5z"/>
+                  <path d="M2 17l10 5 10-5" />
+                  <path d="M2 12l10 5 10-5" />
+                  <path d="M12 2L2 7l10 5 10-5-10-5z" />
                 </svg>
                 <span className="text-[12.5px] font-semibold tracking-[-0.01em]
                                  text-stone-800 dark:text-stone-100">
@@ -376,8 +379,8 @@ export default function CopiloAnima({ domain, onAction }: Props) {
               >
                 <svg className="w-2.75 h-2.75" viewBox="0 0 24 24" fill="none"
                   stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
-                  <line x1="18" y1="6" x2="6" y2="18"/>
-                  <line x1="6" y1="6" x2="18" y2="18"/>
+                  <line x1="18" y1="6" x2="6" y2="18" />
+                  <line x1="6" y1="6" x2="18" y2="18" />
                 </svg>
               </button>
             </div>
@@ -392,9 +395,9 @@ export default function CopiloAnima({ domain, onAction }: Props) {
                 <div className="flex items-center gap-2 min-w-0">
                   <svg className="shrink-0" width="12" height="12" viewBox="0 0 24 24" fill="none"
                     stroke="#2FAF8F" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M2 17l10 5 10-5"/>
-                    <path d="M2 12l10 5 10-5"/>
-                    <path d="M12 2L2 7l10 5 10-5-10-5z"/>
+                    <path d="M2 17l10 5 10-5" />
+                    <path d="M2 12l10 5 10-5" />
+                    <path d="M12 2L2 7l10 5 10-5-10-5z" />
                   </svg>
                   <span className="ch-serif italic text-[12px] text-stone-400 dark:text-stone-500 truncate">
                     {thinkText}
@@ -411,7 +414,7 @@ export default function CopiloAnima({ domain, onAction }: Props) {
                 <div className="flex items-center gap-2 min-w-0">
                   <svg className="shrink-0 w-3 h-3 text-[#2FAF8F]" viewBox="0 0 24 24"
                     fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
-                    <polyline className="copilo-check-path" points="20 6 9 17 4 12"/>
+                    <polyline className="copilo-check-path" points="20 6 9 17 4 12" />
                   </svg>
                   <span className="ch-serif italic text-[12px] text-stone-400 dark:text-stone-500 truncate">
                     {resultText}
@@ -428,9 +431,9 @@ export default function CopiloAnima({ domain, onAction }: Props) {
                   <div className="flex items-center gap-2">
                     <svg className="shrink-0 w-3 h-3 text-red-400" viewBox="0 0 24 24"
                       fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
-                      <circle cx="12" cy="12" r="10"/>
-                      <line x1="12" y1="8" x2="12" y2="12"/>
-                      <line x1="12" y1="16" x2="12.01" y2="16"/>
+                      <circle cx="12" cy="12" r="10" />
+                      <line x1="12" y1="8" x2="12" y2="12" />
+                      <line x1="12" y1="16" x2="12.01" y2="16" />
                     </svg>
                     <span className="text-[12px] text-stone-500 dark:text-stone-400 truncate">
                       {errorText}
@@ -456,14 +459,14 @@ export default function CopiloAnima({ domain, onAction }: Props) {
                   <div className="px-4 pb-3 flex flex-col gap-2">
                     {/* Agrupamos de a pares: [user, agent] */}
                     {Array.from({ length: Math.ceil(history.length / 2) }, (_, i) => {
-                      const user  = history[i * 2]
+                      const user = history[i * 2]
                       const agent = history[i * 2 + 1]
                       return (
                         <div key={user?.id ?? i} className="flex flex-col gap-0.5">
                           {/* Acción del usuario */}
                           {user && (
                             <div className="flex items-center gap-1.5">
-                              <svg className="shrink-0 w-2.5 h-2.5 text-stone-300 dark:text-stone-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="9 18 15 12 9 6"/></svg>
+                              <svg className="shrink-0 w-2.5 h-2.5 text-stone-300 dark:text-stone-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="9 18 15 12 9 6" /></svg>
                               <span className="text-[11px] text-stone-500 dark:text-stone-400 truncate">{user.text}</span>
                             </div>
                           )}
@@ -471,9 +474,9 @@ export default function CopiloAnima({ domain, onAction }: Props) {
                           {agent && (
                             <div className="flex items-center gap-1.5 pl-4">
                               {agent.status === 'error' ? (
-                                <svg className="shrink-0 w-2.5 h-2.5 text-red-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                                <svg className="shrink-0 w-2.5 h-2.5 text-red-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
                               ) : (
-                                <svg className="shrink-0 w-2.5 h-2.5 text-[#2FAF8F]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+                                <svg className="shrink-0 w-2.5 h-2.5 text-[#2FAF8F]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polyline points="20 6 9 17 4 12" /></svg>
                               )}
                               <span className={"text-[11px] truncate " + (agent.status === 'error' ? 'text-red-400' : 'text-stone-400 dark:text-stone-500')}>
                                 {agent.text}
@@ -547,10 +550,10 @@ function ActionChip({
   active,
   onPress,
 }: {
-  action:   CopiloAction
+  action: CopiloAction
   disabled: boolean
-  active:   boolean
-  onPress:  () => void
+  active: boolean
+  onPress: () => void
 }) {
   const [hovered, setHovered] = useState(false)
 
@@ -567,8 +570,8 @@ function ActionChip({
                  active:scale-[0.96] text-left
                  disabled:opacity-40 disabled:pointer-events-none"
       style={{
-        background: active  ? 'rgba(47,175,143,0.06)' :
-                    hovered ? 'rgba(0,0,0,0.03)'       : 'transparent',
+        background: active ? 'rgba(47,175,143,0.06)' :
+          hovered ? 'rgba(0,0,0,0.03)' : 'transparent',
         border: `1px solid ${active ? 'rgba(47,175,143,0.25)' : hovered ? 'rgba(0,0,0,0.14)' : 'rgba(0,0,0,0.07)'}`,
       }}
     >
@@ -579,13 +582,13 @@ function ActionChip({
         {active ? (
           <svg className="animate-spin text-[#2FAF8F]" viewBox="0 0 24 24" fill="none"
             stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
-            <path d="M21 12a9 9 0 1 1-6.219-8.56"/>
+            <path d="M21 12a9 9 0 1 1-6.219-8.56" />
           </svg>
         ) : action.icon}
       </span>
       <span className={"truncate transition-colors duration-150 " + (
         active ? 'text-[#2FAF8F]'
-               : 'text-stone-500 dark:text-stone-400 group-hover:text-stone-700 dark:group-hover:text-stone-200'
+          : 'text-stone-500 dark:text-stone-400 group-hover:text-stone-700 dark:group-hover:text-stone-200'
       )}>
         {action.label}
       </span>
@@ -603,12 +606,12 @@ function InputRow({
   onSubmit,
   disabled,
 }: {
-  inputRef:  React.RefObject<HTMLTextAreaElement | null>
-  value:     string
-  onChange:  (v: string) => void
+  inputRef: React.RefObject<HTMLTextAreaElement | null>
+  value: string
+  onChange: (v: string) => void
   onKeyDown: (e: React.KeyboardEvent<HTMLTextAreaElement>) => void
-  onSubmit:  () => void
-  disabled:  boolean
+  onSubmit: () => void
+  disabled: boolean
 }) {
   const hasInput = value.trim().length > 0
 
@@ -653,7 +656,7 @@ function InputRow({
                    transition-all duration-150 active:scale-90 disabled:opacity-20"
         style={{
           background: hasInput ? '#2FAF8F' : 'transparent',
-          border:     hasInput ? 'none'    : '1.5px solid #d6d3d1',
+          border: hasInput ? 'none' : '1.5px solid #d6d3d1',
         }}
       >
         <svg
@@ -662,8 +665,8 @@ function InputRow({
           viewBox="0 0 24 24" fill="none" stroke="currentColor"
           strokeWidth="2.5" strokeLinecap="round"
         >
-          <line x1="12" y1="19" x2="12" y2="5"/>
-          <polyline points="5 12 12 5 19 12"/>
+          <line x1="12" y1="19" x2="12" y2="5" />
+          <polyline points="5 12 12 5 19 12" />
         </svg>
       </button>
     </div>
@@ -682,14 +685,14 @@ function FABButton({
   onPointerMove,
   onPointerUp,
 }: {
-  fabRef:        React.RefObject<HTMLButtonElement | null>
-  open:          boolean
-  state:         CopiloState
-  isDragging:    boolean
-  onClick:       () => void
+  fabRef: React.RefObject<HTMLButtonElement | null>
+  open: boolean
+  state: CopiloState
+  isDragging: boolean
+  onClick: () => void
   onPointerDown: (e: React.PointerEvent) => void
   onPointerMove: (e: React.PointerEvent) => void
-  onPointerUp:   (e: React.PointerEvent) => void
+  onPointerUp: (e: React.PointerEvent) => void
 }) {
   return (
     <button
@@ -718,25 +721,25 @@ function FABButton({
       {state === 'thinking' ? (
         <svg className="w-4.5 h-4.5 animate-spin" viewBox="0 0 24 24" fill="none"
           stroke="white" strokeWidth="2.5" strokeLinecap="round">
-          <path d="M21 12a9 9 0 1 1-6.219-8.56"/>
+          <path d="M21 12a9 9 0 1 1-6.219-8.56" />
         </svg>
       ) : state === 'done' ? (
         <svg className="w-4.5 h-4.5" viewBox="0 0 24 24" fill="none"
           stroke="white" strokeWidth="2.5" strokeLinecap="round">
-          <polyline points="20 6 9 17 4 12"/>
+          <polyline points="20 6 9 17 4 12" />
         </svg>
       ) : open ? (
         <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none"
           stroke="white" strokeWidth="2.5" strokeLinecap="round">
-          <line x1="18" y1="6" x2="6" y2="18"/>
-          <line x1="6" y1="6" x2="18" y2="18"/>
+          <line x1="18" y1="6" x2="6" y2="18" />
+          <line x1="6" y1="6" x2="18" y2="18" />
         </svg>
       ) : (
         <svg className="w-4.5 h-4.5" viewBox="0 0 24 24" fill="none"
           stroke="white" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M2 17l10 5 10-5"/>
-          <path d="M2 12l10 5 10-5"/>
-          <path d="M12 2L2 7l10 5 10-5-10-5z"/>
+          <path d="M2 17l10 5 10-5" />
+          <path d="M2 12l10 5 10-5" />
+          <path d="M12 2L2 7l10 5 10-5-10-5z" />
         </svg>
       )}
     </button>

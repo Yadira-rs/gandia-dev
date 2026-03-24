@@ -12,32 +12,32 @@ import {
   type CompatibilidadDB,
   type ProductDB,
   type PartnerDB,
-} from '../../../hooks/marketplaceData'
+} from '../../../hooks/useMarketplace'
 
 // ─── MÓDULOS DE GANDIA ────────────────────────────────────────────────────────
 
 const MODULO_LABEL: Record<string, string> = {
-  passport:      'Ficha Ganadera',
-  twins:         'Gemelo Digital',
-  monitoring:    'Monitoreo',
+  passport: 'Ficha Ganadera',
+  twins: 'Gemelo Digital',
+  monitoring: 'Monitoreo',
   certification: 'Certificación',
-  exportacion:   'Exportación',
-  documentos:    'Documentos',
-  sanidad:       'Sanidad',
-  biometria:     'Biometría',
-  vinculacion:   'Vinculación',
+  exportacion: 'Exportación',
+  documentos: 'Documentos',
+  sanidad: 'Sanidad',
+  biometria: 'Biometría',
+  vinculacion: 'Vinculación',
 }
 
 const MODULO_COLOR: Record<string, string> = {
-  passport:      '#2FAF8F',
-  twins:         '#6366f1',
-  monitoring:    '#f59e0b',
+  passport: '#2FAF8F',
+  twins: '#6366f1',
+  monitoring: '#f59e0b',
   certification: '#3b82f6',
-  exportacion:   '#f97316',
-  documentos:    '#3b82f6',
-  sanidad:       '#ef4444',
-  biometria:     '#6366f1',
-  vinculacion:   '#0ea5e9',
+  exportacion: '#f97316',
+  documentos: '#3b82f6',
+  sanidad: '#ef4444',
+  biometria: '#6366f1',
+  vinculacion: '#0ea5e9',
 }
 
 // ─── TIPOS COMBINADOS ─────────────────────────────────────────────────────────
@@ -81,14 +81,13 @@ export default function MarketplaceCompatibilidadWidget() {
       </div>
 
       {/* Filtros por módulo */}
-      <div className="flex gap-1.5 flex-wrap">
+      <div className="flex gap-1.5 flex-wrap overflow-x-auto pb-0.5">
         <button
           onClick={() => setModuloFiltro(null)}
-          className={`px-2.5 py-1 rounded-full text-[10.5px] font-medium transition-all border cursor-pointer ${
-            !moduloFiltro
+          className={`px-2.5 py-1 rounded-full text-[10.5px] font-medium transition-all border cursor-pointer ${!moduloFiltro
               ? 'bg-stone-800 dark:bg-stone-100 text-white dark:text-stone-900 border-transparent'
               : 'bg-transparent text-stone-500 dark:text-stone-400 border-stone-200/70 dark:border-stone-700'
-          }`}
+            }`}
         >
           Todos
         </button>
@@ -101,9 +100,9 @@ export default function MarketplaceCompatibilidadWidget() {
               onClick={() => setModuloFiltro(m)}
               className="px-2.5 py-1 rounded-full text-[10.5px] font-medium transition-all border cursor-pointer"
               style={{
-                background:  active ? color          : 'transparent',
-                color:       active ? 'white'        : '#78716c',
-                borderColor: active ? 'transparent'  : 'rgb(231 229 228 / 0.7)',
+                background: active ? color : 'transparent',
+                color: active ? 'white' : '#78716c',
+                borderColor: active ? 'transparent' : 'rgb(231 229 228 / 0.7)',
               }}
             >
               {MODULO_LABEL[m] ?? m}
@@ -124,7 +123,7 @@ export default function MarketplaceCompatibilidadWidget() {
             return (
               <div
                 key={item.id}
-                className="flex items-start gap-3 p-3.5 rounded-[12px] border border-stone-200/70 dark:border-stone-800 bg-white dark:bg-[#1c1917]"
+                className="flex items-start gap-3 p-3.5 rounded-[12px] border border-stone-200/70 dark:border-stone-800 bg-white dark:bg-[#1c1917] flex-wrap sm:flex-nowrap"
               >
                 {/* Dot partner color */}
                 <div

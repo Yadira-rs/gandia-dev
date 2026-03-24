@@ -15,51 +15,51 @@ import { useRanchoId } from './useAnimales'
 export type PartnerId = string   // uuid de la BD
 
 export interface PartnerDB {
-  id:           string
-  nombre:       string
-  slogan:       string
-  descripcion:  string
-  aporte:       string
-  color:        string
-  url:          string
+  id: string
+  nombre: string
+  slogan: string
+  descripcion: string
+  aporte: string
+  color: string
+  url: string
   url_contacto: string
-  activo:       boolean
-  created_at:   string
+  activo: boolean
+  created_at: string
 }
 
 export interface ProductDB {
-  id:          string
-  partner_id:  string
-  nombre:      string
+  id: string
+  partner_id: string
+  nombre: string
   descripcion: string
-  uso:         string
-  precio:      string
-  etiqueta:    string
-  url:         string
-  destacado:   boolean
-  tags:        string[]
-  activo:      boolean
-  created_at:  string
+  uso: string
+  precio: string
+  etiqueta: string
+  url: string
+  destacado: boolean
+  tags: string[]
+  activo: boolean
+  created_at: string
 }
 
 export interface CompatibilidadDB {
-  id:            string
-  product_id:    string
+  id: string
+  product_id: string
   modulo_gandia: string
-  descripcion:   string
+  descripcion: string
 }
 
 export interface EquipamientoDB {
-  id:                string
-  rancho_id:         string
-  product_id:        string
-  cantidad:          number
-  notas:             string | null
+  id: string
+  rancho_id: string
+  product_id: string
+  cantidad: number
+  notas: string | null
   fecha_adquisicion: string | null
-  created_at:        string
+  created_at: string
   // join
-  product?:          ProductDB
-  partner?:          PartnerDB
+  product?: ProductDB
+  partner?: PartnerDB
 }
 
 // Partner con sus productos embebidos (para la UI)
@@ -79,8 +79,8 @@ function errMsg(e: unknown): string {
 
 export function useMarketplacePartners() {
   const [partners, setPartners] = useState<PartnerConProductos[]>([])
-  const [loading,  setLoading]  = useState(false)
-  const [error,    setError]    = useState<string | null>(null)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   const fetch = useCallback(async () => {
     setLoading(true)
@@ -127,8 +127,8 @@ export function useMarketplacePartners() {
 
 export function useMarketplaceDestacados() {
   const [products, setProducts] = useState<ProductDB[]>([])
-  const [loading,  setLoading]  = useState(false)
-  const [error,    setError]    = useState<string | null>(null)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   const fetch = useCallback(async () => {
     setLoading(true)
@@ -159,8 +159,8 @@ export function useMarketplaceDestacados() {
 
 export function useMarketplaceByTag(tag: string | null) {
   const [products, setProducts] = useState<ProductDB[]>([])
-  const [loading,  setLoading]  = useState(false)
-  const [error,    setError]    = useState<string | null>(null)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   const fetch = useCallback(async () => {
     if (!tag) { setProducts([]); return }
@@ -191,9 +191,9 @@ export function useMarketplaceByTag(tag: string | null) {
 // ─── HOOK: compatibilidad por módulo ─────────────────────────────────────────
 
 export function useMarketplaceCompatibilidad() {
-  const [items,   setItems]   = useState<(CompatibilidadDB & { product: ProductDB; partner: PartnerDB })[]>([])
+  const [items, setItems] = useState<(CompatibilidadDB & { product: ProductDB; partner: PartnerDB })[]>([])
   const [loading, setLoading] = useState(false)
-  const [error,   setError]   = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(null)
 
   const fetch = useCallback(async () => {
     setLoading(true)
@@ -244,9 +244,9 @@ export function useMarketplaceCompatibilidad() {
 
 export function useMarketplaceEquipamiento(userId: string | null) {
   const { ranchoId } = useRanchoId(userId)
-  const [items,   setItems]   = useState<EquipamientoWithDetails[]>([])
+  const [items, setItems] = useState<EquipamientoWithDetails[]>([])
   const [loading, setLoading] = useState(false)
-  const [error,   setError]   = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(null)
 
   const fetch = useCallback(async () => {
     if (!ranchoId) return
@@ -308,20 +308,20 @@ export interface EquipamientoWithDetails extends EquipamientoDB {
 // ─── ACCIÓN: registrar equipamiento ──────────────────────────────────────────
 
 export async function registrarEquipamiento(params: {
-  ranchoId:          string
-  productId:         string
-  cantidad:          number
-  notas?:            string
+  ranchoId: string
+  productId: string
+  cantidad: number
+  notas?: string
   fechaAdquisicion?: string
 }): Promise<{ ok: boolean; error: string | null }> {
   try {
     const { error } = await supabase
       .from('marketplace_equipamiento')
       .insert({
-        rancho_id:         params.ranchoId,
-        product_id:        params.productId,
-        cantidad:          params.cantidad,
-        notas:             params.notas ?? null,
+        rancho_id: params.ranchoId,
+        product_id: params.productId,
+        cantidad: params.cantidad,
+        notas: params.notas ?? null,
         fecha_adquisicion: params.fechaAdquisicion ?? null,
       })
     if (error) throw error
@@ -349,9 +349,9 @@ export async function eliminarEquipamiento(equipamientoId: string): Promise<{ ok
 // ─── NECESIDADES (estático — no cambia seguido) ───────────────────────────────
 
 export const NECESIDADES: { id: string; label: string; tags: string[] }[] = [
-  { id: 'exportar',        label: 'Quiero exportar',         tags: ['exportacion', 'trazabilidad'] },
-  { id: 'monitorear',      label: 'Monitorear mi hato',       tags: ['monitoreo', 'vision', 'salud'] },
-  { id: 'conectar',        label: 'Mejorar conectividad',     tags: ['conectividad', 'internet', 'rural'] },
-  { id: 'trazabilidad',    label: 'Trazabilidad completa',    tags: ['trazabilidad', 'gemelo', 'iot'] },
-  { id: 'infraestructura', label: 'Infraestructura rural',    tags: ['infraestructura', 'energia', 'edge'] },
+  { id: 'exportar', label: 'Quiero exportar', tags: ['exportacion', 'trazabilidad'] },
+  { id: 'monitorear', label: 'Monitorear mi hato', tags: ['monitoreo', 'vision', 'salud'] },
+  { id: 'conectar', label: 'Mejorar conectividad', tags: ['conectividad', 'internet', 'rural'] },
+  { id: 'trazabilidad', label: 'Trazabilidad completa', tags: ['trazabilidad', 'gemelo', 'iot'] },
+  { id: 'infraestructura', label: 'Infraestructura rural', tags: ['infraestructura', 'energia', 'edge'] },
 ]

@@ -16,7 +16,7 @@ import {
   type EquipamientoWithDetails,
   type ProductDB,
   type PartnerConProductos,
-} from '../../../hooks/marketplaceData'
+} from '../../../hooks/useMarketplace'
 
 // ─── WIDGET ───────────────────────────────────────────────────────────────────
 
@@ -25,18 +25,18 @@ export default function MarketplaceEquipamientoWidget() {
   const userId = profile?.user_id ?? null
 
   const { items, loading, error, refetch, ranchoId } = useMarketplaceEquipamiento(userId)
-  const { partners }                                  = useMarketplacePartners()
+  const { partners } = useMarketplacePartners()
 
-  const [showForm,    setShowForm]    = useState(false)
-  const [saving,      setSaving]      = useState(false)
-  const [saveError,   setSaveError]   = useState<string | null>(null)
-  const [deletingId,  setDeletingId]  = useState<string | null>(null)
+  const [showForm, setShowForm] = useState(false)
+  const [saving, setSaving] = useState(false)
+  const [saveError, setSaveError] = useState<string | null>(null)
+  const [deletingId, setDeletingId] = useState<string | null>(null)
 
   // Form state
   const [selectedProductId, setSelectedProductId] = useState('')
-  const [cantidad,           setCantidad]           = useState(1)
-  const [notas,              setNotas]              = useState('')
-  const [fechaAdq,           setFechaAdq]           = useState('')
+  const [cantidad, setCantidad] = useState(1)
+  const [notas, setNotas] = useState('')
+  const [fechaAdq, setFechaAdq] = useState('')
 
   // Todos los productos de todos los partners (para el select)
   const allProducts: ProductDB[] = partners.flatMap((p: PartnerConProductos) => p.productos)
@@ -47,10 +47,10 @@ export default function MarketplaceEquipamientoWidget() {
     setSaveError(null)
     const { ok, error: err } = await registrarEquipamiento({
       ranchoId,
-      productId:         selectedProductId,
+      productId: selectedProductId,
       cantidad,
-      notas:             notas || undefined,
-      fechaAdquisicion:  fechaAdq || undefined,
+      notas: notas || undefined,
+      fechaAdquisicion: fechaAdq || undefined,
     })
     setSaving(false)
     if (!ok) { setSaveError(err); return }
@@ -95,7 +95,7 @@ export default function MarketplaceEquipamientoWidget() {
           className="flex items-center gap-1.5 px-3 py-1.5 rounded-[8px] bg-[#2FAF8F] text-white text-[11px] font-semibold hover:bg-[#27a07f] transition-colors border-0 cursor-pointer"
         >
           <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
-            <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+            <line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />
           </svg>
           Registrar
         </button>
@@ -187,8 +187,8 @@ export default function MarketplaceEquipamientoWidget() {
         <div className="flex flex-col items-center gap-3 py-12 text-center">
           <div className="w-10 h-10 rounded-2xl bg-stone-100 dark:bg-stone-800/60 flex items-center justify-center">
             <svg className="w-5 h-5 text-stone-400 dark:text-stone-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
-              <rect x="2" y="3" width="20" height="14" rx="2"/>
-              <path d="M8 21h8M12 17v4"/>
+              <rect x="2" y="3" width="20" height="14" rx="2" />
+              <path d="M8 21h8M12 17v4" />
             </svg>
           </div>
           <p className="text-[12.5px] text-stone-500 dark:text-stone-400">Sin equipamiento registrado</p>
@@ -206,16 +206,13 @@ export default function MarketplaceEquipamientoWidget() {
             return (
               <div
                 key={item.id}
-                className="flex items-start gap-3 p-3.5 rounded-[12px] border border-stone-200/70 dark:border-stone-800 bg-white dark:bg-[#1c1917]"
+                className="flex items-start gap-3 p-3.5 rounded-[12px] border border-stone-200/70 dark:border-stone-800 bg-white dark:bg-[#1c1917] flex-wrap sm:flex-nowrap"
               >
                 {/* Dot color partner */}
                 <div className="w-2 h-2 rounded-full mt-1.5 shrink-0" style={{ background: partnerColor }} />
 
                 <div className="flex-1 min-w-0 flex flex-col gap-0.5">
                   <div className="flex items-center gap-2 flex-wrap">
-                    <p className="text-[12.5px] font-semibold text-stone-700 dark:text-stone-200">
-                      {item.product?.nombre ?? '—'}
-                    </p>
                     <span className="text-[9.5px] font-semibold uppercase tracking-wider" style={{ color: partnerColor }}>
                       {item.partner?.nombre ?? '—'}
                     </span>
@@ -245,8 +242,8 @@ export default function MarketplaceEquipamientoWidget() {
                     <div className="w-3 h-3 border-2 border-stone-300 border-t-transparent rounded-full animate-spin" />
                   ) : (
                     <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-                      <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
-                      <path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
+                      <polyline points="3 6 5 6 21 6" /><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
+                      <path d="M10 11v6M14 11v6" /><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" />
                     </svg>
                   )}
                 </button>
