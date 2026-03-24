@@ -240,6 +240,7 @@ export function useChat(onArtifactText?: (text: string) => boolean) {
 
       const answer = fnData?.answer ?? 'No se pudo procesar la consulta.'
       const sinContexto = fnData?.sin_contexto ?? false
+      const wikiHechos = fnData?.wiki_hechos ?? []
 
       const fullAnswer = sinContexto
         ? `⚠️ *Información general de IA — no verificada por Handeia*\n\n${answer}`
@@ -263,7 +264,7 @@ export function useChat(onArtifactText?: (text: string) => boolean) {
       setIsStreaming(false)
       setStreamingText('')
       setShowThinking(false)
-      setMessages(prev => [...prev, { ...dbToUI(savedAssistant), thoughtsExpanded: false }])
+      setMessages(prev => [...prev, { ...dbToUI(savedAssistant), thoughtsExpanded: false, wiki_hechos: wikiHechos.length > 0 ? wikiHechos : undefined }])
 
     } catch (err: unknown) {
       if (err instanceof Error && err.name === 'AbortError') return

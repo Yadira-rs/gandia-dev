@@ -245,6 +245,19 @@ const EXTENDED_RULES: Array<{
 
   // ── Trámites: nuevo ──
   { keywords: ['nuevo trámite', 'nuevo tramite', 'crear trámite', 'crear tramite', 'iniciar trámite', 'iniciar tramite', 'solicitar trámite', 'solicitar tramite', 'abrir trámite', 'abrir tramite'], widgetId: 'tramites:nuevo', domain: 'tramites', level: 'widget' },
+
+  // ══════════════════════════════════════════════════════════════════
+  // MARKETPLACE
+  // ══════════════════════════════════════════════════════════════════
+
+  // ── Espacio Gandia Marketplace (anima) ── máxima prioridad
+  { keywords: ['espacio gandia marketplace', 'espacio marketplace', 'abrir espacio marketplace', 'ecosistema gandia'],                                                widgetId: 'marketplace:kits',     domain: 'marketplace', level: 'anima'  },
+  // ── Módulo Marketplace ──
+  { keywords: ['módulo marketplace', 'modulo marketplace', 'abrir marketplace', 'ver marketplace', 'marketplace completo'],                                          widgetId: 'marketplace:kits',     domain: 'marketplace', level: 'module' },
+  // ── Partners ──
+  { keywords: ['ver partners', 'partners gandia', 'aliados gandia', 'quiénes son los partners', 'quienes son los partners', 'partners estratégicos', 'partners estrategicos', 'nvidia gandia', 'fermaca gandia', 'iot gandia'], widgetId: 'marketplace:partners', domain: 'marketplace', level: 'widget' },
+  // ── Kits / soluciones ──
+  { keywords: ['kit rancho', 'kits ganaderos', 'soluciones hardware', 'hardware ganadero', 'comprar hardware', 'necesito hardware', 'quiero sensores', 'sensores ganaderos', 'collar inteligente', 'cámara corral', 'camara corral', 'jetson', 'nvidia rancho', 'fermaca conectividad', 'internet rancho', 'iot rancho', 'conectividad rancho', 'sensores iot', 'báscula inteligente', 'bascula inteligente', 'gateway lora'], widgetId: 'marketplace:kits',     domain: 'marketplace', level: 'widget' },
 ]
 
 const PRODUCTOR_ONLY_WIDGETS = new Set([

@@ -89,6 +89,10 @@ import DocPanelGeneralWidget from '../../../artifacts/documentos/widgets/DocPane
 
 // ── Trámites ──────────────────────────────────────────────────────────────────
 import TramiteNuevoWidget from '../../../artifacts/documentos/widgets/TramiteNuevoWidget'
+
+// ── Marketplace ───────────────────────────────────────────────────────────────
+import MarketplaceKitsWidget     from '../../../artifacts/marketplace/widgets/MarketplaceKitsWidget'
+import MarketplacePartnersWidget from '../../../artifacts/marketplace/widgets/MarketplacePartnersWidget'
 import {
   MOCK_CERT_CARDS,
   MOCK_ELEGIBILIDAD,
@@ -99,11 +103,9 @@ import {
   MOCK_VERIFICATION_ITEM,
   MOCK_VERIFICATION_HISTORIAL,
   MOCK_VERIFICATION_INCONSISTENCIAS,
-  MOCK_VINCULACIONES,
-  MOCK_VINCULACIONES_PENDIENTES,
-  MOCK_VINCULACIONES_HISTORIAL,
 } from './mockData'
 
+import { useVinculaciones } from '../../../hooks/useVinculaciones'
 
 // ═══════════════════════════════════════════════════════════════════
 // TWINS — Componentes inline con datos reales
@@ -221,6 +223,49 @@ function TwinsAlimentacionInline() {
   )
   return <TwinsAlimentacionWidget datos={datos} siniiga={siniiga} />
 }
+// ═══════════════════════════════════════════════════════════════════
+// VINCULACIÓN — Componentes inline con datos reales (sin mock)
+// ═══════════════════════════════════════════════════════════════════
+
+function VinculacionListaInline({ onExpand }: { onExpand: () => void }) {
+  const { activas, loading } = useVinculaciones()
+  if (loading) return (
+    <div className="flex items-center gap-2 py-6 justify-center">
+      <span className="w-2 h-2 rounded-full bg-[#0ea5e9] animate-pulse" />
+      <span className="text-[12px] text-stone-400">Cargando vinculaciones…</span>
+    </div>
+  )
+  return <VinculacionListaWidget vinculaciones={activas} onExpand={onExpand} />
+}
+
+function VinculacionPendientesInline({ onExpand: _onExpand }: { onExpand: () => void }) {
+  const { pendientes, loading, handleAceptar, handleRechazar } = useVinculaciones()
+  if (loading) return (
+    <div className="flex items-center gap-2 py-6 justify-center">
+      <span className="w-2 h-2 rounded-full bg-[#0ea5e9] animate-pulse" />
+      <span className="text-[12px] text-stone-400">Cargando pendientes…</span>
+    </div>
+  )
+  return (
+    <VinculacionPendientesWidget
+      pendientes={pendientes}
+      onAceptar={handleAceptar}
+      onRechazar={handleRechazar}
+    />
+  )
+}
+
+function VinculacionHistorialInline() {
+  const { historial, loading } = useVinculaciones()
+  if (loading) return (
+    <div className="flex items-center gap-2 py-6 justify-center">
+      <span className="w-2 h-2 rounded-full bg-[#0ea5e9] animate-pulse" />
+      <span className="text-[12px] text-stone-400">Cargando historial…</span>
+    </div>
+  )
+  return <VinculacionHistorialWidget historial={historial} />
+}
+
 
 export interface WidgetCallbacks {
   onExpand: () => void
@@ -292,6 +337,9 @@ const EXPANDABLE_WIDGETS = new Set([
   'documentos:panel',
   // Trámites
   'tramites:nuevo',
+  // Marketplace
+  'marketplace:kits',
+  'marketplace:partners',
 ])
 
 export function renderWidget(
@@ -519,18 +567,18 @@ function getWidgetNode(widgetId: string, onExpand: () => void): React.ReactNode 
     case 'exportacion:scanner':
       return <ExportacionScannerWidget />
 
-    // ── Vinculación ──
+    // ── Vinculación ── datos reales via useVinculaciones()
     case 'vinculacion:lista':
-      return <VinculacionListaWidget vinculaciones={MOCK_VINCULACIONES} />
+      return <VinculacionListaInline onExpand={onExpand} />
 
     case 'vinculacion:pendientes':
-      return <VinculacionPendientesWidget pendientes={MOCK_VINCULACIONES_PENDIENTES} />
+      return <VinculacionPendientesInline onExpand={onExpand} />
 
     case 'vinculacion:nueva':
       return <VinculacionNuevaWidget />
 
     case 'vinculacion:historial':
-      return <VinculacionHistorialWidget historial={MOCK_VINCULACIONES_HISTORIAL} />
+      return <VinculacionHistorialInline />
 
     // ── Documentos ──
     case 'documentos:subida':
@@ -550,6 +598,13 @@ function getWidgetNode(widgetId: string, onExpand: () => void): React.ReactNode 
 
     case 'documentos:panel':
       return <DocPanelGeneralWidget />
+
+    // ── Marketplace ──
+    case 'marketplace:kits':
+      return <MarketplaceKitsWidget onExpand={onExpand} />
+
+    case 'marketplace:partners':
+      return <MarketplacePartnersWidget />
 
     default:
       return null

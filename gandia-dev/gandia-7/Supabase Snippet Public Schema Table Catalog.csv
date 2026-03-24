@@ -1,0 +1,1582 @@
+ai_schema
+"{
+    ""tables"": [
+        {
+            ""name"": ""entidades"",
+            ""columns"": [
+                ""id"",
+                ""created_at"",
+                ""nombre"",
+                ""tipo""
+            ],
+            ""relations"": null
+        },
+        {
+            ""name"": ""estados"",
+            ""columns"": [
+                ""id"",
+                ""created_at"",
+                ""entidad_id"",
+                ""nombre"",
+                ""es_final""
+            ],
+            ""relations"": [
+                {
+                    ""column"": ""entidad_id"",
+                    ""references_table"": ""entidades"",
+                    ""references_column"": ""id""
+                }
+            ]
+        },
+        {
+            ""name"": ""biometria_capturas"",
+            ""columns"": [
+                ""id"",
+                ""rancho_id"",
+                ""animal_id"",
+                ""subido_por"",
+                ""imagen_path"",
+                ""score_cv"",
+                ""score_ia"",
+                ""score_fusion"",
+                ""resultado"",
+                ""modo"",
+                ""confirmado"",
+                ""confirmado_por"",
+                ""confirmado_at"",
+                ""notas"",
+                ""created_at""
+            ],
+            ""relations"": [
+                {
+                    ""column"": ""animal_id"",
+                    ""references_table"": ""animales"",
+                    ""references_column"": ""id""
+                }
+            ]
+        },
+        {
+            ""name"": ""user_roles"",
+            ""columns"": [
+                ""id"",
+                ""user_id"",
+                ""role"",
+                ""created_at""
+            ],
+            ""relations"": null
+        },
+        {
+            ""name"": ""evidencias"",
+            ""columns"": [
+                ""id"",
+                ""created_at"",
+                ""evento_id"",
+                ""archivo_url"",
+                ""tipo"",
+                ""hash""
+            ],
+            ""relations"": [
+                {
+                    ""column"": ""evento_id"",
+                    ""references_table"": ""eventos"",
+                    ""references_column"": ""id""
+                }
+            ]
+        },
+        {
+            ""name"": ""decisiones"",
+            ""columns"": [
+                ""id"",
+                ""created_at"",
+                ""evento_id"",
+                ""resultado"",
+                ""origen""
+            ],
+            ""relations"": [
+                {
+                    ""column"": ""evento_id"",
+                    ""references_table"": ""eventos"",
+                    ""references_column"": ""id""
+                }
+            ]
+        },
+        {
+            ""name"": ""animales"",
+            ""columns"": [
+                ""id"",
+                ""siniiga"",
+                ""rfid"",
+                ""nombre"",
+                ""raza"",
+                ""especie"",
+                ""sexo"",
+                ""fecha_nacimiento"",
+                ""peso_kg"",
+                ""color"",
+                ""pelaje"",
+                ""rancho_id"",
+                ""propietario_id"",
+                ""upp"",
+                ""estado_mx"",
+                ""municipio"",
+                ""estatus"",
+                ""export_label"",
+                ""verificado_por"",
+                ""mrz"",
+                ""created_at"",
+                ""updated_at"",
+                ""biometria_status"",
+                ""corral_id"",
+                ""peso_nacimiento"",
+                ""peso_meta"",
+                ""ganancia_diaria_kg""
+            ],
+            ""relations"": [
+                {
+                    ""column"": ""corral_id"",
+                    ""references_table"": ""corrales"",
+                    ""references_column"": ""id""
+                },
+                {
+                    ""column"": ""rancho_id"",
+                    ""references_table"": ""ranch_extended_profiles"",
+                    ""references_column"": ""id""
+                }
+            ]
+        },
+        {
+            ""name"": ""auditoria"",
+            ""columns"": [
+                ""id"",
+                ""created_at"",
+                ""tabla"",
+                ""accion"",
+                ""registro_id"",
+                ""ejecutado_por""
+            ],
+            ""relations"": [
+                {
+                    ""column"": ""registro_id"",
+                    ""references_table"": ""decisiones"",
+                    ""references_column"": ""id""
+                }
+            ]
+        },
+        {
+            ""name"": ""biometria_embeddings"",
+            ""columns"": [
+                ""id"",
+                ""animal_id"",
+                ""rancho_id"",
+                ""subido_por"",
+                ""imagen_path"",
+                ""calidad"",
+                ""activo"",
+                ""created_at"",
+                ""embedding_vector"",
+                ""fp_features"",
+                ""embedding_raw"",
+                ""modo""
+            ],
+            ""relations"": [
+                {
+                    ""column"": ""animal_id"",
+                    ""references_table"": ""animales"",
+                    ""references_column"": ""id""
+                }
+            ]
+        },
+        {
+            ""name"": ""admin_2fa_codes"",
+            ""columns"": [
+                ""id"",
+                ""admin_email"",
+                ""code"",
+                ""expires_at"",
+                ""created_at"",
+                ""user_id""
+            ],
+            ""relations"": null
+        },
+        {
+            ""name"": ""user_profiles"",
+            ""columns"": [
+                ""id"",
+                ""user_id"",
+                ""email"",
+                ""auth_method"",
+                ""personal_data"",
+                ""institutional_data"",
+                ""terms_accepted"",
+                ""notifications_preferences"",
+                ""status"",
+                ""metadata"",
+                ""created_at"",
+                ""updated_at"",
+                ""approved_at"",
+                ""approved_by"",
+                ""reviewed_by"",
+                ""reviewed_at"",
+                ""rejection_reason"",
+                ""account_id"",
+                ""role"",
+                ""onboarding_completed"",
+                ""preferences""
+            ],
+            ""relations"": null
+        },
+        {
+            ""name"": ""verification_codes"",
+            ""columns"": [
+                ""id"",
+                ""email"",
+                ""phone"",
+                ""code"",
+                ""type"",
+                ""expires_at"",
+                ""used"",
+                ""created_at""
+            ],
+            ""relations"": null
+        },
+        {
+            ""name"": ""eventos"",
+            ""columns"": [
+                ""id"",
+                ""created_at"",
+                ""entidad_id"",
+                ""estado_id"",
+                ""tipo"",
+                ""descripcion"",
+                ""ejecutado_por""
+            ],
+            ""relations"": [
+                {
+                    ""column"": ""entidad_id"",
+                    ""references_table"": ""entidades"",
+                    ""references_column"": ""id""
+                },
+                {
+                    ""column"": ""estado_id"",
+                    ""references_table"": ""estados"",
+                    ""references_column"": ""id""
+                }
+            ]
+        },
+        {
+            ""name"": ""animal_documentos"",
+            ""columns"": [
+                ""id"",
+                ""animal_id"",
+                ""rancho_id"",
+                ""subido_por"",
+                ""tipo"",
+                ""nombre"",
+                ""storage_path"",
+                ""url"",
+                ""mime_type"",
+                ""tamano_bytes"",
+                ""descripcion"",
+                ""fecha_documento"",
+                ""emisor"",
+                ""hash_sha256"",
+                ""created_at""
+            ],
+            ""relations"": [
+                {
+                    ""column"": ""animal_id"",
+                    ""references_table"": ""animales"",
+                    ""references_column"": ""id""
+                },
+                {
+                    ""column"": ""rancho_id"",
+                    ""references_table"": ""ranch_extended_profiles"",
+                    ""references_column"": ""id""
+                }
+            ]
+        },
+        {
+            ""name"": ""corrales"",
+            ""columns"": [
+                ""id"",
+                ""rancho_id"",
+                ""label"",
+                ""capacidad"",
+                ""animales"",
+                ""estado"",
+                ""temperatura"",
+                ""humedad"",
+                ""tiene_camara"",
+                ""activo"",
+                ""notas"",
+                ""lat"",
+                ""lng"",
+                ""created_at"",
+                ""updated_at"",
+                ""pos_x"",
+                ""pos_y"",
+                ""superficie_ha""
+            ],
+            ""relations"": [
+                {
+                    ""column"": ""rancho_id"",
+                    ""references_table"": ""ranch_extended_profiles"",
+                    ""references_column"": ""id""
+                }
+            ]
+        },
+        {
+            ""name"": ""course_waitlist"",
+            ""columns"": [
+                ""id"",
+                ""email"",
+                ""source"",
+                ""created_at""
+            ],
+            ""relations"": null
+        },
+        {
+            ""name"": ""camaras"",
+            ""columns"": [
+                ""id"",
+                ""rancho_id"",
+                ""corral_id"",
+                ""label"",
+                ""stream_url"",
+                ""snapshot_url"",
+                ""fps_analisis"",
+                ""estado"",
+                ""alertas_activas"",
+                ""detectados"",
+                ""inventario"",
+                ""ultima_lectura_at"",
+                ""notas"",
+                ""created_at"",
+                ""updated_at""
+            ],
+            ""relations"": [
+                {
+                    ""column"": ""corral_id"",
+                    ""references_table"": ""corrales"",
+                    ""references_column"": ""id""
+                },
+                {
+                    ""column"": ""rancho_id"",
+                    ""references_table"": ""ranch_extended_profiles"",
+                    ""references_column"": ""id""
+                }
+            ]
+        },
+        {
+            ""name"": ""noticias"",
+            ""columns"": [
+                ""id"",
+                ""slug"",
+                ""titulo"",
+                ""titulo_original"",
+                ""cuerpo"",
+                ""url_original"",
+                ""fuente"",
+                ""fuente_origen"",
+                ""autor"",
+                ""categoria"",
+                ""urgente"",
+                ""urgencia_nivel"",
+                ""resumenes_ia"",
+                ""resumen_general"",
+                ""impacto_ia"",
+                ""acciones_ia"",
+                ""relevancia"",
+                ""relacionadas"",
+                ""lectura_minutos"",
+                ""activa"",
+                ""procesada_ia"",
+                ""error_ia"",
+                ""publicada_en"",
+                ""created_at"",
+                ""updated_at"",
+                ""content_hash"",
+                ""trust_index"",
+                ""verification_status"",
+                ""source_id""
+            ],
+            ""relations"": [
+                {
+                    ""column"": ""source_id"",
+                    ""references_table"": ""news_sources"",
+                    ""references_column"": ""id""
+                }
+            ]
+        },
+        {
+            ""name"": ""ranch_extended_profiles"",
+            ""columns"": [
+                ""id"",
+                ""user_id"",
+                ""bio"",
+                ""surface_ha"",
+                ""capacity_heads"",
+                ""active_heads"",
+                ""exportable_pct"",
+                ""founded_year"",
+                ""address_street"",
+                ""municipality"",
+                ""state"",
+                ""postal_code"",
+                ""lat"",
+                ""lng"",
+                ""email_contact"",
+                ""website"",
+                ""grazing_system"",
+                ""supplementation"",
+                ""water_supply"",
+                ""mortality_pct"",
+                ""weight_gain_kg"",
+                ""infrastructure"",
+                ""certifications"",
+                ""team_members"",
+                ""team_roles"",
+                ""linked_mvz"",
+                ""created_at"",
+                ""updated_at"",
+                ""name"",
+                ""location"",
+                ""phone"",
+                ""main_breeds"",
+                ""production_type"",
+                ""certifications_text"",
+                ""altitude"",
+                ""ancho_m"",
+                ""largo_m""
+            ],
+            ""relations"": null
+        },
+        {
+            ""name"": ""notifications"",
+            ""columns"": [
+                ""id"",
+                ""user_id"",
+                ""title"",
+                ""body"",
+                ""type"",
+                ""read"",
+                ""created_at""
+            ],
+            ""relations"": null
+        },
+        {
+            ""name"": ""conteos"",
+            ""columns"": [
+                ""id"",
+                ""rancho_id"",
+                ""corral_id"",
+                ""detectados"",
+                ""inventario_esperado"",
+                ""match_pct"",
+                ""fuente"",
+                ""registrado_por"",
+                ""notas"",
+                ""created_at""
+            ],
+            ""relations"": [
+                {
+                    ""column"": ""corral_id"",
+                    ""references_table"": ""corrales"",
+                    ""references_column"": ""id""
+                },
+                {
+                    ""column"": ""rancho_id"",
+                    ""references_table"": ""ranch_extended_profiles"",
+                    ""references_column"": ""id""
+                }
+            ]
+        },
+        {
+            ""name"": ""anomalias_monitoreo"",
+            ""columns"": [
+                ""id"",
+                ""rancho_id"",
+                ""corral_id"",
+                ""animal_id"",
+                ""tipo"",
+                ""severidad"",
+                ""fuente"",
+                ""resuelto"",
+                ""resuelto_por"",
+                ""resuelto_at"",
+                ""evidencia_url"",
+                ""notas"",
+                ""registrado_por"",
+                ""created_at"",
+                ""updated_at""
+            ],
+            ""relations"": [
+                {
+                    ""column"": ""animal_id"",
+                    ""references_table"": ""animales"",
+                    ""references_column"": ""id""
+                },
+                {
+                    ""column"": ""corral_id"",
+                    ""references_table"": ""corrales"",
+                    ""references_column"": ""id""
+                },
+                {
+                    ""column"": ""rancho_id"",
+                    ""references_table"": ""ranch_extended_profiles"",
+                    ""references_column"": ""id""
+                }
+            ]
+        },
+        {
+            ""name"": ""conversations"",
+            ""columns"": [
+                ""id"",
+                ""user_id"",
+                ""title"",
+                ""mode"",
+                ""model"",
+                ""message_count"",
+                ""is_pinned"",
+                ""is_archived"",
+                ""last_message_at"",
+                ""metadata"",
+                ""created_at"",
+                ""updated_at""
+            ],
+            ""relations"": null
+        },
+        {
+            ""name"": ""messages"",
+            ""columns"": [
+                ""id"",
+                ""conversation_id"",
+                ""user_id"",
+                ""role"",
+                ""content"",
+                ""files"",
+                ""thoughts"",
+                ""model"",
+                ""tokens_used"",
+                ""latency_ms"",
+                ""is_error"",
+                ""metadata"",
+                ""created_at""
+            ],
+            ""relations"": [
+                {
+                    ""column"": ""conversation_id"",
+                    ""references_table"": ""conversations"",
+                    ""references_column"": ""id""
+                }
+            ]
+        },
+        {
+            ""name"": ""pending_profiles"",
+            ""columns"": [
+                ""id"",
+                ""email"",
+                ""full_name"",
+                ""role"",
+                ""status"",
+                ""created_at""
+            ],
+            ""relations"": null
+        },
+        {
+            ""name"": ""profiles"",
+            ""columns"": [
+                ""id"",
+                ""full_name"",
+                ""account_id"",
+                ""email"",
+                ""auth_method"",
+                ""personal_data"",
+                ""institutional_data"",
+                ""status"",
+                ""created_at"",
+                ""reviewed_at"",
+                ""rejection_reason"",
+                ""notifications_preferences"",
+                ""terms_accepted"",
+                ""metadata"",
+                ""onboarding_completed"",
+                ""preferences""
+            ],
+            ""relations"": null
+        },
+        {
+            ""name"": ""twins_alimentacion"",
+            ""columns"": [
+                ""id"",
+                ""animal_id"",
+                ""semana_inicio"",
+                ""forraje_pct"",
+                ""concentrado_pct"",
+                ""suplemento_pct"",
+                ""ca_valor"",
+                ""racion"",
+                ""created_at""
+            ],
+            ""relations"": null
+        },
+        {
+            ""name"": ""twins_eventos"",
+            ""columns"": [
+                ""id"",
+                ""animal_id"",
+                ""tipo"",
+                ""fecha"",
+                ""data"",
+                ""created_at""
+            ],
+            ""relations"": null
+        },
+        {
+            ""name"": ""twins_pesos"",
+            ""columns"": [
+                ""id"",
+                ""animal_id"",
+                ""peso"",
+                ""objetivo"",
+                ""fecha"",
+                ""created_at""
+            ],
+            ""relations"": null
+        },
+        {
+            ""name"": ""union_extended_profiles"",
+            ""columns"": [
+                ""id"",
+                ""user_id"",
+                ""bio"",
+                ""naturaleza"",
+                ""ubicacion"",
+                ""fundacion"",
+                ""rfc"",
+                ""organismo_nacional"",
+                ""afil_sagarpa"",
+                ""socios_activos"",
+                ""municipios_count"",
+                ""cabezas_registradas"",
+                ""anios_trayectoria"",
+                ""cuota_mensual"",
+                ""proxima_asamblea"",
+                ""socios_al_corriente"",
+                ""tramites_mes"",
+                ""satisfaccion"",
+                ""tramites_activos"",
+                ""tramites_en_proceso"",
+                ""telefono"",
+                ""email_contact"",
+                ""sitio_web"",
+                ""horario"",
+                ""direccion"",
+                ""directiva"",
+                ""zonas"",
+                ""servicios"",
+                ""afiliaciones"",
+                ""created_at"",
+                ""updated_at""
+            ],
+            ""relations"": null
+        },
+        {
+            ""name"": ""mvz_extended_profiles"",
+            ""columns"": [
+                ""id"",
+                ""user_id"",
+                ""bio"",
+                ""titulo"",
+                ""ubicacion"",
+                ""cedula"",
+                ""senasica_num"",
+                ""universidad"",
+                ""anio_egreso"",
+                ""anios_exp"",
+                ""celular"",
+                ""email_contact"",
+                ""sitio_web"",
+                ""disponibilidad"",
+                ""diagnostico_acertado"",
+                ""clientes_contrato"",
+                ""certs_aprobados"",
+                ""visitas_mes"",
+                ""certs_emitidos"",
+                ""ranchos_atendidos"",
+                ""animales_anio"",
+                ""estados_cobertura"",
+                ""especialidades"",
+                ""estudios"",
+                ""experiencias"",
+                ""certificaciones"",
+                ""clientes"",
+                ""servicios"",
+                ""created_at"",
+                ""updated_at""
+            ],
+            ""relations"": null
+        },
+        {
+            ""name"": ""exportador_extended_profiles"",
+            ""columns"": [
+                ""id"",
+                ""user_id"",
+                ""razon_social"",
+                ""naturaleza"",
+                ""ubicacion"",
+                ""fundacion"",
+                ""rfc"",
+                ""licencia_usda"",
+                ""descripcion"",
+                ""empleados"",
+                ""rastros_tif"",
+                ""corrales_concentracion"",
+                ""telefono"",
+                ""email_contact"",
+                ""sitio_web"",
+                ""horario"",
+                ""tasa_rechazo"",
+                ""cabezas_embarque"",
+                ""cumplimiento_doc"",
+                ""cabezas_anio"",
+                ""paises_destino"",
+                ""valor_exportado"",
+                ""equipo"",
+                ""proveedores"",
+                ""cruces"",
+                ""certificaciones"",
+                ""operaciones"",
+                ""created_at"",
+                ""updated_at""
+            ],
+            ""relations"": null
+        },
+        {
+            ""name"": ""auditor_extended_profiles"",
+            ""columns"": [
+                ""id"",
+                ""user_id"",
+                ""titulo"",
+                ""ubicacion"",
+                ""registro_senasica"",
+                ""organizacion"",
+                ""anios_exp"",
+                ""descripcion"",
+                ""telefono"",
+                ""email_contact"",
+                ""sitio_web"",
+                ""horario"",
+                ""auditorias_realizadas"",
+                ""cumplimiento_prom"",
+                ""estados_cubiertos"",
+                ""audits_mes"",
+                ""auditorias_aprobadas"",
+                ""dictamenes_sin_apelacion"",
+                ""certs_export_ok"",
+                ""dictamenes_total"",
+                ""ambitos"",
+                ""auditorias"",
+                ""dictamenes"",
+                ""normativas"",
+                ""acreditaciones"",
+                ""created_at"",
+                ""updated_at""
+            ],
+            ""relations"": null
+        },
+        {
+            ""name"": ""vision_sessions"",
+            ""columns"": [
+                ""id"",
+                ""rancho_id"",
+                ""camara_id"",
+                ""corral_id"",
+                ""inicio"",
+                ""fin"",
+                ""estado"",
+                ""fps_target"",
+                ""fps_real"",
+                ""frames_procesados"",
+                ""modelo_version"",
+                ""created_at""
+            ],
+            ""relations"": [
+                {
+                    ""column"": ""camara_id"",
+                    ""references_table"": ""camaras"",
+                    ""references_column"": ""id""
+                },
+                {
+                    ""column"": ""corral_id"",
+                    ""references_table"": ""corrales"",
+                    ""references_column"": ""id""
+                },
+                {
+                    ""column"": ""rancho_id"",
+                    ""references_table"": ""ranch_extended_profiles"",
+                    ""references_column"": ""id""
+                }
+            ]
+        },
+        {
+            ""name"": ""vision_detecciones"",
+            ""columns"": [
+                ""id"",
+                ""session_id"",
+                ""camara_id"",
+                ""corral_id"",
+                ""timestamp"",
+                ""n_vacas"",
+                ""n_down"",
+                ""n_wound_suspect"",
+                ""confianza_promedio"",
+                ""latencia_ms"",
+                ""modelo_version""
+            ],
+            ""relations"": [
+                {
+                    ""column"": ""camara_id"",
+                    ""references_table"": ""camaras"",
+                    ""references_column"": ""id""
+                },
+                {
+                    ""column"": ""corral_id"",
+                    ""references_table"": ""corrales"",
+                    ""references_column"": ""id""
+                },
+                {
+                    ""column"": ""session_id"",
+                    ""references_table"": ""vision_sessions"",
+                    ""references_column"": ""id""
+                }
+            ]
+        },
+        {
+            ""name"": ""vision_tracks"",
+            ""columns"": [
+                ""id"",
+                ""session_id"",
+                ""track_id_local"",
+                ""animal_id"",
+                ""corral_id"",
+                ""inicio"",
+                ""ultimo_frame"",
+                ""posicion_x"",
+                ""posicion_y"",
+                ""velocidad_promedio"",
+                ""velocidad_actual"",
+                ""tiempo_inmovil_segundos"",
+                ""distancia_centroide_hato"",
+                ""clase_dominante"",
+                ""confianza_promedio""
+            ],
+            ""relations"": [
+                {
+                    ""column"": ""animal_id"",
+                    ""references_table"": ""animales"",
+                    ""references_column"": ""id""
+                },
+                {
+                    ""column"": ""corral_id"",
+                    ""references_table"": ""corrales"",
+                    ""references_column"": ""id""
+                },
+                {
+                    ""column"": ""session_id"",
+                    ""references_table"": ""vision_sessions"",
+                    ""references_column"": ""id""
+                }
+            ]
+        },
+        {
+            ""name"": ""vision_evidencia"",
+            ""columns"": [
+                ""id"",
+                ""anomalia_id"",
+                ""track_id"",
+                ""url_storage"",
+                ""frame_context_url"",
+                ""timestamp"",
+                ""bbox_x"",
+                ""bbox_y"",
+                ""bbox_w"",
+                ""bbox_h"",
+                ""clase"",
+                ""confianza""
+            ],
+            ""relations"": [
+                {
+                    ""column"": ""anomalia_id"",
+                    ""references_table"": ""anomalias_monitoreo"",
+                    ""references_column"": ""id""
+                },
+                {
+                    ""column"": ""track_id"",
+                    ""references_table"": ""vision_tracks"",
+                    ""references_column"": ""id""
+                }
+            ]
+        },
+        {
+            ""name"": ""rfid_eventos"",
+            ""columns"": [
+                ""id"",
+                ""rancho_id"",
+                ""corral_id"",
+                ""animal_id"",
+                ""arete"",
+                ""timestamp"",
+                ""tipo"",
+                ""fuente"",
+                ""lector_id""
+            ],
+            ""relations"": [
+                {
+                    ""column"": ""animal_id"",
+                    ""references_table"": ""animales"",
+                    ""references_column"": ""id""
+                },
+                {
+                    ""column"": ""corral_id"",
+                    ""references_table"": ""corrales"",
+                    ""references_column"": ""id""
+                },
+                {
+                    ""column"": ""rancho_id"",
+                    ""references_table"": ""ranch_extended_profiles"",
+                    ""references_column"": ""id""
+                }
+            ]
+        },
+        {
+            ""name"": ""vision_modelos"",
+            ""columns"": [
+                ""id"",
+                ""nombre"",
+                ""version"",
+                ""archivo_path"",
+                ""fecha_entrenamiento"",
+                ""precision"",
+                ""recall"",
+                ""map50"",
+                ""map95"",
+                ""clases_json"",
+                ""activo"",
+                ""rancho_id"",
+                ""dataset_usado"",
+                ""created_at""
+            ],
+            ""relations"": [
+                {
+                    ""column"": ""rancho_id"",
+                    ""references_table"": ""ranch_extended_profiles"",
+                    ""references_column"": ""id""
+                }
+            ]
+        },
+        {
+            ""name"": ""v_monitoreo_rancho"",
+            ""columns"": [
+                ""rancho_id"",
+                ""rancho_nombre"",
+                ""lat"",
+                ""lng"",
+                ""total_corrales"",
+                ""corrales_activos"",
+                ""animales_total"",
+                ""capacidad_total"",
+                ""ocupacion_pct"",
+                ""corrales_alerta"",
+                ""anomalias_activas"",
+                ""anomalias_alta"",
+                ""camaras_online""
+            ],
+            ""relations"": null
+        },
+        {
+            ""name"": ""expediente_notas"",
+            ""columns"": [
+                ""id"",
+                ""expediente_id"",
+                ""autor_id"",
+                ""tipo"",
+                ""contenido"",
+                ""created_at""
+            ],
+            ""relations"": [
+                {
+                    ""column"": ""expediente_id"",
+                    ""references_table"": ""expedientes"",
+                    ""references_column"": ""id""
+                }
+            ]
+        },
+        {
+            ""name"": ""expedientes"",
+            ""columns"": [
+                ""id"",
+                ""rancho_id"",
+                ""user_id"",
+                ""tipo_tramite"",
+                ""titulo"",
+                ""descripcion"",
+                ""estado"",
+                ""created_at"",
+                ""updated_at""
+            ],
+            ""relations"": null
+        },
+        {
+            ""name"": ""expediente_documentos"",
+            ""columns"": [
+                ""id"",
+                ""expediente_id"",
+                ""rancho_id"",
+                ""subido_por"",
+                ""tipo"",
+                ""nombre"",
+                ""storage_path"",
+                ""mime_type"",
+                ""tamano_bytes"",
+                ""descripcion"",
+                ""emisor"",
+                ""fecha_documento"",
+                ""hash_sha256"",
+                ""created_at""
+            ],
+            ""relations"": [
+                {
+                    ""column"": ""expediente_id"",
+                    ""references_table"": ""expedientes"",
+                    ""references_column"": ""id""
+                }
+            ]
+        },
+        {
+            ""name"": ""daily_summary"",
+            ""columns"": [
+                ""id"",
+                ""resumen_texto"",
+                ""noticias_procesadas"",
+                ""generado_en"",
+                ""activo""
+            ],
+            ""relations"": null
+        },
+        {
+            ""name"": ""user_submissions"",
+            ""columns"": [
+                ""id"",
+                ""user_id"",
+                ""tipo"",
+                ""titulo"",
+                ""contenido"",
+                ""region"",
+                ""estado_mx"",
+                ""adjuntos"",
+                ""source_links"",
+                ""status"",
+                ""ai_precheck_score"",
+                ""trust_index"",
+                ""notas_moderacion"",
+                ""noticia_publicada_id"",
+                ""created_at"",
+                ""updated_at""
+            ],
+            ""relations"": [
+                {
+                    ""column"": ""noticia_publicada_id"",
+                    ""references_table"": ""noticias"",
+                    ""references_column"": ""id""
+                }
+            ]
+        },
+        {
+            ""name"": ""v_noticias_feed"",
+            ""columns"": [
+                ""id"",
+                ""slug"",
+                ""titulo"",
+                ""resumen_general"",
+                ""resumenes_ia"",
+                ""fuente"",
+                ""categoria"",
+                ""urgente"",
+                ""urgencia_nivel"",
+                ""relevancia"",
+                ""lectura_minutos"",
+                ""publicada_en"",
+                ""trust_index"",
+                ""verification_status"",
+                ""source_nombre"",
+                ""source_tipo"",
+                ""tiempo_relativo""
+            ],
+            ""relations"": null
+        },
+        {
+            ""name"": ""news_sources"",
+            ""columns"": [
+                ""id"",
+                ""nombre"",
+                ""tipo"",
+                ""dominio"",
+                ""pais"",
+                ""trust_base_score"",
+                ""activa"",
+                ""created_at""
+            ],
+            ""relations"": null
+        },
+        {
+            ""name"": ""creator_profiles"",
+            ""columns"": [
+                ""id"",
+                ""user_id"",
+                ""creator_type"",
+                ""identidad_verificada"",
+                ""especialidad_verificada"",
+                ""region"",
+                ""estado_mx"",
+                ""especialidades"",
+                ""bio"",
+                ""reputation_score"",
+                ""trust_score"",
+                ""aportes_aceptados"",
+                ""aportes_rechazados"",
+                ""total_contribuciones"",
+                ""nivel"",
+                ""badges"",
+                ""status"",
+                ""created_at"",
+                ""updated_at"",
+                ""es_fuente_oficial"",
+                ""fuente_oficial_id"",
+                ""wiki_contributor""
+            ],
+            ""relations"": [
+                {
+                    ""column"": ""fuente_oficial_id"",
+                    ""references_table"": ""wiki_fuentes_oficiales"",
+                    ""references_column"": ""id""
+                }
+            ]
+        },
+        {
+            ""name"": ""verification_events"",
+            ""columns"": [
+                ""id"",
+                ""entity_type"",
+                ""entity_id"",
+                ""verifier_type"",
+                ""accion"",
+                ""status_anterior"",
+                ""status_nuevo"",
+                ""notas"",
+                ""score_delta"",
+                ""created_at""
+            ],
+            ""relations"": null
+        },
+        {
+            ""name"": ""v_twins_auditorias"",
+            ""columns"": [
+                ""id"",
+                ""siniiga"",
+                ""nombre"",
+                ""sub"",
+                ""fecha"",
+                ""estado"",
+                ""hash_ipfs"",
+                ""hash_ok"",
+                ""fuente"",
+                ""pills_raw""
+            ],
+            ""relations"": null
+        },
+        {
+            ""name"": ""moderator_applications"",
+            ""columns"": [
+                ""id"",
+                ""tipo"",
+                ""nombre"",
+                ""correo"",
+                ""estado_mx"",
+                ""bio"",
+                ""status"",
+                ""created_at"",
+                ""user_id""
+            ],
+            ""relations"": null
+        },
+        {
+            ""name"": ""moderation_log"",
+            ""columns"": [
+                ""id"",
+                ""moderador"",
+                ""moderador_id"",
+                ""accion"",
+                ""descripcion"",
+                ""submission_id"",
+                ""titulo"",
+                ""created_at""
+            ],
+            ""relations"": null
+        },
+        {
+            ""name"": ""exportacion_solicitudes"",
+            ""columns"": [
+                ""id"",
+                ""rancho_id"",
+                ""creado_por"",
+                ""psg"",
+                ""upp"",
+                ""sexo"",
+                ""folio_factura"",
+                ""estado"",
+                ""exportada_at"",
+                ""notas"",
+                ""created_at"",
+                ""updated_at""
+            ],
+            ""relations"": [
+                {
+                    ""column"": ""rancho_id"",
+                    ""references_table"": ""ranch_extended_profiles"",
+                    ""references_column"": ""id""
+                }
+            ]
+        },
+        {
+            ""name"": ""exportacion_aretes"",
+            ""columns"": [
+                ""id"",
+                ""solicitud_id"",
+                ""rancho_id"",
+                ""orden"",
+                ""arete_origen"",
+                ""folio_factura"",
+                ""status"",
+                ""animal_id"",
+                ""created_at"",
+                ""updated_at""
+            ],
+            ""relations"": [
+                {
+                    ""column"": ""animal_id"",
+                    ""references_table"": ""animales"",
+                    ""references_column"": ""id""
+                },
+                {
+                    ""column"": ""rancho_id"",
+                    ""references_table"": ""ranch_extended_profiles"",
+                    ""references_column"": ""id""
+                },
+                {
+                    ""column"": ""solicitud_id"",
+                    ""references_table"": ""exportacion_solicitudes"",
+                    ""references_column"": ""id""
+                }
+            ]
+        },
+        {
+            ""name"": ""v_exportacion_historial"",
+            ""columns"": [
+                ""id"",
+                ""rancho_id"",
+                ""creado_por"",
+                ""psg"",
+                ""upp"",
+                ""sexo"",
+                ""folio_factura"",
+                ""estado"",
+                ""notas"",
+                ""exportada_at"",
+                ""created_at"",
+                ""updated_at"",
+                ""folio_interno"",
+                ""total_aretes"",
+                ""aretes_ok"",
+                ""aretes_duplicado"",
+                ""aretes_invalido""
+            ],
+            ""relations"": null
+        },
+        {
+            ""name"": ""wiki_hecho_relaciones"",
+            ""columns"": [
+                ""id"",
+                ""hecho_origen"",
+                ""hecho_destino"",
+                ""tipo"",
+                ""created_at""
+            ],
+            ""relations"": [
+                {
+                    ""column"": ""hecho_destino"",
+                    ""references_table"": ""wiki_hechos"",
+                    ""references_column"": ""id""
+                },
+                {
+                    ""column"": ""hecho_origen"",
+                    ""references_table"": ""wiki_hechos"",
+                    ""references_column"": ""id""
+                }
+            ]
+        },
+        {
+            ""name"": ""wiki_propuestas"",
+            ""columns"": [
+                ""id"",
+                ""user_id"",
+                ""creator_id"",
+                ""afirmacion"",
+                ""contexto"",
+                ""dominio"",
+                ""tema_slug"",
+                ""tema_nuevo"",
+                ""jurisdiccion"",
+                ""fuente_nombre"",
+                ""fuente_articulo"",
+                ""fuente_url"",
+                ""fuente_fecha"",
+                ""hecho_id"",
+                ""tipo_propuesta"",
+                ""status"",
+                ""notas_moderacion"",
+                ""revisado_por"",
+                ""revisado_at"",
+                ""hecho_creado_id"",
+                ""created_at"",
+                ""updated_at""
+            ],
+            ""relations"": [
+                {
+                    ""column"": ""creator_id"",
+                    ""references_table"": ""creator_profiles"",
+                    ""references_column"": ""id""
+                },
+                {
+                    ""column"": ""hecho_creado_id"",
+                    ""references_table"": ""wiki_hechos"",
+                    ""references_column"": ""id""
+                },
+                {
+                    ""column"": ""hecho_id"",
+                    ""references_table"": ""wiki_hechos"",
+                    ""references_column"": ""id""
+                }
+            ]
+        },
+        {
+            ""name"": ""wiki_scrape_log"",
+            ""columns"": [
+                ""id"",
+                ""fuente_id"",
+                ""items_hallados"",
+                ""items_nuevos"",
+                ""error"",
+                ""created_at""
+            ],
+            ""relations"": [
+                {
+                    ""column"": ""fuente_id"",
+                    ""references_table"": ""wiki_fuentes_oficiales"",
+                    ""references_column"": ""id""
+                }
+            ]
+        },
+        {
+            ""name"": ""wiki_hechos"",
+            ""columns"": [
+                ""id"",
+                ""afirmacion"",
+                ""contexto"",
+                ""dominio"",
+                ""tema"",
+                ""jurisdiccion"",
+                ""fuente_nombre"",
+                ""fuente_articulo"",
+                ""fuente_url"",
+                ""fuente_fecha"",
+                ""fuente_oficial_id"",
+                ""hti"",
+                ""hti_calculado_at"",
+                ""calidad_fuente"",
+                ""num_fuentes"",
+                ""sin_conflictos"",
+                ""estado"",
+                ""vigente_desde"",
+                ""verificado_at"",
+                ""proxima_revision"",
+                ""invalida_hecho_id"",
+                ""creado_por"",
+                ""origen"",
+                ""created_at"",
+                ""updated_at""
+            ],
+            ""relations"": [
+                {
+                    ""column"": ""fuente_oficial_id"",
+                    ""references_table"": ""wiki_fuentes_oficiales"",
+                    ""references_column"": ""id""
+                },
+                {
+                    ""column"": ""invalida_hecho_id"",
+                    ""references_table"": ""wiki_hechos"",
+                    ""references_column"": ""id""
+                }
+            ]
+        },
+        {
+            ""name"": ""wiki_temas"",
+            ""columns"": [
+                ""id"",
+                ""slug"",
+                ""titulo"",
+                ""descripcion"",
+                ""dominio"",
+                ""orden"",
+                ""activo"",
+                ""creado_por"",
+                ""created_at"",
+                ""updated_at""
+            ],
+            ""relations"": null
+        },
+        {
+            ""name"": ""wiki_hecho_noticias"",
+            ""columns"": [
+                ""id"",
+                ""hecho_id"",
+                ""noticia_id"",
+                ""created_at""
+            ],
+            ""relations"": [
+                {
+                    ""column"": ""hecho_id"",
+                    ""references_table"": ""wiki_hechos"",
+                    ""references_column"": ""id""
+                },
+                {
+                    ""column"": ""noticia_id"",
+                    ""references_table"": ""noticias"",
+                    ""references_column"": ""id""
+                }
+            ]
+        },
+        {
+            ""name"": ""wiki_fuentes_oficiales"",
+            ""columns"": [
+                ""id"",
+                ""nombre"",
+                ""tipo"",
+                ""url_base"",
+                ""rss_url"",
+                ""dominio"",
+                ""pais"",
+                ""trust_base"",
+                ""activa"",
+                ""ultima_sync"",
+                ""created_at""
+            ],
+            ""relations"": null
+        },
+        {
+            ""name"": ""wiki_salud_dominios"",
+            ""columns"": [
+                ""dominio"",
+                ""hechos_activos"",
+                ""hechos_revision"",
+                ""hechos_desact"",
+                ""total"",
+                ""pct_vigente"",
+                ""hti_promedio"",
+                ""ultima_verificacion""
+            ],
+            ""relations"": null
+        },
+        {
+            ""name"": ""marketplace_partners"",
+            ""columns"": [
+                ""id"",
+                ""nombre"",
+                ""slogan"",
+                ""descripcion"",
+                ""aporte"",
+                ""color"",
+                ""url"",
+                ""url_contacto"",
+                ""activo"",
+                ""created_at""
+            ],
+            ""relations"": null
+        },
+        {
+            ""name"": ""marketplace_products"",
+            ""columns"": [
+                ""id"",
+                ""partner_id"",
+                ""nombre"",
+                ""descripcion"",
+                ""uso"",
+                ""precio"",
+                ""etiqueta"",
+                ""url"",
+                ""destacado"",
+                ""tags"",
+                ""activo"",
+                ""created_at""
+            ],
+            ""relations"": [
+                {
+                    ""column"": ""partner_id"",
+                    ""references_table"": ""marketplace_partners"",
+                    ""references_column"": ""id""
+                }
+            ]
+        },
+        {
+            ""name"": ""marketplace_compatibilidad"",
+            ""columns"": [
+                ""id"",
+                ""product_id"",
+                ""modulo_gandia"",
+                ""descripcion"",
+                ""created_at""
+            ],
+            ""relations"": [
+                {
+                    ""column"": ""product_id"",
+                    ""references_table"": ""marketplace_products"",
+                    ""references_column"": ""id""
+                }
+            ]
+        },
+        {
+            ""name"": ""marketplace_equipamiento"",
+            ""columns"": [
+                ""id"",
+                ""rancho_id"",
+                ""product_id"",
+                ""cantidad"",
+                ""notas"",
+                ""fecha_adquisicion"",
+                ""created_at""
+            ],
+            ""relations"": [
+                {
+                    ""column"": ""product_id"",
+                    ""references_table"": ""marketplace_products"",
+                    ""references_column"": ""id""
+                },
+                {
+                    ""column"": ""rancho_id"",
+                    ""references_table"": ""ranch_extended_profiles"",
+                    ""references_column"": ""id""
+                }
+            ]
+        }
+    ]
+}"

@@ -25,6 +25,28 @@ interface LogEntry {
   created_at:  string
 }
 
+interface WikiPropuesta {
+  id:               string
+  user_id:          string
+  tipo_propuesta:   string
+  afirmacion:       string
+  contexto:         string | null
+  dominio:          string
+  tema_slug:        string | null
+  fuente_nombre:    string
+  fuente_articulo:  string | null
+  fuente_url:       string | null
+  status:           string
+  notas_moderacion: string | null
+  created_at:       string
+}
+
+const TIPO_PROP_LABELS: Record<string, string> = {
+  nuevo:          'Hecho nuevo',
+  correccion:     'Corrección',
+  actualizacion:  'Actualización',
+}
+
 const TIPO_LABELS: Record<string, string> = {
   noticia:       'Noticia',
   alerta:        'Alerta sanitaria',
@@ -55,9 +77,12 @@ export default function ModeradorPanelPage() {
   const [actionLoading, setActionLoading] = useState(false)
   const [toast,        setToast]        = useState('')
   const [filtro,       setFiltro]       = useState<'pendiente' | 'publicado' | 'rechazado'>('pendiente')
-  const [modUserId,    _setModUserId]   = useState('')  // eslint-disable-line @typescript-eslint/no-unused-vars
-  const [activeTab,    setActiveTab]    = useState<'aportes' | 'historial'>('aportes')
+  // modUserId removed — unused
+  const [activeTab,    setActiveTab]    = useState<'aportes' | 'wiki' | 'historial'>('aportes')
   const [log,          setLog]          = useState<LogEntry[]>([])
+  const [propuestas,   setPropuestas]   = useState<WikiPropuesta[]>([])
+  const [selectedProp, setSelectedProp] = useState<WikiPropuesta | null>(null)
+  const [propFiltro,   setPropFiltro]   = useState<'pendiente' | 'aprobado' | 'rechazado'>('pendiente')
 
   // ── Verificar acceso ──────────────────────────────────────────────────────
   useEffect(() => {
@@ -77,7 +102,6 @@ export default function ModeradorPanelPage() {
       }
 
       setModNombre(user.email ?? 'Moderador')
-      _setModUserId(user.id)
       setAuthorized(true)
       setChecking(false)
     }
@@ -104,9 +128,17 @@ export default function ModeradorPanelPage() {
     setLog((data as LogEntry[]) ?? [])
   }, [])
 
+  const loadPropuestas = useCallback(async () => {
+    const { data } = await supabase
+      .from('wiki_propuestas')
+      .select('*')
+      .order('created_at', { ascending: false })
+    setPropuestas((data as WikiPropuesta[]) ?? [])
+  }, [])
+
   useEffect(() => {
-    if (authorized) { void loadSubmissions(); void loadLog() }
-  }, [authorized, loadSubmissions, loadLog])
+    if (authorized) { void loadSubmissions(); void loadLog(); void loadPropuestas() }
+  }, [authorized, loadSubmissions, loadLog, loadPropuestas])
 
   const showToast = (msg: string) => {
     setToast(msg)
@@ -196,6 +228,59 @@ export default function ModeradorPanelPage() {
 
   const filtered = submissions.filter(s => s.status === filtro)
 
+  const approveWiki = async (p: WikiPropuesta) => {
+    setActionLoading(true)
+    try {
+      const { data: hecho, error: insertErr } = await supabase.from('wiki_hechos').insert({
+        afirmacion:      p.afirmacion,
+        contexto:        p.contexto,
+        dominio:         p.dominio,
+        tema:            p.tema_slug ?? p.dominio,
+        fuente_nombre:   p.fuente_nombre,
+        fuente_articulo: p.fuente_articulo,
+        fuente_url:      p.fuente_url,
+        calidad_fuente:  75,
+        num_fuentes:     1,
+        sin_conflictos:  true,
+        origen:          'propuesta',
+        estado:          'activo',
+      }).select('id').single()
+      if (insertErr) throw insertErr
+      await supabase.from('wiki_propuestas').update({
+        status:          'aprobado',
+        hecho_creado_id: (hecho as { id: string }).id,
+        revisado_at:     new Date().toISOString(),
+      }).eq('id', p.id)
+      await supabase.from('moderation_log').insert({
+        accion:      'wiki_aprobado',
+        descripcion: `Propuesta Wiki aprobada: "${p.afirmacion.slice(0, 60)}..."`,
+        moderador:   modNombre,
+      })
+      void loadPropuestas(); void loadLog()
+      setSelectedProp(null)
+      showToast('Hecho publicado en Wiki Handeia')
+    } catch (err) {
+      showToast('Error: ' + (err instanceof Error ? err.message : 'desconocido'))
+    } finally { setActionLoading(false) }
+  }
+
+  const rejectWiki = async (id: string) => {
+    setActionLoading(true)
+    await supabase.from('wiki_propuestas').update({
+      status:      'rechazado',
+      revisado_at: new Date().toISOString(),
+    }).eq('id', id)
+    await supabase.from('moderation_log').insert({
+      accion:      'wiki_rechazado',
+      descripcion: 'Propuesta Wiki rechazada',
+      moderador:   modNombre,
+    })
+    void loadPropuestas(); void loadLog()
+    setSelectedProp(null)
+    showToast('Propuesta rechazada')
+    setActionLoading(false)
+  }
+
   // ── LOADING / AUTH CHECK ──────────────────────────────────────────────────
   if (checking) return (
     <div className="min-h-screen bg-[#0c0a09] flex items-center justify-center">
@@ -264,12 +349,12 @@ export default function ModeradorPanelPage() {
 
           {/* Tabs */}
           <div className="flex p-1 rounded-xl border border-[#2A2A2A] bg-[#121212] gap-1 w-fit mb-6">
-            {(['aportes', 'historial'] as const).map(t => (
+            {(['aportes', 'wiki', 'historial'] as const).map(t => (
               <button key={t} onClick={() => setActiveTab(t)}
                 className={`px-4 py-1.5 rounded-lg text-[12px] font-medium transition-all capitalize ${
                   activeTab === t ? 'bg-[#2FAF8F] text-white shadow-md' : 'text-[#666] hover:text-white'
                 }`}>
-                {t === 'aportes' ? 'Aportes' : 'Historial'}
+                {t === 'aportes' ? 'Aportes' : t === 'wiki' ? 'Wiki' : 'Historial'}
               </button>
             ))}
           </div>
@@ -340,6 +425,128 @@ export default function ModeradorPanelPage() {
           </div>
           )}
 
+
+          {/* ── WIKI ── */}
+          {activeTab === 'wiki' && (
+            <div>
+              <div className="flex p-1 rounded-xl border border-[#2A2A2A] bg-[#121212] gap-1 w-fit mb-5">
+                {(['pendiente', 'aprobado', 'rechazado'] as const).map(f => (
+                  <button key={f} onClick={() => setPropFiltro(f)}
+                    className={`px-4 py-1.5 rounded-lg text-[12px] font-medium transition-all capitalize ${
+                      propFiltro === f ? 'bg-[#2FAF8F] text-white shadow-md' : 'text-[#666] hover:text-white'
+                    }`}>
+                    {f.charAt(0).toUpperCase() + f.slice(1)}
+                  </button>
+                ))}
+              </div>
+
+              <div className="grid grid-cols-3 gap-3 mb-5">
+                {[
+                  { label: 'Pendientes', val: propuestas.filter(p => p.status === 'pendiente').length,  color: 'text-orange-400' },
+                  { label: 'Aprobadas',  val: propuestas.filter(p => p.status === 'aprobado').length,   color: 'text-[#2FAF8F]' },
+                  { label: 'Rechazadas', val: propuestas.filter(p => p.status === 'rechazado').length,  color: 'text-red-400'   },
+                ].map(m => (
+                  <div key={m.label} className="p-4 rounded-2xl border border-[#2A2A2A] bg-[#121212]">
+                    <p className="text-[11px] text-[#666] mb-1">{m.label}</p>
+                    <p className={`text-[24px] font-bold tabular-nums ${m.color}`}>{m.val}</p>
+                  </div>
+                ))}
+              </div>
+
+              {propuestas.filter(p => p.status === propFiltro).length === 0 ? (
+                <div className="py-20 rounded-2xl border border-[#2A2A2A] bg-[#121212] text-center">
+                  <p className="text-[#555]">Sin propuestas en este estado</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {propuestas.filter(p => p.status === propFiltro).map(p => (
+                    <div key={p.id}
+                      className="p-4 rounded-2xl border border-[#2A2A2A] bg-[#121212] hover:border-[#3A3A3A] transition-all cursor-pointer"
+                      onClick={() => setSelectedProp(p)}
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-1.5 flex-wrap">
+                            <span className="text-[9.5px] font-semibold text-[#2FAF8F] bg-[#2FAF8F]/10 px-2 py-0.5 rounded uppercase tracking-wide">
+                              Wiki · {TIPO_PROP_LABELS[p.tipo_propuesta] ?? p.tipo_propuesta}
+                            </span>
+                            <span className="text-[10px] text-[#666] capitalize">{p.dominio}</span>
+                            <span className="text-[10px] text-[#444]">· {timeAgo(p.created_at)}</span>
+                          </div>
+                          <p className="text-[13.5px] font-medium text-stone-200 leading-snug line-clamp-2">{p.afirmacion}</p>
+                          <p className="text-[11.5px] text-[#555] mt-1 truncate">Fuente: {p.fuente_nombre}</p>
+                        </div>
+                        {p.status === 'pendiente' && (
+                          <div className="flex items-center gap-2 shrink-0">
+                            <button onClick={e => { e.stopPropagation(); void approveWiki(p) }} disabled={actionLoading}
+                              className="p-2 rounded-lg bg-[#2FAF8F]/10 text-[#2FAF8F] hover:bg-[#2FAF8F]/25 transition-all disabled:opacity-50">
+                              <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+                            </button>
+                            <button onClick={e => { e.stopPropagation(); void rejectWiki(p.id) }} disabled={actionLoading}
+                              className="p-2 rounded-lg bg-red-500/10 text-red-400 hover:bg-red-500/25 transition-all disabled:opacity-50">
+                              <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {selectedProp && (
+                <div className="fixed inset-0 bg-black/70 backdrop-blur-md z-100 flex items-center justify-center p-4"
+                     onClick={() => setSelectedProp(null)}>
+                  <div className="w-full max-w-lg bg-[#0c0a09] border border-[#2A2A2A] rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[85vh]"
+                       onClick={e => e.stopPropagation()}>
+                    <div className="px-6 py-5 border-b border-[#2A2A2A] flex items-start justify-between">
+                      <div>
+                        <p className="text-[11px] text-[#2FAF8F] uppercase tracking-wide mb-1">Wiki · {TIPO_PROP_LABELS[selectedProp.tipo_propuesta]}</p>
+                        <p className="text-[10px] text-[#666] capitalize">{selectedProp.dominio}</p>
+                      </div>
+                      <button onClick={() => setSelectedProp(null)} className="p-1.5 rounded-lg hover:bg-[#1A1A1A] text-[#666]">
+                        <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                      </button>
+                    </div>
+                    <div className="flex-1 overflow-y-auto p-6 space-y-5">
+                      <div>
+                        <p className="text-[10px] font-semibold text-[#555] uppercase tracking-wide mb-2">Afirmación</p>
+                        <p className="text-[14px] text-stone-200 leading-[1.7] font-medium">{selectedProp.afirmacion}</p>
+                      </div>
+                      {selectedProp.contexto && (
+                        <div>
+                          <p className="text-[10px] font-semibold text-[#555] uppercase tracking-wide mb-2">Contexto</p>
+                          <p className="text-[13px] text-stone-300 leading-[1.7]">{selectedProp.contexto}</p>
+                        </div>
+                      )}
+                      <div>
+                        <p className="text-[10px] font-semibold text-[#555] uppercase tracking-wide mb-2">Fuente</p>
+                        <p className="text-[13px] text-stone-300">{selectedProp.fuente_nombre}</p>
+                        {selectedProp.fuente_articulo && <p className="text-[12px] text-[#666]">{selectedProp.fuente_articulo}</p>}
+                        {selectedProp.fuente_url && (
+                          <a href={selectedProp.fuente_url} target="_blank" rel="noopener noreferrer"
+                             className="text-[12px] text-[#2FAF8F] hover:underline block mt-1 truncate">{selectedProp.fuente_url}</a>
+                        )}
+                      </div>
+                    </div>
+                    {selectedProp.status === 'pendiente' && (
+                      <div className="px-6 py-4 border-t border-[#2A2A2A] flex gap-3">
+                        <button onClick={() => void approveWiki(selectedProp)} disabled={actionLoading}
+                          className="flex-1 h-11 bg-[#2FAF8F] text-white rounded-xl font-semibold text-[13px] hover:bg-[#278F75] disabled:opacity-50 flex items-center justify-center transition-colors">
+                          {actionLoading ? <div className="w-4 h-4 border-[1.5px] border-white/30 border-t-white rounded-full animate-spin" /> : 'Publicar en Wiki'}
+                        </button>
+                        <button onClick={() => void rejectWiki(selectedProp.id)} disabled={actionLoading}
+                          className="flex-1 h-11 bg-red-500 text-white rounded-xl font-semibold text-[13px] hover:bg-red-600 disabled:opacity-50 flex items-center justify-center transition-colors">
+                          Rechazar
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
           {/* ── HISTORIAL ── */}
           {activeTab === 'historial' && (
             <div className="space-y-2">
@@ -366,7 +573,7 @@ export default function ModeradorPanelPage() {
 
         {/* Modal detalle */}
         {selected && (
-          <div className="fixed inset-0 bg-black/70 backdrop-blur-md z-[100] flex items-center justify-center p-4"
+          <div className="fixed inset-0 bg-black/70 backdrop-blur-md z-100 flex items-center justify-center p-4"
                onClick={() => setSelected(null)}>
             <div className="w-full max-w-lg bg-[#0c0a09] border border-[#2A2A2A] rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[85vh]"
                  onClick={e => e.stopPropagation()}>
@@ -436,7 +643,7 @@ export default function ModeradorPanelPage() {
 
         {/* Toast */}
         {toast && (
-          <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[200] bg-[#1c1917] border border-[#2A2A2A] text-stone-200 text-[13px] font-medium px-5 py-3 rounded-2xl shadow-2xl">
+          <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-200 bg-[#1c1917] border border-[#2A2A2A] text-stone-200 text-[13px] font-medium px-5 py-3 rounded-2xl shadow-2xl">
             {toast}
           </div>
         )}

@@ -7,12 +7,7 @@ import type { VinculacionHistorial } from '../../artifactTypes'
 
 const VIN_COLOR = '#0ea5e9'
 
-const MOCK: VinculacionHistorial[] = [
-  { id: '1', entidad: 'Exportadora Sur',     tipo: 'comercial', estado: 'expirada',  fechaInicio: '10 Ene 2025', fechaFin: '15 Feb 2025', motivo: 'Lote cerrado' },
-  { id: '2', entidad: 'Auditor Zona Sur',    tipo: 'auditoria', estado: 'expirada',  fechaInicio: '01 Dic 2024', fechaFin: '31 Dic 2024', motivo: 'Vencimiento automático' },
-  { id: '3', entidad: 'MVZ Dr. López',       tipo: 'sanitario', estado: 'revocada',  fechaInicio: '05 Nov 2024', fechaFin: '20 Nov 2024', motivo: 'Revocado por el productor' },
-  { id: '4', entidad: 'Exportadora Pacífico',tipo: 'comercial', estado: 'rechazada', fechaInicio: '—',           fechaFin: '02 Mar 2025', motivo: 'Solicitud rechazada' },
-]
+
 
 const ESTADO_META: Record<VinculacionHistorial['estado'], { label: string; dot: string; text: string }> = {
   expirada:  { label: 'Expirada',  dot: 'bg-stone-400',  text: 'text-stone-500 dark:text-stone-400'  },
@@ -38,7 +33,7 @@ interface Props {
   historial?: VinculacionHistorial[]
 }
 
-export default function VinculacionHistorialWidget({ historial = MOCK }: Props) {
+export default function VinculacionHistorialWidget({ historial = [] }: Props) {
   return (
     <div className="flex flex-col gap-2">
 

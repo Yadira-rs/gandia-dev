@@ -23,6 +23,7 @@ export type ArtifactDomain =
   | 'exportacion'    // Solicitud de aretes de exportación SENASICA
   | 'vinculacion'    // Vinculaciones entre entidades institucionales
   | 'documentos'     // Gestión documental y expedientes
+  | 'marketplace'    // Ecosistema de partners: NVIDIA, Fermaca, IoT
 
 // ─── NIVEL 1 · DORMIDO ────────────────────────────────────────────────────────
 
@@ -96,6 +97,9 @@ export type WidgetArtifactId =
   | 'documentos:empacar'
   | 'documentos:revision'
   | 'documentos:panel'
+  // Marketplace
+  | 'marketplace:kits'
+  | 'marketplace:partners'
 
 export interface WidgetArtifact {
   kind: 'widget'
@@ -132,6 +136,8 @@ export type ModuleArtifactId =
   | 'vinculacion:panel'
   // Documentos
   | 'documentos:panel'
+  // Marketplace
+  | 'marketplace:panel'
 
 export interface ModuleArtifact {
   kind: 'module'
@@ -319,6 +325,9 @@ export function widgetToModule(dormantId: WidgetArtifactId): ModuleArtifact {
     'documentos:empacar':     { kind: 'module', id: 'documentos:panel', domain: 'documentos', dormants: ['documentos:subida', 'documentos:validacion', 'documentos:expedientes', 'documentos:empacar'] },
     'documentos:revision':    { kind: 'module', id: 'documentos:panel', domain: 'documentos', dormants: ['documentos:panel', 'documentos:revision', 'documentos:validacion', 'documentos:expedientes'] },
     'documentos:panel':       { kind: 'module', id: 'documentos:panel', domain: 'documentos', dormants: ['documentos:panel', 'documentos:revision', 'documentos:validacion', 'documentos:expedientes'] },
+    // Marketplace
+    'marketplace:kits':      { kind: 'module', id: 'marketplace:panel', domain: 'marketplace', dormants: ['marketplace:kits', 'marketplace:partners'] },
+    'marketplace:partners':  { kind: 'module', id: 'marketplace:panel', domain: 'marketplace', dormants: ['marketplace:kits', 'marketplace:partners'] },
   }
   return map[dormantId]
 }
@@ -354,30 +363,33 @@ export type VinculacionTipo = 'sanitario' | 'comercial' | 'auditoria' | 'union'
 
 export interface Vinculacion {
   id: string
-  entidad: string                   // nombre de la entidad vinculada
-  tipo: VinculacionTipo
-  estado: 'activa' | 'suspendida'
-  fecha: string                   // fecha de inicio
-  expira: string | null            // null = sin fecha de expiración
+  entidad:    string           // nombre de la entidad vinculada (display)
+  entidad_id: string           // UUID real del usuario en Supabase
+  tipo:       VinculacionTipo
+  estado:     'activa' | 'suspendida'
+  fecha:      string           // fecha de inicio
+  expira:     string | null    // null = sin fecha de expiración
 }
 
 export interface VinculacionPendiente {
-  id: string
-  entidad: string
-  tipo: VinculacionTipo
-  direccion: 'recibida' | 'enviada'
-  fecha: string
-  mensaje: string | null
+  id:         string
+  entidad:    string
+  entidad_id: string           // UUID real del usuario en Supabase
+  tipo:       VinculacionTipo
+  direccion:  'recibida' | 'enviada'
+  fecha:      string
+  mensaje:    string | null
 }
 
 export interface VinculacionHistorial {
-  id: string
-  entidad: string
-  tipo: VinculacionTipo
-  estado: string               // 'creada' | 'aceptada' | 'rechazada' | 'revocada' | 'expirada'
+  id:          string
+  entidad:     string
+  entidad_id:  string          // UUID real del usuario en Supabase
+  tipo:        VinculacionTipo
+  estado:      string          // 'rechazada' | 'revocada' | 'expirada'
   fechaInicio: string
-  fechaFin: string
-  motivo: string
+  fechaFin:    string
+  motivo:      string
 }
 
 export function domainToAnima(domain: ArtifactDomain): AnimaArtifact {
@@ -393,6 +405,7 @@ export function domainToAnima(domain: ArtifactDomain): AnimaArtifact {
     exportacion: { kind: 'anima', domain: 'exportacion', awakes: ['exportacion:form'] },
     vinculacion: { kind: 'anima', domain: 'vinculacion', awakes: ['vinculacion:panel'] },
     documentos:  { kind: 'anima', domain: 'documentos',  awakes: ['documentos:panel'] },
+    marketplace: { kind: 'anima', domain: 'marketplace', awakes: ['marketplace:panel'] },
   }
   return map[domain]
 }
