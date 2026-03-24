@@ -4,6 +4,13 @@
  *
  * Consumo semanal (line chart SVG) + Conversión Alimenticia (gauge).
  * Sin emojis. Conectado a Supabase via useTwinsData.ts
+ *
+ * FIXES v4:
+ * - Validación de formulario antes de submit: mínimo un campo requerido
+ * - botón Guardar deshabilitado mientras campos vacíos (antes: falso positivo con 0 semanas)
+ * - progPeso usa (pesoActual - pesoNacimiento) / (pesoMeta - pesoNacimiento) — consistente con Hero
+ * - Toggle "Conversión CA" oculto si caActual = 0 (sin datos reales)
+ * - DatosAlimentacion incluye pesoNacimiento para cálculo correcto de progreso
  */
 import { useState } from "react";
 
@@ -11,7 +18,7 @@ import { useState } from "react";
 
 export interface SemanaConsumo {
   fecha: string;
-  forraje: number; // % vs objetivo (0–100)
+  forraje: number;
   concentrado: number;
   suplemento: number;
 }
@@ -25,10 +32,17 @@ export interface DatosAlimentacion {
   proyFecha: string;
   pesoMeta: number;
   pesoActual: number;
+  // FIX: agregado para cálculo consistente de progreso
+  pesoNacimiento?: number;
 }
 
 interface Props {
   datos: DatosAlimentacion;
+<<<<<<< Updated upstream
+=======
+  siniiga?: string;
+  onRefresh?: () => void;
+>>>>>>> Stashed changes
 }
 
 type Vista = "consumo" | "conversion";
@@ -62,11 +76,21 @@ function area(pts: number[][]) {
   return `${line(pts)} L${pts[pts.length - 1][0].toFixed(1)},${(PT + DH).toFixed(1)} L${pts[0][0].toFixed(1)},${(PT + DH).toFixed(1)} Z`;
 }
 
+<<<<<<< Updated upstream
 interface LineChartProps {
   semanas: SemanaConsumo[];
 }
 
 function LineChart({ semanas }: LineChartProps) {
+=======
+function LineChart({ semanas }: { semanas: SemanaConsumo[] }) {
+  if (!semanas.length)
+    return (
+      <div className="flex items-center justify-center py-8 text-[12px] text-stone-400 dark:text-stone-500">
+        Sin registros de consumo aún
+      </div>
+    );
+>>>>>>> Stashed changes
   const rev = [...semanas].reverse();
   const n = rev.length;
   const F = rev.map((s, i) => [gx(i, n), gy(s.forraje)]);
@@ -127,7 +151,6 @@ function LineChart({ semanas }: LineChartProps) {
         <path d={area(S)} fill="url(#gsA)" />
         <path d={area(C)} fill="url(#gcA)" />
         <path d={area(F)} fill="url(#gfA)" />
-
         <path
           d={line(F)}
           fill="none"
@@ -217,13 +240,15 @@ const ZONES = [
   { x: 210, w: 90, fill: "#fca5a5", label: "Alto" },
 ];
 
-interface GaugeProps {
+function CAGauge({
+  caActual,
+  caObjetivo,
+  caIndustria,
+}: {
   caActual: number;
   caObjetivo: number;
   caIndustria: number;
-}
-
-function CAGauge({ caActual, caObjetivo, caIndustria }: GaugeProps) {
+}) {
   const xA = gaugeX(caActual);
   const xO = gaugeX(caObjetivo);
   const xI = gaugeX(caIndustria);
@@ -256,7 +281,6 @@ function CAGauge({ caActual, caObjetivo, caIndustria }: GaugeProps) {
           rx="4"
         />
 
-        {/* Objetivo */}
         <polygon
           points={`${xO},${BOTTOM + 2} ${xO - 4},${BOTTOM + 10} ${xO + 4},${BOTTOM + 10}`}
           fill="#6366f1"
@@ -273,7 +297,6 @@ function CAGauge({ caActual, caObjetivo, caIndustria }: GaugeProps) {
           P-07
         </text>
 
-        {/* Industria */}
         <polygon
           points={`${xI},${BOTTOM + 2} ${xI - 4},${BOTTOM + 10} ${xI + 4},${BOTTOM + 10}`}
           fill="#a8a29e"
@@ -290,7 +313,6 @@ function CAGauge({ caActual, caObjetivo, caIndustria }: GaugeProps) {
           Ind.
         </text>
 
-        {/* Actual */}
         <line
           x1={xA}
           y1={2}
@@ -329,6 +351,7 @@ function CAGauge({ caActual, caObjetivo, caIndustria }: GaugeProps) {
 
 // ─── COMPONENTE PRINCIPAL ─────────────────────────────────────────────────────
 
+<<<<<<< Updated upstream
 export default function TwinsAlimentacionWidget({ datos }: Props) {
   const [vista, setVista] = useState<Vista>("consumo");
 
@@ -355,26 +378,246 @@ export default function TwinsAlimentacionWidget({ datos }: Props) {
   return (
     <div className="flex flex-col gap-4">
       {/* Toggle */}
+=======
+export default function TwinsAlimentacionWidget({
+  datos,
+  siniiga,
+  onRefresh,
+}: Props) {
+  const [vista, setVista] = useState<Vista>("consumo");
+  const [showForm, setShowForm] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [semForm, setSemForm] = useState({
+    forraje_pct: "",
+    concentrado_pct: "",
+    suplemento_pct: "",
+    ca_valor: "",
+  });
+
+  const inputCls =
+    "w-full px-2.5 py-1.5 text-[12px] bg-white dark:bg-stone-800/60 border border-stone-200/70 dark:border-stone-700 rounded-lg text-stone-700 dark:text-stone-200 placeholder-stone-300 dark:placeholder-stone-600 outline-none focus:border-[#2FAF8F]/50 transition-colors";
+
+  const handleGuardarSemana = async () => {
+    if (!siniiga) return;
+
+    // FIX: validación mínima — al menos un campo numérico con valor
+    const tieneDatos =
+      (semForm.forraje_pct !== "" && !isNaN(Number(semForm.forraje_pct))) ||
+      (semForm.concentrado_pct !== "" &&
+        !isNaN(Number(semForm.concentrado_pct))) ||
+      (semForm.suplemento_pct !== "" && !isNaN(Number(semForm.suplemento_pct)));
+    if (!tieneDatos) {
+      setSaveError(
+        "Ingresa al menos un valor de consumo (forraje, concentrado o suplemento).",
+      );
+      return;
+    }
+    const caVal =
+      semForm.ca_valor !== "" ? Number(semForm.ca_valor) : undefined;
+    if (semForm.ca_valor !== "" && (isNaN(caVal!) || caVal! <= 0)) {
+      setSaveError("El valor de CA debe ser un número positivo.");
+      return;
+    }
+
+    setSaving(true);
+    setSaveError(null);
+    const { ok, error } = await registrarAlimentacion({
+      siniiga,
+      forraje_pct: semForm.forraje_pct
+        ? Number(semForm.forraje_pct)
+        : undefined,
+      concentrado_pct: semForm.concentrado_pct
+        ? Number(semForm.concentrado_pct)
+        : undefined,
+      suplemento_pct: semForm.suplemento_pct
+        ? Number(semForm.suplemento_pct)
+        : undefined,
+      ca_valor: caVal,
+    });
+    setSaving(false);
+    if (!ok) {
+      setSaveError(error);
+      return;
+    }
+    setShowForm(false);
+    setSemForm({
+      forraje_pct: "",
+      concentrado_pct: "",
+      suplemento_pct: "",
+      ca_valor: "",
+    });
+    onRefresh?.();
+  };
+
+  const n = datos.semanas.length || 1;
+  const promedioF = Math.round(
+    datos.semanas.reduce((s, r) => s + r.forraje, 0) / n,
+  );
+  const promedioC = Math.round(
+    datos.semanas.reduce((s, r) => s + r.concentrado, 0) / n,
+  );
+  const promedioS = Math.round(
+    datos.semanas.reduce((s, r) => s + r.suplemento, 0) / n,
+  );
+
+  // FIX: supWarn solo activo si hay datos reales — antes daba alerta con semanas vacías
+  const supWarn = datos.semanas.length > 0 && promedioS < 85;
+
+  const mejorQueObj = datos.caActual < datos.caObjetivo;
+  const pctDif =
+    datos.caObjetivo > 0
+      ? Math.abs(
+          ((datos.caObjetivo - datos.caActual) / datos.caObjetivo) * 100,
+        ).toFixed(0)
+      : "0";
+
+  // FIX: progPeso consistente con TwinsHeroWidget — usa pesoNacimiento si está disponible
+  const pesoNacimiento = datos.pesoNacimiento ?? 0;
+  const _rangoPeso = datos.pesoMeta - pesoNacimiento;
+  const progPeso =
+    _rangoPeso > 0
+      ? Math.min(
+          100,
+          Math.round(((datos.pesoActual - pesoNacimiento) / _rangoPeso) * 100),
+        )
+      : datos.pesoMeta > 0
+        ? Math.min(100, Math.round((datos.pesoActual / datos.pesoMeta) * 100))
+        : 0;
+
+  // FIX: si no hay datos de CA, no mostrar vista de conversión
+  const tieneCA = datos.caActual > 0;
+
+  return (
+    <div className="flex flex-col gap-4">
+      {/* Botón registrar semana */}
+      {siniiga && (
+        <div className="flex justify-end">
+          <button
+            onClick={() => {
+              setShowForm((v) => !v);
+              setSaveError(null);
+            }}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#2FAF8F] text-white text-[11px] font-semibold hover:bg-[#27a07f] transition-colors border-0 cursor-pointer"
+          >
+            <svg
+              className="w-3 h-3"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.5"
+              strokeLinecap="round"
+            >
+              <line x1="12" y1="5" x2="12" y2="19" />
+              <line x1="5" y1="12" x2="19" y2="12" />
+            </svg>
+            Registrar semana
+          </button>
+        </div>
+      )}
+
+      {/* Formulario registro semanal */}
+      {showForm && siniiga && (
+        <div className="flex flex-col gap-3 p-4 rounded-xl border border-stone-200/70 dark:border-stone-800 bg-stone-50 dark:bg-stone-900/40">
+          <p className="text-[11.5px] font-semibold text-stone-600 dark:text-stone-300">
+            Consumo de esta semana
+          </p>
+          <div className="grid grid-cols-2 gap-2">
+            {[
+              { label: "Forraje %", key: "forraje_pct", placeholder: "ej: 90" },
+              {
+                label: "Concentrado %",
+                key: "concentrado_pct",
+                placeholder: "ej: 85",
+              },
+              {
+                label: "Suplemento %",
+                key: "suplemento_pct",
+                placeholder: "ej: 80",
+              },
+              { label: "CA actual", key: "ca_valor", placeholder: "ej: 6.8" },
+            ].map((f) => (
+              <div key={f.key} className="flex flex-col gap-1">
+                <label className="text-[10.5px] font-medium text-stone-400 dark:text-stone-500">
+                  {f.label}
+                </label>
+                <input
+                  type="number"
+                  placeholder={f.placeholder}
+                  value={semForm[f.key as keyof typeof semForm]}
+                  onChange={(e) =>
+                    setSemForm((p) => ({ ...p, [f.key]: e.target.value }))
+                  }
+                  className={inputCls}
+                />
+              </div>
+            ))}
+          </div>
+          {saveError && (
+            <p className="text-[11px] text-rose-500">{saveError}</p>
+          )}
+          <div className="flex gap-2">
+            <button
+              onClick={() => {
+                setShowForm(false);
+                setSaveError(null);
+              }}
+              className="flex-1 py-2 rounded-lg border border-stone-200/70 dark:border-stone-800 text-[11.5px] text-stone-500 hover:text-stone-700 transition-colors bg-transparent cursor-pointer"
+            >
+              Cancelar
+            </button>
+            <button
+              onClick={handleGuardarSemana}
+              disabled={
+                saving ||
+                (semForm.forraje_pct === "" &&
+                  semForm.concentrado_pct === "" &&
+                  semForm.suplemento_pct === "")
+              }
+              className="flex-1 py-2 rounded-lg bg-[#2FAF8F] text-white text-[11.5px] font-semibold hover:bg-[#27a07f] transition-colors border-0 cursor-pointer disabled:opacity-50 flex items-center justify-center gap-1.5"
+            >
+              {saving ? (
+                <>
+                  <div className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  Guardando…
+                </>
+              ) : (
+                "Guardar semana"
+              )}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Toggle — FIX: solo muestra "Conversión CA" si hay datos reales */}
+>>>>>>> Stashed changes
       <div className="flex items-center justify-between">
         <p className="text-[13.5px] font-semibold text-stone-800 dark:text-stone-100">
           Alimentación
         </p>
-        <div className="flex items-center gap-0.5 bg-stone-100 dark:bg-stone-800/50 rounded-[10px] p-0.5">
-          {(["consumo", "conversion"] as Vista[]).map((v) => (
-            <button
-              key={v}
-              onClick={() => setVista(v)}
-              className={`px-3 py-1.5 rounded-[8px] text-[11px] font-medium transition-all cursor-pointer border-0
-                ${
-                  vista === v
-                    ? "bg-white dark:bg-[#1c1917] text-stone-700 dark:text-stone-200 shadow-sm"
-                    : "bg-transparent text-stone-400 dark:text-stone-500"
-                }`}
-            >
-              {v === "consumo" ? "Consumo" : "Conversión CA"}
-            </button>
-          ))}
-        </div>
+        {tieneCA ? (
+          <div className="flex items-center gap-0.5 bg-stone-100 dark:bg-stone-800/50 rounded-[10px] p-0.5">
+            {(["consumo", "conversion"] as Vista[]).map((v) => (
+              <button
+                key={v}
+                onClick={() => setVista(v)}
+                className={`px-3 py-1.5 rounded-[8px] text-[11px] font-medium transition-all cursor-pointer border-0
+                  ${
+                    vista === v
+                      ? "bg-white dark:bg-[#1c1917] text-stone-700 dark:text-stone-200 shadow-sm"
+                      : "bg-transparent text-stone-400 dark:text-stone-500"
+                  }`}
+              >
+                {v === "consumo" ? "Consumo" : "Conversión CA"}
+              </button>
+            ))}
+          </div>
+        ) : (
+          // Sin datos de CA — solo muestra la etiqueta activa sin toggle
+          <span className="text-[11px] text-stone-400 dark:text-stone-500 px-2.5 py-1 bg-stone-100 dark:bg-stone-800/50 rounded-[8px]">
+            Consumo
+          </span>
+        )}
       </div>
 
       {/* ── CONSUMO ── */}
@@ -391,10 +634,12 @@ export default function TwinsAlimentacionWidget({ datos }: Props) {
                 className="bg-white dark:bg-[#1c1917] border border-stone-200/60 dark:border-stone-800/50 rounded-[10px] px-3 py-3 text-center"
               >
                 <p
-                  className={`text-[22px] font-extrabold leading-none tabular-nums ${m.warn ? "text-amber-500" : "text-[#2FAF8F]"}`}
+                  className={`text-[22px] font-extrabold leading-none tabular-nums ${m.warn ? "text-amber-500" : datos.semanas.length === 0 ? "text-stone-300 dark:text-stone-700" : "text-[#2FAF8F]"}`}
                 >
-                  {m.value}
-                  <span className="text-[13px] font-bold opacity-70">%</span>
+                  {datos.semanas.length === 0 ? "—" : m.value}
+                  {datos.semanas.length > 0 && (
+                    <span className="text-[13px] font-bold opacity-70">%</span>
+                  )}
                 </p>
                 <p className="text-[10.5px] text-stone-400 dark:text-stone-500 mt-1">
                   {m.label}
@@ -426,6 +671,7 @@ export default function TwinsAlimentacionWidget({ datos }: Props) {
             <LineChart semanas={datos.semanas} />
           </div>
 
+          {/* Bloque de alerta suplemento — solo con datos reales */}
           {supWarn &&
             (() => {
               const OBJETIVO_SUP = 90;
@@ -435,7 +681,6 @@ export default function TwinsAlimentacionWidget({ datos }: Props) {
                 .map((s) => s.suplemento);
               return (
                 <div className="bg-white dark:bg-[#1c1917] border border-amber-200/80 dark:border-amber-800/30 rounded-[12px] px-4 py-3.5">
-                  {/* Header */}
                   <div className="flex items-start justify-between gap-3 mb-3.5">
                     <div>
                       <div className="flex items-center gap-1.5 mb-0.5">
@@ -467,7 +712,6 @@ export default function TwinsAlimentacionWidget({ datos }: Props) {
                     </span>
                   </div>
 
-                  {/* Valores */}
                   <div className="grid grid-cols-3 gap-2 mb-3.5">
                     {[
                       {
@@ -502,7 +746,6 @@ export default function TwinsAlimentacionWidget({ datos }: Props) {
                     ))}
                   </div>
 
-                  {/* Barra brecha */}
                   <div className="mb-3.5">
                     <div className="flex items-center justify-between mb-1">
                       <span className="text-[9.5px] text-stone-400 dark:text-stone-600 uppercase tracking-[0.06em]">
@@ -522,7 +765,6 @@ export default function TwinsAlimentacionWidget({ datos }: Props) {
                     </div>
                   </div>
 
-                  {/* Mini sparkline semanas */}
                   <div>
                     <p className="text-[9.5px] text-stone-400 dark:text-stone-600 uppercase tracking-[0.06em] mb-1.5">
                       Tendencia semanal
@@ -563,10 +805,9 @@ export default function TwinsAlimentacionWidget({ datos }: Props) {
         </>
       )}
 
-      {/* ── CONVERSIÓN ── */}
-      {vista === "conversion" && (
+      {/* ── CONVERSIÓN — solo si tieneCA ── */}
+      {vista === "conversion" && tieneCA && (
         <>
-          {/* Hero CA */}
           <div className="bg-white dark:bg-[#1c1917] border border-stone-200/60 dark:border-stone-800/50 rounded-[12px] px-4 py-4">
             <div className="flex items-end justify-between mb-4">
               <div>
@@ -668,7 +909,7 @@ export default function TwinsAlimentacionWidget({ datos }: Props) {
               </div>
               <div className="flex justify-between mt-1">
                 <span className="text-[9.5px] text-stone-300 dark:text-stone-700">
-                  0 kg
+                  {pesoNacimiento > 0 ? `${pesoNacimiento} kg` : "0 kg"}
                 </span>
                 <span className="text-[9.5px] text-stone-300 dark:text-stone-700">
                   {datos.pesoMeta} kg
