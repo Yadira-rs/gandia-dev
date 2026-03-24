@@ -46,8 +46,16 @@ import AlertasPage          from '../pages/Alertas/AlertasPage'
 // Creadores (nuevas)
 import CreadorHomePage      from '../pages/Creadores/CreadorHomePage'
 import CreadorFormPage      from '../pages/Creadores/CreadorFormPage'
-import CreadorSolicitarPage from '../pages/Creadores/CreadorSolicitarPage'
+import CreadorSolicitarPage from '../pages/Creadores/Creadorsolicitarpage'
 import { CreadorPerfilPage } from '../pages/Creadores/CreadorPerfilPage'
+import ModeradorAccesoPage  from '../pages/Moderador/ModeradorAccesoPage'
+import ModeradorPanelPage   from '../pages/Moderador/ModeradorPanelPage'
+
+// ── Wiki Handeia ──────────────────────────────────────────────────────────────
+import WikiHomePage         from '../pages/Wiki/WikiHomePage'
+import WikiDominioPage      from '../pages/Wiki/WikiDominioPage'
+import WikiHechoPage        from '../pages/Wiki/WikiHechoPage'
+import CreadorWikiPage      from '../pages/Creadores/CreadorWikiPage'
 
 import { useUser }  from '../context/UserContext'
 import { useEffect } from 'react'
@@ -112,6 +120,8 @@ function Router() {
         <Route path="/legal"             element={<LegalPage />} />
         <Route path="/compliance"        element={<CompliancePage />} />
         <Route path="/modelo-operativo"  element={<ModeloOperativoPage />} />
+        <Route path="/moderador/acceso"  element={<ModeradorAccesoPage />} />
+        <Route path="/moderador/panel"   element={<ModeradorPanelPage />} />
 
         <Route path="/blog"        element={<BlogPage />} />
         <Route path="/blog/:slug"  element={<BlogPostPage />} />
@@ -154,11 +164,17 @@ function Router() {
         {/* ── ALERTAS ────────────────────────────────────── */}
         <Route path="/alertas"  element={<AlertasPage />} />
 
+        {/* ── WIKI HANDEIA ───────────────────────────────── */}
+        <Route path="/wiki"                  element={<WikiHomePage />} />
+        <Route path="/wiki/dominio/:dominio" element={<WikiDominioPage />} />
+        <Route path="/wiki/hecho/:id"        element={<WikiHechoPage />} />
+
         {/* ── CREADORES ──────────────────────────────────── */}
-        <Route path="/creadores"           element={<CreadorHomePage />} />
-        <Route path="/creadores/nuevo"     element={<CreadorFormPage />} />
-        <Route path="/creadores/solicitar" element={<CreadorSolicitarPage />} />
-        <Route path="/creadores/:id"       element={<CreadorPerfilPage />} />
+        <Route path="/creadores"               element={<CreadorHomePage />} />
+        <Route path="/creadores/nuevo"         element={<CreadorFormPage />} />
+        <Route path="/creadores/solicitar"     element={<CreadorSolicitarPage />} />
+        <Route path="/creadores/wiki/nuevo"    element={<CreadorWikiPage />} />
+        <Route path="/creadores/:id"           element={<CreadorPerfilPage />} />
 
         {/* Redirects artefactos */}
         <Route path="/pasaportes"    element={<Navigate to="/chat?artifact=passport"      replace />} />

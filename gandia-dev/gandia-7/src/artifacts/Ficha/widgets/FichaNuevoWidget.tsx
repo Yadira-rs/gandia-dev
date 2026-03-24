@@ -58,17 +58,20 @@ export default function FichaNuevoWidget({ onCancelar, onGuardar }: Props) {
   const propietario = pd.fullName ?? pd.full_name ?? pd.nombre_completo ?? pd.nombre ?? '—'
 
   const [form, setForm] = useState<NuevoAnimalInput>({
-    siniiga:          '',
-    rfid:             '',
-    nombre:           '',
-    raza:             '',
-    especie:          'bovino',
-    sexo:             'hembra',
-    fecha_nacimiento: '',
-    peso_kg:          undefined,
-    upp:              '',
-    estado_mx:        'NL',
-    municipio:        '',
+    siniiga:            '',
+    rfid:               '',
+    nombre:             '',
+    raza:               '',
+    especie:            'bovino',
+    sexo:               'hembra',
+    fecha_nacimiento:   '',
+    peso_kg:            undefined,
+    peso_nacimiento:    undefined,
+    peso_meta:          undefined,
+    ganancia_diaria_kg: undefined,
+    upp:                '',
+    estado_mx:          'NL',
+    municipio:          '',
   })
 
   const [loading,      setLoading]      = useState(false)
@@ -90,7 +93,17 @@ export default function FichaNuevoWidget({ onCancelar, onGuardar }: Props) {
 
   const handleSubmit = async () => {
     const authUserId = await getAuthUserId()
-    if (!authUserId || !ranchoId) {
+
+    // Si ranchoId aún no cargó, esperar hasta 3 segundos
+    let resolvedRanchoId = ranchoId
+    if (!resolvedRanchoId && userId) {
+      for (let i = 0; i < 6; i++) {
+        await new Promise(r => setTimeout(r, 500))
+        if (ranchoId) { resolvedRanchoId = ranchoId; break }
+      }
+    }
+
+    if (!authUserId || !resolvedRanchoId) {
       setError('Sin sesión o rancho activo. Recarga la página.')
       return
     }
@@ -113,7 +126,7 @@ export default function FichaNuevoWidget({ onCancelar, onGuardar }: Props) {
         upp:     form.upp     || undefined,
         municipio: form.municipio || undefined,
       },
-      ranchoId,
+      resolvedRanchoId,
       authUserId
     )
 
@@ -243,6 +256,40 @@ export default function FichaNuevoWidget({ onCancelar, onGuardar }: Props) {
             max={2000}
             value={form.peso_kg ?? ''}
             onChange={e => set('peso_kg', e.target.value ? Number(e.target.value) : undefined)}
+            className={inputClass}
+          />
+        </Field>
+        <Field label="Peso al nacer (kg)" hint="opcional">
+          <input
+            type="number"
+            placeholder="38"
+            min={0}
+            max={200}
+            value={form.peso_nacimiento ?? ''}
+            onChange={e => set('peso_nacimiento', e.target.value ? Number(e.target.value) : undefined)}
+            className={inputClass}
+          />
+        </Field>
+        <Field label="Peso meta de engorda (kg)" hint="ej: 480 para exportación">
+          <input
+            type="number"
+            placeholder="480"
+            min={0}
+            max={2000}
+            value={form.peso_meta ?? ''}
+            onChange={e => set('peso_meta', e.target.value ? Number(e.target.value) : undefined)}
+            className={inputClass}
+          />
+        </Field>
+        <Field label="Ganancia diaria esperada (kg/día)" hint="ej: 0.9">
+          <input
+            type="number"
+            placeholder="0.9"
+            min={0}
+            max={5}
+            step={0.1}
+            value={form.ganancia_diaria_kg ?? ''}
+            onChange={e => set('ganancia_diaria_kg', e.target.value ? Number(e.target.value) : undefined)}
             className={inputClass}
           />
         </Field>

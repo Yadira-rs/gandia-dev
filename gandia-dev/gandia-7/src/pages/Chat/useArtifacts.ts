@@ -125,6 +125,12 @@ const COPILO_ACTION_MAP: Record<string, { widgetId: string; domain: ArtifactDoma
   // documentos — unión
   panel_union_docs:     { widgetId: 'documentos:panel',         domain: 'documentos'   },
   revisar_expediente:   { widgetId: 'documentos:revision',      domain: 'documentos'   },
+  // marketplace
+  ver_soluciones:       { widgetId: 'marketplace:kits',         domain: 'marketplace'  },
+  ver_partners:         { widgetId: 'marketplace:partners',     domain: 'marketplace'  },
+  kit_vision_ia:        { widgetId: 'marketplace:kits',         domain: 'marketplace'  },
+  kit_conectividad:     { widgetId: 'marketplace:kits',         domain: 'marketplace'  },
+  kit_sensores:         { widgetId: 'marketplace:kits',         domain: 'marketplace'  },
 }
 
 // ─── HOOK ─────────────────────────────────────────────────────────────────────

@@ -1,12 +1,13 @@
 /**
  * VinculacionAnima — Ánima (nivel completo / pantalla entera)
- * Estado compartido. Sidebar con activas en desktop. Tabs en topbar.
- * Móvil: barra de tabs fija en la parte inferior.
+ * Datos reales desde Supabase via useVinculaciones().
+ * Sidebar con activas en desktop. Tabs en topbar. Móvil: barra de tabs fija en la parte inferior.
  */
 
 import { useState } from 'react'
 import CopiloAnima from '../CopiloAnima'
-import type { Vinculacion, VinculacionPendiente, VinculacionHistorial } from '../artifactTypes'
+import { useVinculaciones } from '../../hooks/useVinculaciones'
+import type { VinculacionTipo } from '../artifactTypes'
 
 import VinculacionListaWidget      from './widgets/VinculacionListaWidget'
 import VinculacionPendientesWidget from './widgets/VinculacionPendientesWidget'
@@ -29,59 +30,27 @@ const DESKTOP_TABS: { id: TabId; label: string }[] = [
   { id: 'historial',  label: 'Historial'  },
 ]
 
-// ── mock state ─────────────────────────────────────────────────────────────────
-
-const MOCK_ACTIVAS: Vinculacion[] = [
-  { id: '1', entidad: 'MVZ Dr. García',     tipo: 'sanitario', estado: 'activa', fecha: '12 Ene 2025', expira: null             },
-  { id: '2', entidad: 'Exportadora Norte',  tipo: 'comercial', estado: 'activa', fecha: '01 Mar 2025', expira: 'Al cerrar lote' },
-  { id: '3', entidad: 'Auditor SENASICA',   tipo: 'auditoria', estado: 'activa', fecha: '05 Mar 2025', expira: '04 Abr 2025'    },
-  { id: '4', entidad: 'Unión Ganadera DGO', tipo: 'union',     estado: 'activa', fecha: '10 Feb 2025', expira: null             },
-]
-
-const MOCK_PENDIENTES: VinculacionPendiente[] = [
-  { id: '1', entidad: 'Exportadora Bajío', tipo: 'comercial', direccion: 'recibida', fecha: 'Hace 2h', mensaje: 'Interesados en lote de becerros macho.' },
-  { id: '2', entidad: 'MVZ Dra. Sánchez',  tipo: 'sanitario', direccion: 'enviada',  fecha: 'Ayer',    mensaje: null },
-]
-
-const MOCK_HISTORIAL: VinculacionHistorial[] = [
-  { id: '1', entidad: 'Exportadora Sur',  tipo: 'comercial', estado: 'expirada', fechaInicio: '10 Ene 2025', fechaFin: '15 Feb 2025', motivo: 'Lote cerrado'            },
-  { id: '2', entidad: 'Auditor Zona Sur', tipo: 'auditoria', estado: 'expirada', fechaInicio: '01 Dic 2024', fechaFin: '31 Dic 2024', motivo: 'Vencimiento automático' },
-  { id: '3', entidad: 'MVZ Dr. López',    tipo: 'sanitario', estado: 'revocada', fechaInicio: '05 Nov 2024', fechaFin: '20 Nov 2024', motivo: 'Revocado por el productor' },
-]
-
 // ─────────────────────────────────────────────────────────────────────────────
 
 export default function VinculacionAnima({ onClose, onEscalate }: Props) {
-  const [tab,        setTab]        = useState<TabId>('activas')
-  const [activas,    setActivas]    = useState<Vinculacion[]>(MOCK_ACTIVAS)
-  const [pendientes, setPendientes] = useState<VinculacionPendiente[]>(MOCK_PENDIENTES)
-  const [historial,  setHistorial]  = useState<VinculacionHistorial[]>(MOCK_HISTORIAL)
+  const [tab, setTab] = useState<TabId>('activas')
+
+  const {
+    activas,
+    pendientes,
+    historial,
+    loading,
+    error,
+    handleAceptar,
+    handleRechazar,
+    handleRevocar,
+    handleEnviar,
+  } = useVinculaciones()
 
   const pendiCount = pendientes.length
 
-  const handleAceptar = (id: string) => {
-    const p = pendientes.find(x => x.id === id)
-    if (!p) return
-    setActivas(a => [...a, { id: `a-${Date.now()}`, entidad: p.entidad, tipo: p.tipo, estado: 'activa', fecha: 'Hoy', expira: p.tipo === 'auditoria' ? '+30 días' : null }])
-    setPendientes(prev => prev.filter(x => x.id !== id))
-  }
-
-  const handleRechazar = (id: string) => {
-    const p = pendientes.find(x => x.id === id)
-    if (!p) return
-    setHistorial(h => [{ id: `h-${Date.now()}`, entidad: p.entidad, tipo: p.tipo, estado: 'rechazada', fechaInicio: '—', fechaFin: 'Hoy', motivo: 'Solicitud rechazada' }, ...h])
-    setPendientes(prev => prev.filter(x => x.id !== id))
-  }
-
-  const handleRevocar = (id: string) => {
-    const v = activas.find(x => x.id === id)
-    if (!v) return
-    setHistorial(h => [{ id: `h-${Date.now()}`, entidad: v.entidad, tipo: v.tipo, estado: 'revocada', fechaInicio: v.fecha, fechaFin: 'Hoy', motivo: 'Revocado por el productor' }, ...h])
-    setActivas(prev => prev.filter(x => x.id !== id))
-  }
-
-  const handleEnviar = (tipo: Vinculacion['tipo'], entidad: string, mensaje: string) => {
-    setPendientes(p => [...p, { id: `p-${Date.now()}`, entidad, tipo, direccion: 'enviada', fecha: 'Ahora', mensaje: mensaje || null }])
+  const onEnviar = async (tipo: VinculacionTipo, receptorId: string, mensaje: string, expiraDias?: number) => {
+    await handleEnviar(tipo, receptorId, mensaje, expiraDias)
     setTab('pendientes')
   }
 
@@ -156,7 +125,23 @@ export default function VinculacionAnima({ onClose, onEscalate }: Props) {
         <div className="flex-1 overflow-y-auto px-6 py-5 pb-[72px] sm:pb-5 [&::-webkit-scrollbar]:w-[4px] [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-stone-200 dark:[&::-webkit-scrollbar-thumb]:bg-stone-700 [&::-webkit-scrollbar-thumb]:rounded-full">
           <div className="max-w-2xl mx-auto">
 
-            {tab === 'activas' && (
+            {/* Error banner */}
+            {error && (
+              <div className="mb-4 p-3 rounded-[10px] bg-red-50 dark:bg-red-950/20 border border-red-100 dark:border-red-900/30 text-[11.5px] text-red-600 dark:text-red-400">
+                {error}
+              </div>
+            )}
+
+            {/* Loading skeleton */}
+            {loading && (
+              <div className="flex flex-col gap-3">
+                {[1,2,3].map(i => (
+                  <div key={i} className="h-20 rounded-[12px] bg-stone-100 dark:bg-stone-800/40 animate-pulse"/>
+                ))}
+              </div>
+            )}
+
+            {!loading && tab === 'activas' && (
               <VinculacionListaWidget
                 vinculaciones={activas}
                 onRevocar={handleRevocar}
@@ -164,7 +149,7 @@ export default function VinculacionAnima({ onClose, onEscalate }: Props) {
               />
             )}
 
-            {tab === 'pendientes' && (
+            {!loading && tab === 'pendientes' && (
               <VinculacionPendientesWidget
                 pendientes={pendientes}
                 onAceptar={handleAceptar}
@@ -172,13 +157,13 @@ export default function VinculacionAnima({ onClose, onEscalate }: Props) {
               />
             )}
 
-            {tab === 'nueva' && (
+            {!loading && tab === 'nueva' && (
               <VinculacionNuevaWidget
-                onEnviar={handleEnviar}
+                onEnviar={onEnviar}
               />
             )}
 
-            {tab === 'historial' && (
+            {!loading && tab === 'historial' && (
               <VinculacionHistorialWidget
                 historial={historial}
               />

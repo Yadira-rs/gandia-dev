@@ -7,8 +7,8 @@ export const MODELS_ASISTENTE: { id: ChatModel; label: string; desc: string }[] 
 
 export const MODELS_EXTERNOS: { id: ChatModel; label: string; desc: string }[] = [
   { id: 'claude', label: 'Claude', desc: 'Análisis profundo' },
-  { id: 'gpt4o',  label: 'GPT-4o', desc: 'Respuesta rápida'  },
-  { id: 'gemini', label: 'Gemini', desc: 'Multimodal'         },
+  { id: 'gpt4o',  label: 'GPT-4o', desc: 'No disponible'  },
+  { id: 'gemini', label: 'Gemini', desc: 'No disponible'  },
 ]
 
 export const modeLabel: Record<ChatMode, string> = {

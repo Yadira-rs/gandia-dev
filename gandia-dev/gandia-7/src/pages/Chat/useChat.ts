@@ -8,6 +8,7 @@ import {
 } from '../../lib/chatService'
 import type { UIMessage, Toast } from './chatTypes'
 import { dbToUI } from './chatUtils'
+import { supabase } from '../../lib/supabaseClient'
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 export const MAX_CHARS   = 4000
@@ -179,6 +180,109 @@ export function useChat(onArtifactText?: (text: string) => boolean) {
     doNewChat()
   }, [messages.length, doNewChat])
 
+  // ─── Radar AI handler (noticias + investigacion modes) ──────────────────────
+  const runRadarAI = useCallback(async (
+    userContent: string,
+    convId:      string | null,
+  ) => {
+    setIsGenerating(true)
+    setShowThinking(true)
+    setThinkingSteps(['Buscando noticias relevantes en Handeia…'])
+    setThinkingIdx(0)
+    setThinkingDone(false)
+    setStreamingText('')
+    setIsStreaming(false)
+
+    try {
+      let currentConvId = convId
+      if (!currentConvId) {
+        const conv = await chatService.createConversation({ mode, model })
+        currentConvId = conv.id
+        setConversationId(conv.id)
+      }
+
+      // Guardar mensaje del usuario
+      const savedUser = await chatService.saveMessage({
+        conversation_id: currentConvId,
+        role:    'user',
+        content: userContent,
+        files:   [],
+      })
+      setMessages(prev => prev.map(m =>
+        m.id === 'temp-user' ? { ...dbToUI(savedUser), thoughtsExpanded: false } : m
+      ))
+
+      // Buscar noticias como contexto
+      setThinkingSteps(['Buscando noticias relevantes en Handeia…', 'Consultando la IA…'])
+      setThinkingIdx(1)
+      const { data: noticias } = await supabase
+        .from('v_noticias_feed')
+        .select('titulo, resumen_general, categoria, fuente, tiempo_relativo')
+        .order('publicada_en', { ascending: false })
+        .limit(8)
+
+      const context = (noticias ?? []).map((n: Record<string, string>) =>
+        `[${n.categoria}] ${n.titulo} (${n.tiempo_relativo}) — ${n.resumen_general}`
+      ).join('\n')
+
+      // Llamar radar-ai
+      const { data: fnData, error: fnErr } = await supabase.functions.invoke('radar-ai', {
+        body: {
+          type:    'search',
+          query:   userContent,
+          context: context || '',
+          perfil:  'Productor',
+          mode,
+        },
+      })
+
+      if (fnErr) throw fnErr
+
+      const answer = fnData?.answer ?? 'No se pudo procesar la consulta.'
+      const sinContexto = fnData?.sin_contexto ?? false
+      const wikiHechos = fnData?.wiki_hechos ?? []
+
+      const fullAnswer = sinContexto
+        ? `⚠️ *Información general de IA — no verificada por Handeia*\n\n${answer}`
+        : answer
+
+      setThinkingDone(true)
+      setShowThinking(false)
+      setIsStreaming(true)
+      setStreamingText(fullAnswer)
+
+      // Guardar respuesta
+      const savedAssistant = await chatService.saveMessage({
+        conversation_id: currentConvId,
+        role:    'assistant',
+        content: fullAnswer,
+        thoughts: ['Buscando noticias relevantes en Handeia…', 'Consultando la IA…'],
+        model:   'acipe',
+      })
+
+      setIsGenerating(false)
+      setIsStreaming(false)
+      setStreamingText('')
+      setShowThinking(false)
+      setMessages(prev => [...prev, { ...dbToUI(savedAssistant), thoughtsExpanded: false, wiki_hechos: wikiHechos.length > 0 ? wikiHechos : undefined }])
+
+    } catch (err: unknown) {
+      if (err instanceof Error && err.name === 'AbortError') return
+      setIsGenerating(false)
+      setIsStreaming(false)
+      setShowThinking(false)
+      setStreamingText('')
+      const errorText = 'No se pudo conectar con el radar de noticias. Intenta de nuevo.'
+      setMessages(prev => [...prev, {
+        id: crypto.randomUUID(), role: 'assistant', content: '',
+        files: [], thoughts: [], thoughtsExpanded: false, isError: true,
+        ts: Date.now(),
+      }])
+      void err
+      console.error('radar-ai error:', errorText)
+    }
+  }, [mode, model, conversationId])
+
   // ─── Core generation ─────────────────────────────────────────────────────────
   const runGeneration = useCallback(async (
     userContent: string,
@@ -338,6 +442,17 @@ export function useChat(onArtifactText?: (text: string) => boolean) {
     setPendingFiles([])
 
     if (attachedFiles.length === 0 && onArtifactText?.(trimmed)) return
+
+    if (attachedFiles.length === 0 && (mode === 'noticias' || mode === 'investigacion')) {
+      // No llamar al radar si es un mensaje trivial (saludo, gracias, ok, etc.)
+      const trivial = /^(gracias|ok|okay|perfecto|entendido|claro|bien|excelente|genial|de nada|hola|hi|hey|👍|✅|👌|xd|jaja|sip|no|si$|yes$|no$)$/i.test(trimmed)
+      if (trivial) {
+        runGeneration(trimmed, attachedFiles, rawToUpload, conversationId, currentHistory)
+        return
+      }
+      runRadarAI(trimmed, conversationId)
+      return
+    }
 
     runGeneration(trimmed, attachedFiles, rawToUpload, conversationId, currentHistory)
   }, [message, attachedFiles, pendingFiles, isGenerating, messages, conversationId, runGeneration, onArtifactText])

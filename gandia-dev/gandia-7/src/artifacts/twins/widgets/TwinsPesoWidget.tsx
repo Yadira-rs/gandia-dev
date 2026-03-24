@@ -40,15 +40,10 @@ function getXY(
   min: number,
   max: number,
 ): [number, number] {
-<<<<<<< Updated upstream
-  const x = PAD_L + (i / (n - 1)) * DRAW_W;
-  const y = PAD_T + (1 - (v - min) / (max - min)) * DRAW_H;
-=======
   const x = PAD_L + (i / Math.max(n - 1, 1)) * DRAW_W;
   const rango = max - min;
   const y =
     rango > 0 ? PAD_T + (1 - (v - min) / rango) * DRAW_H : PAD_T + DRAW_H / 2;
->>>>>>> Stashed changes
   return [x, y];
 }
 

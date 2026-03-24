@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components */
 /**
  * artifactEngine/widgetMap.tsx
  */
@@ -6,9 +7,6 @@ import React from 'react'
 
 import {
   MOCK_PASSPORT,
-  MOCK_EVENTOS_TWINS,
-  MOCK_AUDITORIAS_TWINS,
-  MOCK_ALIMENTACION_TWINS,
 } from './mockData'
 
 // ── Ficha Ganadera ─────────────────────────────────────────────────────────────
@@ -41,9 +39,12 @@ import ConfigCorralesWidget     from '../../../artifacts/monitoring/widgets/Conf
 import GusanoWidget from '../../../artifacts/sanidad/widgets/GusanoWidget'
 
 // ── Gemelo Digital ────────────────────────────────────────────────────────────
-import TwinsTimelineWidget from '../../../artifacts/twins/widgets/TwinsTimelineWidget'
-import TwinsFeedWidget from '../../../artifacts/twins/widgets/TwinsFeedWidget'
+import TwinsTimelineWidget   from '../../../artifacts/twins/widgets/TwinsTimelineWidget'
+import TwinsFeedWidget       from '../../../artifacts/twins/widgets/TwinsFeedWidget'
 import TwinsAlimentacionWidget from '../../../artifacts/twins/widgets/TwinsAlimentacionWidget'
+import { useTwinsAnimales, useTwinsTimeline, useTwinsAlimentacion, useTwinsFeed } from '../../../hooks/useTwinsData'
+import { useRanchoId, getAuthUserId } from '../../../hooks/useAnimales'
+import { useState, useEffect } from 'react'
 
 // ── Biometría ─────────────────────────────────────────────────────────────────
 import BiometriaCapturaWidget from '../../../artifacts/biometria/widgets/BiometriaCapturaWidget'
@@ -88,6 +89,10 @@ import DocPanelGeneralWidget from '../../../artifacts/documentos/widgets/DocPane
 
 // ── Trámites ──────────────────────────────────────────────────────────────────
 import TramiteNuevoWidget from '../../../artifacts/documentos/widgets/TramiteNuevoWidget'
+
+// ── Marketplace ───────────────────────────────────────────────────────────────
+import MarketplaceKitsWidget     from '../../../artifacts/marketplace/widgets/MarketplaceKitsWidget'
+import MarketplacePartnersWidget from '../../../artifacts/marketplace/widgets/MarketplacePartnersWidget'
 import {
   MOCK_CERT_CARDS,
   MOCK_ELEGIBILIDAD,
@@ -98,10 +103,169 @@ import {
   MOCK_VERIFICATION_ITEM,
   MOCK_VERIFICATION_HISTORIAL,
   MOCK_VERIFICATION_INCONSISTENCIAS,
-  MOCK_VINCULACIONES,
-  MOCK_VINCULACIONES_PENDIENTES,
-  MOCK_VINCULACIONES_HISTORIAL,
 } from './mockData'
+
+import { useVinculaciones } from '../../../hooks/useVinculaciones'
+
+// ═══════════════════════════════════════════════════════════════════
+// TWINS — Componentes inline con datos reales
+// Se usan solo en widgetMap (chat inline). Los módulos/anima usan
+// los hooks directamente con el animal ya seleccionado.
+// ═══════════════════════════════════════════════════════════════════
+
+function TwinsAnimalSelector({
+  onSelect,
+}: {
+  onSelect: (siniiga: string, corral: string) => void
+}) {
+  const [userId,  setUserId]  = useState<string | null>(null)
+  useEffect(() => { getAuthUserId().then(setUserId) }, [])
+  const { ranchoId } = useRanchoId(userId)
+  const { animales, loading } = useTwinsAnimales(ranchoId)
+
+  if (loading) return (
+    <div className="flex items-center gap-2 py-6 justify-center">
+      <span className="w-2 h-2 rounded-full bg-[#2FAF8F] animate-pulse" />
+      <span className="text-[12px] text-stone-400">Cargando animales…</span>
+    </div>
+  )
+  if (!animales.length) return (
+    <p className="text-[12px] text-stone-400 text-center py-6">Sin animales registrados</p>
+  )
+  return (
+    <div className="flex flex-col gap-2">
+      <p className="text-[11px] text-stone-400 dark:text-stone-500 mb-1">Selecciona un animal</p>
+      {animales.map(a => (
+        <button
+          key={a.perfil.arete}
+          onClick={() => onSelect(a.perfil.arete, a.perfil.corral)}
+          className="flex items-center justify-between px-3 py-2.5 rounded-lg border border-stone-200/70 dark:border-stone-800 bg-white dark:bg-[#1c1917] hover:border-[#2FAF8F]/40 transition-all text-left cursor-pointer"
+        >
+          <div>
+            <span className="font-mono text-[12px] font-bold text-stone-800 dark:text-stone-100">{a.perfil.arete}</span>
+            {a.perfil.nombre && <span className="ml-2 text-[11px] text-stone-400">{a.perfil.nombre}</span>}
+            <p className="text-[10.5px] text-stone-400 dark:text-stone-500">{a.perfil.raza} · {a.perfil.corral}</p>
+          </div>
+          <span className="font-mono text-[11px] text-stone-400">{a.perfil.pesoActual} kg</span>
+        </button>
+      ))}
+    </div>
+  )
+}
+
+function TwinsTimelineInline() {
+  const [siniiga, setSiniiga] = useState<string | null>(null)
+  const [corral,  setCorral]  = useState("—")
+  const { eventos, loading, refetch } = useTwinsTimeline(siniiga) as
+    { eventos: import('../../../artifacts/twins/widgets/TwinsTimelineWidget').EventoTimeline[]; loading: boolean; refetch?: () => void }
+
+  if (!siniiga) return <TwinsAnimalSelector onSelect={(s, c) => { setSiniiga(s); setCorral(c) }} />
+  if (loading) return (
+    <div className="flex items-center gap-2 py-6 justify-center">
+      <span className="w-2 h-2 rounded-full bg-[#2FAF8F] animate-pulse" />
+      <span className="text-[12px] text-stone-400">Cargando timeline…</span>
+    </div>
+  )
+  return (
+    <TwinsTimelineWidget
+      eventos={eventos}
+      ubicacionActual={corral}
+      siniiga={siniiga}
+      onRefresh={refetch}
+    />
+  )
+}
+
+function TwinsFeedInline() {
+  const [siniiga, setSiniiga] = useState<string | null>(null)
+  const { auditorias, completitud, loading } = useTwinsFeed(siniiga)
+
+  if (!siniiga) return <TwinsAnimalSelector onSelect={(s) => setSiniiga(s)} />
+  if (loading) return (
+    <div className="flex items-center gap-2 py-6 justify-center">
+      <span className="w-2 h-2 rounded-full bg-[#2FAF8F] animate-pulse" />
+      <span className="text-[12px] text-stone-400">Cargando auditorías…</span>
+    </div>
+  )
+  return <TwinsFeedWidget auditorias={auditorias} completitud={completitud} />
+}
+
+function TwinsAlimentacionInline() {
+  const [siniiga, setSiniiga] = useState<string | null>(null)
+  const [userId,  setUserId]  = useState<string | null>(null)
+  useEffect(() => { getAuthUserId().then(setUserId) }, [])
+  const { ranchoId } = useRanchoId(userId)
+  const { animales } = useTwinsAnimales(ranchoId)
+  const animalPerfil = animales.find(a => a.perfil.arete === siniiga)?.perfil
+
+  const { datos, loading } = useTwinsAlimentacion(
+    siniiga,
+    animalPerfil?.pesoActual,
+    animalPerfil?.pesoMeta,
+    animalPerfil?.gananciaDiaria,
+  )
+
+  if (!siniiga) return <TwinsAnimalSelector onSelect={(s) => setSiniiga(s)} />
+  if (loading) return (
+    <div className="flex items-center gap-2 py-6 justify-center">
+      <span className="w-2 h-2 rounded-full bg-[#2FAF8F] animate-pulse" />
+      <span className="text-[12px] text-stone-400">Cargando alimentación…</span>
+    </div>
+  )
+  if (!datos) return (
+    <div className="flex flex-col items-center gap-2 py-8">
+      <p className="text-[12px] text-stone-400">Sin datos de alimentación para {siniiga}</p>
+      <TwinsAlimentacionWidget
+        datos={{ semanas: [], caActual: 0, caObjetivo: 7.1, caIndustria: 8.2, proyDias: 0, proyFecha: "—", pesoMeta: animalPerfil?.pesoMeta ?? 500, pesoActual: animalPerfil?.pesoActual ?? 0 }}
+        siniiga={siniiga}
+      />
+    </div>
+  )
+  return <TwinsAlimentacionWidget datos={datos} siniiga={siniiga} />
+}
+// ═══════════════════════════════════════════════════════════════════
+// VINCULACIÓN — Componentes inline con datos reales (sin mock)
+// ═══════════════════════════════════════════════════════════════════
+
+function VinculacionListaInline({ onExpand }: { onExpand: () => void }) {
+  const { activas, loading } = useVinculaciones()
+  if (loading) return (
+    <div className="flex items-center gap-2 py-6 justify-center">
+      <span className="w-2 h-2 rounded-full bg-[#0ea5e9] animate-pulse" />
+      <span className="text-[12px] text-stone-400">Cargando vinculaciones…</span>
+    </div>
+  )
+  return <VinculacionListaWidget vinculaciones={activas} onExpand={onExpand} />
+}
+
+function VinculacionPendientesInline({ onExpand: _onExpand }: { onExpand: () => void }) {
+  const { pendientes, loading, handleAceptar, handleRechazar } = useVinculaciones()
+  if (loading) return (
+    <div className="flex items-center gap-2 py-6 justify-center">
+      <span className="w-2 h-2 rounded-full bg-[#0ea5e9] animate-pulse" />
+      <span className="text-[12px] text-stone-400">Cargando pendientes…</span>
+    </div>
+  )
+  return (
+    <VinculacionPendientesWidget
+      pendientes={pendientes}
+      onAceptar={handleAceptar}
+      onRechazar={handleRechazar}
+    />
+  )
+}
+
+function VinculacionHistorialInline() {
+  const { historial, loading } = useVinculaciones()
+  if (loading) return (
+    <div className="flex items-center gap-2 py-6 justify-center">
+      <span className="w-2 h-2 rounded-full bg-[#0ea5e9] animate-pulse" />
+      <span className="text-[12px] text-stone-400">Cargando historial…</span>
+    </div>
+  )
+  return <VinculacionHistorialWidget historial={historial} />
+}
+
 
 export interface WidgetCallbacks {
   onExpand: () => void
@@ -173,6 +337,9 @@ const EXPANDABLE_WIDGETS = new Set([
   'documentos:panel',
   // Trámites
   'tramites:nuevo',
+  // Marketplace
+  'marketplace:kits',
+  'marketplace:partners',
 ])
 
 export function renderWidget(
@@ -329,15 +496,15 @@ function getWidgetNode(widgetId: string, onExpand: () => void): React.ReactNode 
     case 'sanidad:gusano':
       return <GusanoWidget />
 
-    // ── Gemelo Digital ──
+    // ── Gemelo Digital — widgets con datos reales ──
     case 'twins:timeline':
-      return <TwinsTimelineWidget eventos={MOCK_EVENTOS_TWINS} ubicacionActual="Corral 1" />
+      return <TwinsTimelineInline />
 
     case 'twins:feed':
-      return <TwinsFeedWidget auditorias={MOCK_AUDITORIAS_TWINS} completitud={78} />
+      return <TwinsFeedInline />
 
     case 'twins:alimentacion':
-      return <TwinsAlimentacionWidget datos={MOCK_ALIMENTACION_TWINS} />
+      return <TwinsAlimentacionInline />
 
     // ── Biometría ──
     case 'biometria:captura':
@@ -400,18 +567,18 @@ function getWidgetNode(widgetId: string, onExpand: () => void): React.ReactNode 
     case 'exportacion:scanner':
       return <ExportacionScannerWidget />
 
-    // ── Vinculación ──
+    // ── Vinculación ── datos reales via useVinculaciones()
     case 'vinculacion:lista':
-      return <VinculacionListaWidget vinculaciones={MOCK_VINCULACIONES} />
+      return <VinculacionListaInline onExpand={onExpand} />
 
     case 'vinculacion:pendientes':
-      return <VinculacionPendientesWidget pendientes={MOCK_VINCULACIONES_PENDIENTES} />
+      return <VinculacionPendientesInline onExpand={onExpand} />
 
     case 'vinculacion:nueva':
       return <VinculacionNuevaWidget />
 
     case 'vinculacion:historial':
-      return <VinculacionHistorialWidget historial={MOCK_VINCULACIONES_HISTORIAL} />
+      return <VinculacionHistorialInline />
 
     // ── Documentos ──
     case 'documentos:subida':
@@ -431,6 +598,13 @@ function getWidgetNode(widgetId: string, onExpand: () => void): React.ReactNode 
 
     case 'documentos:panel':
       return <DocPanelGeneralWidget />
+
+    // ── Marketplace ──
+    case 'marketplace:kits':
+      return <MarketplaceKitsWidget onExpand={onExpand} />
+
+    case 'marketplace:partners':
+      return <MarketplacePartnersWidget />
 
     default:
       return null

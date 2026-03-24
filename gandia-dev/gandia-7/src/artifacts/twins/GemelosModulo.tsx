@@ -28,11 +28,7 @@ import {
   useTwinsFeed,
 } from "../../hooks/useTwinsData";
 
-<<<<<<< Updated upstream
-import { useAnimalesList, useRanchoId, getAuthUserId } from '../../hooks/useAnimales'
-=======
 import { useRanchoId, getAuthUserId } from "../../hooks/useAnimales";
->>>>>>> Stashed changes
 
 // ─── TIPOS ────────────────────────────────────────────────────────────────────
 
@@ -145,21 +141,6 @@ export default function GemelosModulo({ onClose, onEscalate }: Props) {
 
   const animalSiniiga = selectedAnimal?.perfil.arete ?? null;
 
-<<<<<<< Updated upstream
-  // 4. UUID del animal seleccionado (para las queries twins_*)
-  //    animal_id en twins_pesos/alimentacion es UUID, en twins_eventos es siniiga (text)
-  const { animales: animalesDB } = useAnimalesList(ranchoId)
-  const animalUUID = selectedAnimal
-    ? (animalesDB.find(a => a.siniiga === selectedAnimal.perfil.arete)?.id ?? null)
-    : null
-  const animalSiniiga = selectedAnimal?.perfil.arete ?? null
-
-  // 5. Datos por widget del animal seleccionado
-  const { registros, loading: loadingPesos  } = useTwinsPesos(animalUUID)
-  const { eventos,   loading: loadingTimeline } = useTwinsTimeline(animalSiniiga)
-  const { datos,     loading: loadingAlim    } = useTwinsAlimentacion(
-    animalUUID,
-=======
   const { registros, loading: loadingPesos } = useTwinsPesos(animalSiniiga);
   const {
     eventos,
@@ -172,7 +153,6 @@ export default function GemelosModulo({ onClose, onEscalate }: Props) {
     refetch: refetchAlim,
   } = useTwinsAlimentacion(
     animalSiniiga,
->>>>>>> Stashed changes
     selectedAnimal?.perfil.pesoActual,
     selectedAnimal?.perfil.pesoMeta,
     selectedAnimal?.perfil.gananciaDiaria,
@@ -261,22 +241,12 @@ export default function GemelosModulo({ onClose, onEscalate }: Props) {
         return (
           <TwinsTimelineWidget
             eventos={eventos}
-<<<<<<< Updated upstream
-            ubicacionActual={selectedAnimal?.perfil.corral ?? '—'}
-=======
             ubicacionActual={selectedAnimal?.perfil.corral ?? "—"}
             siniiga={animalSiniiga}
             onRefresh={handleRefreshTimeline}
->>>>>>> Stashed changes
           />
         );
 
-<<<<<<< Updated upstream
-      case 'alimentacion':
-        if (loadingAlim) return <LoadingState mensaje="Cargando alimentación..." />
-        if (!datos)      return <EmptyState mensaje="Sin datos de alimentación" />
-        return <TwinsAlimentacionWidget datos={datos} />
-=======
       case "alimentacion":
         if (!animalSiniiga)
           return <EmptyState mensaje="Selecciona un animal primero" />;
@@ -301,7 +271,6 @@ export default function GemelosModulo({ onClose, onEscalate }: Props) {
             onRefresh={handleRefreshAlim}
           />
         );
->>>>>>> Stashed changes
 
       case "auditorias":
         if (!animalSiniiga)
@@ -486,19 +455,3 @@ export default function GemelosModulo({ onClose, onEscalate }: Props) {
     </div>
   );
 }
-<<<<<<< Updated upstream
-
-// ─── EMPTY STATE ──────────────────────────────────────────────────────────────
-
-function EmptyState({ mensaje }: { mensaje: string }) {
-  return (
-    <div className="flex flex-col items-center gap-2 py-10">
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="text-stone-300 dark:text-stone-700">
-        <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
-      </svg>
-      <span className="text-[12px] text-stone-400 dark:text-stone-500">{mensaje}</span>
-    </div>
-  )
-}
-=======
->>>>>>> Stashed changes

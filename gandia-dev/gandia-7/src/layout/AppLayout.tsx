@@ -1,10 +1,11 @@
-﻿import { useState, useRef, useEffect, useCallback } from 'react'
+import { useState, useRef, useEffect, useCallback } from 'react'
 import { Outlet, useNavigate, useLocation } from 'react-router-dom'
 import NotificacionesPanel from '../pages/Notificaciones/Notificaciones'
 import { supabase } from '../lib/supabaseClient'
 import { useNotifications } from '../context/NotificationsContext'
 import { useUser } from '../context/UserContext'
 import { useVoiceNav, type VoiceChatCmd } from '../hooks/useVoiceNav'
+import { canViewArtifact } from '../artifacts/artifactTypes'
 
 // ─── Derived user display from UserContext ───────────────────────────────────
 const ROLE_NAMES: Record<string, string> = {
@@ -16,48 +17,70 @@ const ROLE_NAMES: Record<string, string> = {
 }
 
 // ─── Ticker IA ────────────────────────────────────────────────────────────────
-const TICKER_ITEMS = [
-  '🐄  IA detecta patrón atípico en vacunación — zona norte de Durango',
-  '📋  Nuevos requisitos SENASICA para exportación a EE.UU. vigentes desde marzo 2026',
-  '🌿  Modelo climático: temporada de lluvias favorable en Chihuahua y Durango',
-  '✅  847 pasaportes ganaderos procesados hoy en la plataforma',
-  '🔬  Protocolo aftosa 2026 actualizado — disponible en Trámites',
-  '📈  Precio ganado en pie +3.2% respecto al mes anterior · SNIIM',
-  '🛰  Cobertura satelital alcanza 94% del territorio ganadero nacional',
-  '⚠️  Alerta sanitaria: brote reportado en Sonora — revisa tu plan preventivo',
+const TICKER_FALLBACK = [
+  'Sector ganadero mexicano · Inteligencia en tiempo real',
+  'SENASICA · USDA · SNIIM · Handeia Radar',
+  'Noticias verificadas con HTI · Handeia',
 ]
 
 // ─── Nav groups ───────────────────────────────────────────────────────────────
-const NAV_GROUPS = [
-  {
-    label: 'Principal',
-    items: [
-      { label: 'Chat',       path: '/chat',                        icon: 'chat'         },
-      { label: 'Noticias',   path: '/noticias',                    icon: 'newspaper'    },
-      { label: 'Fichas',     path: '/chat?open=passport',          icon: 'file'         },
-      { label: 'Gemelos',    path: '/chat?open=twins',             icon: 'copy'         },
-    ],
-  },
-  {
-    label: 'Operaciones',
-    items: [
-      { label: 'Monitoreo',     path: '/chat?open=monitoring',     icon: 'eye'          },
-      { label: 'Certificación', path: '/chat?open=certification',  icon: 'check-circle' },
-      { label: 'Trámites',      path: '/tramites',                 icon: 'tramites'     },
-      { label: 'Verificación',  path: '/chat?open=verification',   icon: 'verified'     },
-    ],
-  },
-  {
-    label: 'Registro',
-    items: [
-      { label: 'Historial', path: '/historial', icon: 'clock' },
-    ],
-  },
-]
+function getNavGroups(role: string) {
+  return [
+    {
+      label: 'Principal',
+      items: [
+        { label: 'Chat',       path: '/chat',                        icon: 'chat' },
+        { label: 'Radar',      path: '/noticias',                    icon: 'radar' },
+        canViewArtifact('fichas', role) === 'visual' ? { label: 'Fichas',     path: '/chat?open=fichas',          icon: 'file' } : null,
+        canViewArtifact('twins', role) === 'visual' ? { label: 'Gemelos',    path: '/chat?open=twins',             icon: 'copy' } : null,
+      ].filter(Boolean),
+    },
+    {
+      label: 'Operaciones',
+      items: [
+        canViewArtifact('monitoring', role) === 'visual' ? { label: 'Monitoreo',     path: '/chat?open=monitoring',     icon: 'eye' } : null,
+        canViewArtifact('certification', role) === 'visual' ? { label: 'Certificación', path: '/chat?open=certification',  icon: 'check-circle' } : null,
+        canViewArtifact('tramites', role) === 'visual' ? { label: 'Trámites',      path: role === 'producer' ? '/tramites' : '/tramites/panel', icon: 'tramites' } : null,
+        canViewArtifact('verification', role) === 'visual' ? { label: 'Verificación',  path: '/chat?open=verification',   icon: 'verified' } : null,
+      ].filter(Boolean),
+    },
+    {
+      label: 'Registro',
+      items: [
+        { label: 'Historial', path: '/historial', icon: 'clock' },
+      ],
+    },
+  ].filter(g => g.items.length > 0) as { label: string, items: { label: string, path: string, icon: string }[] }[]
+}
+
+// ─── Ícono por categoría ──────────────────────────────────────────────────────
+function TickerIcon({ categoria }: { categoria: string }) {
+  const cls = 'w-3 h-3 shrink-0 text-stone-400 dark:text-stone-500'
+  const s = { className: cls, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: '1.75', strokeLinecap: 'round' as const, strokeLinejoin: 'round' as const }
+  switch (categoria) {
+    case 'SANIDAD':
+      return <svg {...s}><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+    case 'PRECIOS':
+      return <svg {...s}><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+    case 'NORMATIVA':
+      return <svg {...s}><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="9" y1="13" x2="15" y2="13"/><line x1="9" y1="17" x2="15" y2="17"/></svg>
+    case 'CLIMA':
+      return <svg {...s}><path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"/></svg>
+    case 'EXPORTACION':
+      return <svg {...s}><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+    case 'MERCADOS':
+      return <svg {...s}><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+    default:
+      return <svg {...s}><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+  }
+}
 
 // ─── AppLayout ────────────────────────────────────────────────────────────────
 function AppLayout() {
   const [sidebarCollapsed, setSidebarCollapsed]     = useState(false)
+  const [tickerItems, setTickerItems] = useState<{ texto: string; categoria: string }[]>(
+    TICKER_FALLBACK.map(t => ({ texto: t, categoria: 'GENERAL' }))
+  )
   const [mobileMenuOpen,   setMobileMenuOpen]       = useState(false)
   const [userMenuOpen,     setUserMenuOpen]         = useState(false)
   const [notificacionesOpen, setNotificacionesOpen] = useState(false)
@@ -68,6 +91,29 @@ function AppLayout() {
   const location    = useLocation()
   const { profile, profileReady } = useUser()
   const { unreadCount } = useNotifications()
+
+  // ─── Ticker desde noticias reales ────────────────────────────────────────
+  useEffect(() => {
+    const fetchTicker = async () => {
+      const { data } = await supabase
+        .from('v_noticias_feed')
+        .select('titulo, categoria, urgente')
+        .order('urgente', { ascending: false })
+        .order('publicada_en', { ascending: false })
+        .limit(8)
+      if (data && data.length > 0) {
+        setTickerItems(
+          (data as { titulo: string; categoria: string; urgente: boolean }[]).map(n => ({
+            texto:     `${n.urgente ? 'Urgente · ' : ''}${n.titulo}`,
+            categoria: n.categoria,
+          }))
+        )
+      } else {
+        setTickerItems([])
+      }
+    }
+    void fetchTicker()
+  }, [])
 
   // ─── Voz ─────────────────────────────────────────────────────────────────
   const voiceNavEnabled = (() => {
@@ -496,7 +542,7 @@ function AppLayout() {
 
           {/* Nav */}
           <nav className="flex-1 overflow-y-auto overflow-x-hidden py-2 px-2" aria-label="Menú">
-            {NAV_GROUPS.map((g) => (
+            {getNavGroups(roleCode).map((g) => (
               <NavGroup
                 key={g.label}
                 label={g.label}
@@ -599,25 +645,26 @@ function AppLayout() {
             <div className="hidden md:block w-px h-3.5 bg-stone-200 dark:bg-stone-700/60 shrink-0 mx-0.5" />
 
             {/* ── News ticker ────────────────────────────────── */}
-            <button
+            {tickerItems.length > 0 && <button
               onClick={() => navigate('/noticias')}
               className="hidden md:flex flex-1 items-center gap-2.5 min-w-0 overflow-hidden rounded-lg py-1 px-1 -mx-1 hover:bg-stone-100/60 dark:hover:bg-stone-800/30 transition-colors duration-150 group/ticker"
               aria-label="Ver todas las noticias"
             >
               <span className="shrink-0 inline-flex items-center gap-1.5 text-[10.5px] font-semibold uppercase tracking-[0.10em] text-stone-400 dark:text-stone-500 group-hover/ticker:text-stone-600 dark:group-hover/ticker:text-stone-300 transition-colors">
                 <span className="w-[5px] h-[5px] rounded-full bg-[#2FAF8F] animate-pulse shrink-0" />
-                Noticias
+                Radar
               </span>
               <div className="flex-1 overflow-hidden relative">
                 <div className="pointer-events-none absolute left-0 top-0 bottom-0 w-5 bg-gradient-to-r from-transparent to-transparent z-10" />
                 <div className="pointer-events-none absolute right-0 top-0 bottom-0 w-8 bg-gradient-to-l from-transparent to-transparent z-10" />
                 <div className="g-ticker flex whitespace-nowrap select-none" aria-label="Noticias de IA">
-                  {[...TICKER_ITEMS, ...TICKER_ITEMS].map((item, i) => (
+                  {[...tickerItems, ...tickerItems].map((item, i) => (
                     <span
                       key={i}
-                      className="shrink-0 text-[11.5px] text-stone-500 dark:text-stone-400 group-hover/ticker:text-stone-700 dark:group-hover/ticker:text-stone-300 px-5 border-r border-stone-200/50 dark:border-stone-700/40 last:border-r-0 transition-colors"
+                      className="shrink-0 inline-flex items-center gap-2 text-[11.5px] text-stone-500 dark:text-stone-400 group-hover/ticker:text-stone-700 dark:group-hover/ticker:text-stone-300 px-5 border-r border-stone-200/50 dark:border-stone-700/40 last:border-r-0 transition-colors"
                     >
-                      {item}
+                      <TickerIcon categoria={item.categoria} />
+                      {item.texto}
                     </span>
                   ))}
                 </div>
@@ -625,7 +672,7 @@ function AppLayout() {
               <svg className="shrink-0 w-3 h-3 text-stone-300 dark:text-stone-600 group-hover/ticker:text-[#2FAF8F] transition-colors mr-1" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                 <polyline points="9 18 15 12 9 6"/>
               </svg>
-            </button>
+            </button>}
 
             {/* Right: notifications */}
             <div className="ml-auto shrink-0 relative">
@@ -944,6 +991,7 @@ function getIcon(name: string, active = false) {
     verified:      <svg {...s}><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>,
     clock:         <svg {...s}><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>,
     newspaper:     <svg {...s}><path d="M4 22h16a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2H8a2 2 0 0 0-2 2v16a2 2 0 0 1-2 2zm0 0a2 2 0 0 1-2-2v-9c0-1.1.9-2 2-2h2"/><path d="M18 14h-8"/><path d="M15 18h-5"/><path d="M10 6h8v4h-8z"/></svg>,
+    radar:         <svg {...s}><circle cx="12" cy="12" r="2"/><path d="M16.24 7.76a6 6 0 0 1 0 8.49"/><path d="M7.76 7.76a6 6 0 0 0 0 8.49"/><path d="M20.07 4.93a10 10 0 0 1 0 14.14"/><path d="M3.93 4.93a10 10 0 0 0 0 14.14"/></svg>,
   }
   return map[name] ?? null
 }

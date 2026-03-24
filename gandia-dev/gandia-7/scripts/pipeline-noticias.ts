@@ -28,20 +28,43 @@ const MODEL = 'claude-sonnet-4-20250514'
 
 // Keywords para buscar noticias ganaderas en México
 const KEYWORDS = [
-  'ganadero Mexico', 'bovinos Mexico', 'SENASICA', 'exportacion bovinos',
-  'sanidad animal Mexico', 'trazabilidad ganadera', 'becerro precio Mexico',
-  'SADER ganadero', 'Mexico cattle', 'Mexico livestock', 'USDA cattle Mexico',
-  'beef cattle Mexico', 'livestock disease Mexico',
+  'ganadero Mexico',
+  'SENASICA',
+  'bovinos Mexico',
+  'ganado Mexico',
+  'screwworm Mexico',
+  'Mexico livestock',
+  'Mexico cattle',
+  'beef Mexico',
+  'agricultura Mexico',
+  'sanidad animal Mexico',
+  'exportacion ganado',
+  'USDA Mexico cattle',
+  'gusano barrenador',
+  'precio ganado Mexico',
+  'Sonora ganadero',
+  'Chihuahua ganadero',
+  'Durango ganadero',
 ]
 
 // IDs de fuentes en tu tabla news_sources (ajustar según lo que tengas)
 const SOURCE_HTI_MAP: Record<string, { id_hint: string; score: number }> = {
-  'gob.mx':           { id_hint: 'SENASICA',   score: 93 },
-  'usda.gov':         { id_hint: 'USDA',        score: 94 },
-  'fao.org':          { id_hint: 'FAO',         score: 92 },
-  'economia.gob.mx':  { id_hint: 'SNIIM',       score: 90 },
-  'agroempresario':   { id_hint: 'Agro',        score: 72 },
-  'elfinanciero':     { id_hint: 'El Financiero', score: 74 },
+  'gob.mx':               { id_hint: 'SENASICA',        score: 93 },
+  'usda.gov':             { id_hint: 'USDA',             score: 94 },
+  'fao.org':              { id_hint: 'FAO',              score: 92 },
+  'economia.gob.mx':      { id_hint: 'SNIIM',            score: 90 },
+  'reuters.com':          { id_hint: 'Reuters',          score: 88 },
+  'bloomberg.com':        { id_hint: 'Bloomberg',        score: 86 },
+  'wsj.com':              { id_hint: 'WSJ',              score: 85 },
+  'agri-pulse.com':       { id_hint: 'Agri-Pulse',       score: 84 },
+  'drovers.com':          { id_hint: 'Drovers',          score: 80 },
+  'beefmagazine.com':     { id_hint: 'Beef Magazine',    score: 79 },
+  'wattagnet.com':        { id_hint: 'Watt AgNet',       score: 78 },
+  'feedstuffs.com':       { id_hint: 'Feedstuffs',       score: 78 },
+  'cattlenetwork.com':    { id_hint: 'Cattle Network',   score: 77 },
+  'eleconomista.com.mx':  { id_hint: 'El Economista',    score: 76 },
+  'elfinanciero':         { id_hint: 'El Financiero',    score: 74 },
+  'agroempresario':       { id_hint: 'Agroempresario',   score: 72 },
 }
 
 // ── TIPOS ─────────────────────────────────────────────────────────────────────
@@ -152,22 +175,6 @@ async function supabaseInsert(table: string, data: Record<string, unknown>) {
   }
 }
 
-async function supabaseUpsert(table: string, data: Record<string, unknown>, onConflict: string) {
-  const res = await fetch(`${SUPABASE_URL}/rest/v1/${table}?on_conflict=${onConflict}`, {
-    method: 'POST',
-    headers: {
-      apikey:          SUPABASE_KEY,
-      Authorization:   `Bearer ${SUPABASE_KEY}`,
-      'Content-Type':  'application/json',
-      Prefer:          'resolution=ignore-duplicates,return=minimal',
-    },
-    body: JSON.stringify(data),
-  })
-  if (!res.ok) {
-    const err = await res.text()
-    throw new Error(`Supabase UPSERT ${table}: ${res.status} - ${err}`)
-  }
-}
 
 // ── CLAUDE ────────────────────────────────────────────────────────────────────
 
@@ -198,17 +205,61 @@ async function callClaude(system: string, user: string): Promise<string> {
 
 // ── PASO 1: Fetch noticias de NewsAPI ─────────────────────────────────────────
 
+// Dominios de alta calidad para ganadería / agro
+const QUALITY_DOMAINS = [
+  'reuters.com',
+  'bloomberg.com',
+  'wsj.com',
+  'agri-pulse.com',
+  'feedstuffs.com',
+  'wattagnet.com',
+  'beefmagazine.com',
+  'cattlenetwork.com',
+  'drovers.com',
+  'gob.mx',
+  'usda.gov',
+  'fao.org',
+  'eleconomista.com.mx',
+  'elfinanciero.com.mx',
+  'agroempresario.com.mx',
+].join(',')
+
 async function fetchNewsAPI(): Promise<NewsAPIArticle[]> {
-  const keyword = KEYWORDS[Math.floor(Math.random() * KEYWORDS.length)]
-  const url = `https://newsapi.org/v2/everything?q=${encodeURIComponent(keyword)}&sortBy=publishedAt&pageSize=20&apiKey=${NEWS_API_KEY}`
+  const allArticles: NewsAPIArticle[] = []
+  const seenUrls = new Set<string>()
 
-  console.log(`📡 Buscando: "${keyword}"`)
-  const res = await fetch(url)
-  if (!res.ok) throw new Error(`NewsAPI error: ${res.status}`)
+  // Correr 3 keywords distintos para mayor cobertura
+  const selectedKeywords = [...KEYWORDS]
+    .sort(() => Math.random() - 0.5)
+    .slice(0, 3)
 
-  const data = await res.json() as { articles: NewsAPIArticle[]; status: string }
-  console.log(`   → ${data.articles?.length ?? 0} artículos encontrados`)
-  return data.articles ?? []
+  for (const keyword of selectedKeywords) {
+    // Búsqueda 1: dominios de calidad con popularity
+    const urlQuality = `https://newsapi.org/v2/everything?q=${encodeURIComponent(keyword)}&domains=${QUALITY_DOMAINS}&sortBy=popularity&pageSize=5&apiKey=${NEWS_API_KEY}`
+    // Búsqueda 2: todos los dominios con relevancy como fallback
+    const urlRelevant = `https://newsapi.org/v2/everything?q=${encodeURIComponent(keyword)}&sortBy=relevancy&pageSize=5&apiKey=${NEWS_API_KEY}`
+
+    console.log(`   Buscando: "${keyword}"`)
+
+    for (const url of [urlQuality, urlRelevant]) {
+      try {
+        const res = await fetch(url)
+        if (!res.ok) continue
+        const data = await res.json() as { articles: NewsAPIArticle[]; status: string }
+        for (const a of (data.articles ?? [])) {
+          if (!seenUrls.has(a.url) && a.title && a.title !== '[Removed]') {
+            seenUrls.add(a.url)
+            allArticles.push(a)
+          }
+        }
+        // Pausa breve entre llamadas a NewsAPI
+        await new Promise(r => setTimeout(r, 300))
+      } catch { continue }
+    }
+  }
+
+  console.log(`   → ${allArticles.length} artículos únicos encontrados`)
+  return allArticles
 }
 
 // ── PASO 2: Verificar duplicados ──────────────────────────────────────────────
@@ -229,7 +280,8 @@ async function enrichNoticia(article: NewsAPIArticle): Promise<EnrichedNoticia |
   if (rawText.length < 50) return null
 
   const system = `Eres el sistema de procesamiento de inteligencia de HANDEIA, plataforma ganadera de México.
-Analiza noticias del sector ganadero y genera contenido enriquecido.
+Analiza noticias del sector ganadero bovino de México y genera contenido enriquecido.
+Si la noticia NO es directamente relevante para la ganadería bovina mexicana (productores, exportadores, MVZ, sanidad animal, precios de ganado en México), asigna relevancia 1 a todos los perfiles.
 Responde SOLO en JSON válido, sin markdown, sin comentarios.`
 
   const user = `Analiza esta noticia del sector ganadero mexicano:
@@ -245,13 +297,20 @@ Responde con este JSON exacto (todos los campos son obligatorios):
   "categoria": "SANIDAD | PRECIOS | NORMATIVA | CLIMA | EXPORTACION | MERCADOS | GENERAL",
   "urgente": true o false,
   "urgencia_nivel": "ALTA | MEDIA | BAJA",
-  "resumen_general": "resumen objetivo en 2 oraciones",
+  "briefing": {
+    "que_paso": "2 oraciones factuales sobre el hecho principal",
+    "por_que_importa": "consecuencia directa para el sector ganadero mexicano en 2 oraciones",
+    "numeros_clave": ["cifra o dato clave 1", "cifra o dato clave 2"],
+    "contexto": "qué venía pasando antes de esta noticia, en 1-2 oraciones",
+    "que_sigue": "próximos pasos, fechas o decisiones a vigilar en 1-2 oraciones"
+  },
+  "resumen_general": "resumen ejecutivo en 2 oraciones para el feed principal",
   "resumenes_ia": {
-    "Productor": "impacto para productores ganaderos en 2 oraciones",
+    "Productor": "impacto directo para productores ganaderos en 2 oraciones",
     "Exportador": "impacto para exportadores bovinos en 2 oraciones",
-    "MVZ": "implicaciones veterinarias/sanitarias en 2 oraciones",
+    "MVZ": "implicaciones veterinarias o sanitarias en 2 oraciones",
     "Union": "relevancia para uniones ganaderas en 2 oraciones",
-    "Auditor": "implicaciones de cumplimiento/normativa en 2 oraciones"
+    "Auditor": "implicaciones de cumplimiento o normativa en 2 oraciones"
   },
   "impacto_ia": "descripción concreta del impacto operativo en 1-2 oraciones",
   "acciones_ia": ["acción concreta 1", "acción concreta 2", "acción concreta 3"],
@@ -272,6 +331,7 @@ Responde con este JSON exacto (todos los campos son obligatorios):
       categoria:       string
       urgente:         boolean
       urgencia_nivel:  string
+      briefing:        { que_paso: string; por_que_importa: string; numeros_clave: string[]; contexto: string; que_sigue: string }
       resumen_general: string
       resumenes_ia:    Record<string, string>
       impacto_ia:      string
@@ -280,7 +340,18 @@ Responde con este JSON exacto (todos los campos son obligatorios):
     }
 
     const trust = calcularHTIBase(article.url)
-    const cuerpo = rawText
+
+    // Filtrar noticias no relevantes — si la relevancia promedio es baja, descartar
+    const relevanciaPromedio = Object.values(parsed.relevancia).reduce((a, b) => a + b, 0) / 5
+    if (relevanciaPromedio < 4) {
+      console.log(`   ⏭  Descartada (relevancia ${relevanciaPromedio.toFixed(1)}): ${article.title}`)
+      return null
+    }
+
+    // Usar rawText como cuerpo — si está truncado al menos tiene más contenido que el resumen
+    // El resumen_general se usa para el panel, no como cuerpo
+    // El cuerpo es el briefing estructurado serializado — se renderiza en NoticiaDetallePage
+    const cuerpo = JSON.stringify(parsed.briefing ?? { que_paso: parsed.resumen_general, por_que_importa: '', numeros_clave: [], contexto: '', que_sigue: '' })
 
     const noticia: EnrichedNoticia = {
       slug:                slugify(parsed.titulo),
@@ -289,7 +360,7 @@ Responde con este JSON exacto (todos los campos son obligatorios):
       cuerpo,
       url_original:        article.url,
       fuente:              article.source.name,
-      fuente_origen:       'api',
+      fuente_origen:       'NEWSAPI',
       autor:               article.author,
       categoria:           parsed.categoria,
       urgente:             parsed.urgente,
@@ -316,10 +387,35 @@ Responde con este JSON exacto (todos los campos son obligatorios):
   }
 }
 
-// ── PASO 4: Guardar en Supabase ───────────────────────────────────────────────
+// ── PASO 4: Guardar en user_submissions para revisión ─────────────────────────
 
 async function saveNoticia(noticia: EnrichedNoticia): Promise<void> {
-  await supabaseUpsert('noticias', noticia as unknown as Record<string, unknown>, 'content_hash')
+  // Las noticias del pipeline van a revisión antes de publicarse
+  await supabaseInsert('user_submissions', {
+    tipo:        'noticia',
+    titulo:      noticia.titulo,
+    contenido:   noticia.cuerpo.slice(0, 3000),
+    estado_mx:   null,
+    region:      null,
+    source_links: noticia.url_original ? [noticia.url_original] : null,
+    status:      'pendiente',
+    trust_index: noticia.trust_index,
+    adjuntos: JSON.stringify({
+      fuente:              noticia.fuente,
+      categoria:           noticia.categoria,
+      urgente:             noticia.urgente,
+      urgencia_nivel:      noticia.urgencia_nivel.toLowerCase(),
+      resumenes_ia:        noticia.resumenes_ia,
+      resumen_general:     noticia.resumen_general,
+      impacto_ia:          noticia.impacto_ia,
+      acciones_ia:         noticia.acciones_ia,
+      relevancia:          noticia.relevancia,
+      trust_index:         noticia.trust_index,
+      verification_status: noticia.verification_status,
+      content_hash:        noticia.content_hash,
+      origen:              'pipeline_ia',
+    }),
+  })
 }
 
 // ── PASO 5: Generar resumen del día ───────────────────────────────────────────

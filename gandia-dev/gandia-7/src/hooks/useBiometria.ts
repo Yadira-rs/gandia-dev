@@ -280,6 +280,29 @@ export async function confirmarCaptura(params: {
       .eq('id', params.capturaId)
 
     if (err) throw err
+
+    // Auto-evento en timeline twins cuando se confirma una huella biométrica
+    // Fire-and-forget — no bloquea la respuesta al usuario
+    void supabase
+      .from('animales')
+      .select('siniiga')
+      .eq('id', params.animalId)
+      .single()
+      .then(({ data: animal }) => {
+        if (!animal?.siniiga) return
+        void supabase.from('twins_eventos').insert({
+          animal_id: animal.siniiga,
+          tipo:      'auditoria',
+          fecha:     new Date().toISOString(),
+          data: {
+            titulo:    'Huella biométrica confirmada',
+            valor:     'Captura de morro verificada',
+            cert:      'completa',
+            ubicacion: '',
+          },
+        })
+      })
+
     return { error: null }
   } catch (e) {
     return { error: errMsg(e) }

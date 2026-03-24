@@ -101,7 +101,7 @@ interface PendingUser {
 
 type AuthStep = 'credentials' | 'master-key' | '2fa' | 'authenticated'
 type FilterType = 'all' | 'pending' | 'approved' | 'rejected'
-type MainTab = 'usuarios' | 'creadores' | 'aportes'
+type MainTab = 'usuarios' | 'creadores' | 'aportes' | 'moderadores'
 interface Toast { id: string; type: 'success' | 'error' | 'info'; message: string }
 
 interface CreatorRequest {
@@ -125,6 +125,18 @@ const ROLE_LABELS: Record<string, string> = {
   producer: 'Productor Ganadero', mvz: 'Médico Veterinario Zootecnista',
   union: 'Unión Ganadera', exporter: 'Exportador', auditor: 'Auditor / Inspector',
 }
+interface ModeratorApplication {
+  id:        string
+  user_id:   string | null
+  tipo:      string
+  nombre:    string
+  correo:    string
+  estado_mx: string | null
+  bio:       string | null
+  status:    string
+  created_at: string
+}
+
 const CREATOR_TYPE_LABELS: Record<string, string> = {
   productor: 'Productor ganadero', mvz: 'Médico Veterinario', asociacion: 'Asociación ganadera',
   union: 'Unión Ganadera', exportador: 'Exportador', investigador: 'Investigador / Académico',
@@ -389,6 +401,10 @@ const AdminPanel = () => {
   const [creatorsLoading, setCreatorsLoading] = useState(false)
   const [creatorFilter, setCreatorFilter] = useState<'pendiente' | 'activo' | 'rechazado' | 'todos'>('pendiente')
 
+  // ── Moderadores ──
+  const [modApps, setModApps] = useState<ModeratorApplication[]>([])
+  const [modAppsLoading, setModAppsLoading] = useState(false)
+
   // ── Aportes ──
   const [submissions, setSubmissions] = useState<Submission[]>([])
   const [selectedSubmission, setSelectedSubmission] = useState<Submission | null>(null)
@@ -473,6 +489,7 @@ const AdminPanel = () => {
     loadUsers()
     loadCreators()
     loadSubmissions()
+    loadModApps()
     subscribeRealtime()
     resetInactivityTimer()
     const events = ['mousedown', 'keydown', 'scroll', 'touchstart']
@@ -585,6 +602,19 @@ const AdminPanel = () => {
     finally { setIsActionLoading(false) }
   }
 
+  // ── Load moderator applications ──
+  const loadModApps = async (silent = false) => {
+    if (!silent) setModAppsLoading(true)
+    try {
+      const { data } = await supabase
+        .from('moderator_applications')
+        .select('*')
+        .order('created_at', { ascending: false })
+      setModApps((data as ModeratorApplication[]) ?? [])
+    } catch (err) { console.error('[AdminPanel] loadModApps:', err) }
+    finally { if (!silent) setModAppsLoading(false) }
+  }
+
   // ── Creator actions ──
   const handleApproveCreator = async (id: string) => {
     setIsActionLoading(true)
@@ -624,7 +654,7 @@ const AdminPanel = () => {
         titulo:          sub.titulo,
         cuerpo:          sub.contenido,
         fuente:          'Comunidad Handeia',
-        fuente_origen:   'comunidad',
+        fuente_origen:   'MANUAL',
         categoria:       'GENERAL',
         urgente:         false,
         urgencia_nivel:  'BAJA',
@@ -656,6 +686,40 @@ const AdminPanel = () => {
       await supabase.from('user_submissions').update({ status: 'rechazado' }).eq('id', id)
       await loadSubmissions(); setSelectedSubmission(null)
       showToast('Aporte rechazado', 'success')
+    } catch { showToast('Error al rechazar', 'error') }
+    finally { setIsActionLoading(false) }
+  }
+
+  // ── Moderator application actions ──
+  const handleApproveModApp = async (app: ModeratorApplication) => {
+    setIsActionLoading(true)
+    try {
+      if (!app.user_id) throw new Error('Sin user_id — el usuario no completó el registro')
+
+      // Llamar Edge Function que usa service role para bypassar RLS
+      const { data: fnData, error: fnErr } = await supabase.functions.invoke('approve-moderator', {
+        body: {
+          app_id:    app.id,
+          user_id:   app.user_id,
+          tipo:      app.tipo,
+          estado_mx: app.estado_mx,
+          bio:       app.bio,
+        },
+      })
+      if (fnErr || !fnData?.ok) throw new Error(fnErr?.message ?? 'Error en la Edge Function')
+
+      await loadModApps()
+      showToast(`Moderador activado · ${app.nombre} (${app.correo})`, 'success')
+    } catch (e: unknown) { showToast(e instanceof Error ? e.message : 'Error al aprobar', 'error') }
+    finally { setIsActionLoading(false) }
+  }
+
+  const handleRejectModApp = async (id: string) => {
+    setIsActionLoading(true)
+    try {
+      await supabase.from('moderator_applications').update({ status: 'rechazado' }).eq('id', id)
+      await loadModApps()
+      showToast('Solicitud rechazada', 'success')
     } catch { showToast('Error al rechazar', 'error') }
     finally { setIsActionLoading(false) }
   }
@@ -867,12 +931,13 @@ const AdminPanel = () => {
 
           {/* ── MAIN TABS ── */}
           <div className={`flex items-center gap-1 p-1 rounded-xl border mb-6 w-fit ${ isDark ? 'bg-[#121212] border-[#2A2A2A]' : 'bg-white border-[#EAEAEA]'}`}>
-            {(['usuarios', 'creadores', 'aportes'] as MainTab[]).map(t => {
-              const labels: Record<MainTab, string> = { usuarios: 'Usuarios', creadores: 'Creadores', aportes: 'Aportes' }
+            {(['usuarios', 'creadores', 'aportes', 'moderadores'] as MainTab[]).map(t => {
+              const labels: Record<MainTab, string> = { usuarios: 'Usuarios', creadores: 'Creadores', aportes: 'Aportes', moderadores: 'Moderadores' }
               const counts: Record<MainTab, number> = {
                 usuarios: users.filter(u => u.status === 'pending').length,
                 creadores: creators.filter(c => c.status === 'pendiente').length,
                 aportes: submissions.filter(s => s.status === 'pendiente').length,
+                moderadores: modApps.filter(m => m.status === 'pendiente').length,
               }
               return (
                 <button key={t} onClick={() => setMainTab(t)}
@@ -1158,6 +1223,53 @@ const AdminPanel = () => {
             </div>
           )}
 
+          {/* ══ MODERADORES ══ */}
+          {mainTab === 'moderadores' && (
+            <div>
+              {modAppsLoading ? <SkeletonLoader isDark={isDark} /> : (
+                <div className="space-y-3">
+                  {modApps.filter(m => m.status === 'pendiente').map(m => (
+                    <div key={m.id} className={`p-4 sm:p-5 rounded-2xl border transition-all hover:scale-[1.002] ${card}`}>
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex items-start gap-3 flex-1 min-w-0">
+                          <div className="w-10 h-10 rounded-xl bg-[#2FAF8F]/10 flex items-center justify-center shrink-0">
+                            <User className="w-5 h-5 text-[#2FAF8F]" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 flex-wrap mb-0.5">
+                              <h3 className="font-semibold text-sm">{m.nombre}</h3>
+                              <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-orange-500/15 text-orange-500">{m.status}</span>
+                            </div>
+                            <p className={`text-xs mb-1 ${sec}`}>{CREATOR_TYPE_LABELS[m.tipo] ?? m.tipo} · {m.correo}</p>
+                            {m.estado_mx && <p className={`text-xs ${sec}`}>{m.estado_mx}</p>}
+                            {m.bio && <p className={`text-xs italic ${sec} line-clamp-2 mt-1`}>{m.bio}</p>}
+                            <p className={`text-xs mt-1 ${sec}`}><Clock className="w-3 h-3 inline mr-1" />{timeAgo(m.created_at)}</p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          <button onClick={() => handleApproveModApp(m)} disabled={isActionLoading}
+                            className="p-2.5 rounded-xl bg-[#2FAF8F]/10 text-[#2FAF8F] hover:bg-[#2FAF8F]/25 transition-all hover:scale-110 disabled:opacity-50">
+                            <CheckCircle className="w-4 h-4" strokeWidth={2} />
+                          </button>
+                          <button onClick={() => handleRejectModApp(m.id)} disabled={isActionLoading}
+                            className="p-2.5 rounded-xl bg-red-500/10 text-red-500 hover:bg-red-500/25 transition-all hover:scale-110 disabled:opacity-50">
+                            <XCircle className="w-4 h-4" strokeWidth={2} />
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                  {modApps.filter(m => m.status === 'pendiente').length === 0 && (
+                    <div className={`py-20 rounded-2xl border text-center ${card}`}>
+                      <p className="font-semibold text-lg mb-1">Sin solicitudes pendientes</p>
+                      <p className={`text-sm ${sec}`}>No hay nuevas solicitudes de moderador</p>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+
         </div>
       </div>
 
@@ -1212,16 +1324,16 @@ const AdminPanel = () => {
           <div onClick={(e: React.MouseEvent) => e.stopPropagation()} className={`w-full max-w-lg rounded-2xl border shadow-2xl overflow-hidden flex flex-col ${ isDark ? 'bg-[#0c0a09] border-[#2A2A2A]' : 'bg-white border-stone-200'}`}>
             <div className={`px-6 py-5 border-b flex items-start justify-between ${ isDark ? 'border-[#2A2A2A]' : 'border-stone-200'}`}>
               <div>
-                <h2 className="text-lg font-semibold mb-0.5">{selectedSubmission.titulo}</h2>
+                <h2 className={`text-lg font-semibold mb-0.5 ${isDark ? 'text-stone-100' : 'text-stone-900'}`}>{selectedSubmission.titulo}</h2>
                 <p className={`text-sm ${sec}`}>{SUBMISSION_TYPE_LABELS[selectedSubmission.tipo] ?? selectedSubmission.tipo}{selectedSubmission.estado_mx ? ` · ${selectedSubmission.estado_mx}` : ''}</p>
               </div>
               <button onClick={() => setSelectedSubmission(null)} className={`p-2 rounded-xl ${ isDark ? 'hover:bg-[#1A1A1A]' : 'hover:bg-stone-100'}`}>
-                <CloseIcon className="w-5 h-5" strokeWidth={2} />
+                <CloseIcon className={`w-5 h-5 ${isDark ? 'text-stone-400' : 'text-stone-600'}`} strokeWidth={2} />
               </button>
             </div>
             <div className="p-6 space-y-4 overflow-y-auto max-h-[60vh]">
               <div><p className={`text-xs font-semibold uppercase tracking-wider mb-1 ${sec}`}>Contenido</p>
-              <p className="text-sm leading-relaxed">{selectedSubmission.contenido}</p></div>
+              <p className={`text-sm leading-relaxed ${isDark ? 'text-stone-200' : 'text-stone-800'}`}>{selectedSubmission.contenido}</p></div>
               {selectedSubmission.source_links && selectedSubmission.source_links.length > 0 && (
                 <div><p className={`text-xs font-semibold uppercase tracking-wider mb-2 ${sec}`}>Fuentes</p>
                 {selectedSubmission.source_links.map((l: string, i: number) => (
@@ -1229,7 +1341,7 @@ const AdminPanel = () => {
                     className="block text-xs text-[#2FAF8F] hover:underline truncate mb-1">{l}</a>
                 ))}</div>
               )}
-              <div><p className={`text-xs font-semibold uppercase tracking-wider mb-1 ${sec}`}>HTI Inicial</p><p className="text-lg font-bold">{selectedSubmission.trust_index}</p></div>
+              <div><p className={`text-xs font-semibold uppercase tracking-wider mb-1 ${sec}`}>HTI Inicial</p><p className={`text-lg font-bold ${isDark ? 'text-stone-100' : 'text-stone-900'}`}>{selectedSubmission.trust_index}</p></div>
             </div>
             {selectedSubmission.status === 'pendiente' && (
               <div className={`px-6 py-4 border-t flex gap-3 ${ isDark ? 'border-[#2A2A2A]' : 'border-stone-200'}`}>

@@ -3,9 +3,9 @@ import { useNavigate } from 'react-router-dom'
 import { supabase } from '../../lib/supabaseClient'
 import { useUser } from '../../context/UserContext'
 
-type CreatorType = 'productor' | 'mvz' | 'asociacion' | 'exportador' | 'investigador' | 'union' | 'auditor'
+type CreatorType = 'productor' | 'mvz' | 'asociacion' | 'exportador' | 'investigador' | 'union' | 'auditor' | 'editor'
 
-const TIPOS: { id: CreatorType; label: string; desc: string }[] = [
+const TIPOS: { id: CreatorType; label: string; desc: string; isEditor?: boolean }[] = [
   { id: 'productor',    label: 'Productor ganadero',      desc: 'Rancho, unidad de producción'                  },
   { id: 'mvz',          label: 'Médico Veterinario',      desc: 'MVZ certificado o en ejercicio'                },
   { id: 'asociacion',   label: 'Asociación ganadera',     desc: 'Organización ganadera regional o nacional'     },
@@ -13,6 +13,7 @@ const TIPOS: { id: CreatorType; label: string; desc: string }[] = [
   { id: 'exportador',   label: 'Exportador',              desc: 'Empresa o agente de exportación bovina'        },
   { id: 'investigador', label: 'Investigador / Académico', desc: 'Institución educativa o de investigación'     },
   { id: 'auditor',      label: 'Auditor / Inspector',     desc: 'Inspector sanitario, auditor de certificación' },
+  { id: 'editor',       label: 'Editor / Moderador',      desc: 'Verificar y publicar contenido en Handeia Radar', isEditor: true },
 ]
 
 const ESTADOS_MX = [
@@ -55,7 +56,40 @@ export default function CreadorSolicitarPage() {
     setError(null)
 
     try {
-      // Verificar si ya tiene solicitud
+      // ── Editor/Moderador → va a moderator_applications ──────────────────────
+      if (tipo === 'editor') {
+        const { data: existingMod } = await supabase
+          .from('moderator_applications')
+          .select('id, status')
+          .eq('user_id', profile.user_id)
+          .single()
+
+        if (existingMod) {
+          const msgs: Record<string, string> = {
+            pendiente: 'Ya tienes una solicitud de moderador en revisión.',
+            aprobado:  'Tu perfil de moderador ya está activo.',
+            rechazado: 'Tu solicitud fue rechazada. Contacta a soporte.',
+          }
+          setError(msgs[existingMod.status] ?? 'Ya tienes una solicitud registrada.')
+          setSubmitting(false)
+          return
+        }
+
+        const { error: err } = await supabase.from('moderator_applications').insert({
+          user_id:   profile.user_id,
+          tipo:      'productor', // tipo genérico — el admin verá la bio
+          nombre:    profile.email ?? '',
+          correo:    profile.email ?? '',
+          estado_mx: estadoMx,
+          bio:       bio.trim() || null,
+          status:    'pendiente',
+        })
+        if (err) throw err
+        setSubmitted(true)
+        return
+      }
+
+      // ── Creador regular → va a creator_profiles ──────────────────────────────
       const { data: existing } = await supabase
         .from('creator_profiles')
         .select('id, status')
@@ -157,24 +191,40 @@ export default function CreadorSolicitarPage() {
               Tipo de perfil
             </label>
             <div className="grid grid-cols-1 gap-2">
-              {TIPOS.map(t => (
-                <button
-                  key={t.id}
-                  onClick={() => setTipo(t.id)}
-                  className={`p-3.5 rounded-xl border text-left transition-all duration-150 flex items-center gap-3 ${
-                    tipo === t.id
-                      ? 'border-[#2FAF8F]/60 bg-[#2FAF8F]/[0.06] dark:bg-[#2FAF8F]/10'
-                      : 'border-stone-200 dark:border-stone-800/60 bg-white dark:bg-[#141210] hover:border-stone-300 dark:hover:border-stone-700'
-                  }`}
-                >
-                  <div className={`w-2 h-2 rounded-full shrink-0 ${tipo === t.id ? 'bg-[#2FAF8F]' : 'bg-stone-200 dark:bg-stone-700'}`} />
-                  <div>
-                    <span className={`text-[13px] font-semibold block ${tipo === t.id ? 'text-[#2FAF8F]' : 'text-stone-800 dark:text-stone-100'}`}>
-                      {t.label}
-                    </span>
-                    <span className="text-[11.5px] text-stone-400 dark:text-stone-500">{t.desc}</span>
-                  </div>
-                </button>
+              {TIPOS.map((t, i) => (
+                <>
+                  {t.isEditor && i > 0 && (
+                    <div key={`sep-${t.id}`} className="flex items-center gap-2 my-1">
+                      <div className="flex-1 h-px bg-stone-100 dark:bg-stone-800/60" />
+                      <span className="text-[10px] text-stone-300 dark:text-stone-600 uppercase tracking-[0.08em]">Moderación</span>
+                      <div className="flex-1 h-px bg-stone-100 dark:bg-stone-800/60" />
+                    </div>
+                  )}
+                  <button
+                    key={t.id}
+                    onClick={() => setTipo(t.id)}
+                    className={`p-3.5 rounded-xl border text-left transition-all duration-150 flex items-center gap-3 ${
+                      tipo === t.id
+                        ? 'border-[#2FAF8F]/60 bg-[#2FAF8F]/[0.06] dark:bg-[#2FAF8F]/10'
+                        : 'border-stone-200 dark:border-stone-800/60 bg-white dark:bg-[#141210] hover:border-stone-300 dark:hover:border-stone-700'
+                    }`}
+                  >
+                    <div className={`w-2 h-2 rounded-full shrink-0 ${tipo === t.id ? 'bg-[#2FAF8F]' : 'bg-stone-200 dark:bg-stone-700'}`} />
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2">
+                        <span className={`text-[13px] font-semibold ${tipo === t.id ? 'text-[#2FAF8F]' : 'text-stone-800 dark:text-stone-100'}`}>
+                          {t.label}
+                        </span>
+                        {t.isEditor && (
+                          <span className="text-[9px] font-bold uppercase tracking-[0.06em] px-1.5 py-0.5 rounded bg-[#2FAF8F]/10 text-[#2FAF8F]">
+                            Revisión manual
+                          </span>
+                        )}
+                      </div>
+                      <span className="text-[11.5px] text-stone-400 dark:text-stone-500">{t.desc}</span>
+                    </div>
+                  </button>
+                </>
               ))}
             </div>
           </div>

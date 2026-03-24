@@ -8,11 +8,7 @@ import type { VinculacionPendiente } from '../../artifactTypes'
 
 const VIN_COLOR = '#0ea5e9'
 
-const MOCK: VinculacionPendiente[] = [
-  { id: '1', entidad: 'Exportadora Bajío',  tipo: 'comercial', direccion: 'recibida', fecha: 'Hace 2h',  mensaje: 'Interesados en lote de becerros macho.' },
-  { id: '2', entidad: 'MVZ Dra. Sánchez',   tipo: 'sanitario', direccion: 'enviada',  fecha: 'Ayer',     mensaje: null },
-  { id: '3', entidad: 'Auditor Zona Norte', tipo: 'auditoria', direccion: 'recibida', fecha: 'Hace 3d',  mensaje: 'Auditoría programada por SENASICA.' },
-]
+
 
 const TIPO_META: Record<VinculacionPendiente['tipo'], { label: string; color: string }> = {
   sanitario: { label: 'Sanitario', color: '#22c55e' },
@@ -23,12 +19,12 @@ const TIPO_META: Record<VinculacionPendiente['tipo'], { label: string; color: st
 
 interface Props {
   pendientes?: VinculacionPendiente[]
-  onAceptar?:  (id: string) => void
-  onRechazar?: (id: string) => void
+  onAceptar?:  (id: string) => void | Promise<void>
+  onRechazar?: (id: string) => void | Promise<void>
 }
 
 export default function VinculacionPendientesWidget({
-  pendientes = MOCK,
+  pendientes = [],
   onAceptar,
   onRechazar,
 }: Props) {

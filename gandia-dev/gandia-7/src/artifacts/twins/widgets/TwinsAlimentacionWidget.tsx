@@ -38,11 +38,8 @@ export interface DatosAlimentacion {
 
 interface Props {
   datos: DatosAlimentacion;
-<<<<<<< Updated upstream
-=======
   siniiga?: string;
   onRefresh?: () => void;
->>>>>>> Stashed changes
 }
 
 type Vista = "consumo" | "conversion";
@@ -76,13 +73,6 @@ function area(pts: number[][]) {
   return `${line(pts)} L${pts[pts.length - 1][0].toFixed(1)},${(PT + DH).toFixed(1)} L${pts[0][0].toFixed(1)},${(PT + DH).toFixed(1)} Z`;
 }
 
-<<<<<<< Updated upstream
-interface LineChartProps {
-  semanas: SemanaConsumo[];
-}
-
-function LineChart({ semanas }: LineChartProps) {
-=======
 function LineChart({ semanas }: { semanas: SemanaConsumo[] }) {
   if (!semanas.length)
     return (
@@ -90,7 +80,6 @@ function LineChart({ semanas }: { semanas: SemanaConsumo[] }) {
         Sin registros de consumo aún
       </div>
     );
->>>>>>> Stashed changes
   const rev = [...semanas].reverse();
   const n = rev.length;
   const F = rev.map((s, i) => [gx(i, n), gy(s.forraje)]);
@@ -351,34 +340,6 @@ function CAGauge({
 
 // ─── COMPONENTE PRINCIPAL ─────────────────────────────────────────────────────
 
-<<<<<<< Updated upstream
-export default function TwinsAlimentacionWidget({ datos }: Props) {
-  const [vista, setVista] = useState<Vista>("consumo");
-
-  const promedioF = Math.round(
-    datos.semanas.reduce((s, r) => s + r.forraje, 0) / datos.semanas.length,
-  );
-  const promedioC = Math.round(
-    datos.semanas.reduce((s, r) => s + r.concentrado, 0) / datos.semanas.length,
-  );
-  const promedioS = Math.round(
-    datos.semanas.reduce((s, r) => s + r.suplemento, 0) / datos.semanas.length,
-  );
-  const supWarn = promedioS < 85;
-
-  const mejorQueObj = datos.caActual < datos.caObjetivo;
-  const pctDif = Math.abs(
-    ((datos.caObjetivo - datos.caActual) / datos.caObjetivo) * 100,
-  ).toFixed(0);
-  const progPeso = Math.min(
-    100,
-    Math.round((datos.pesoActual / datos.pesoMeta) * 100),
-  );
-
-  return (
-    <div className="flex flex-col gap-4">
-      {/* Toggle */}
-=======
 export default function TwinsAlimentacionWidget({
   datos,
   siniiga,
@@ -590,7 +551,6 @@ export default function TwinsAlimentacionWidget({
       )}
 
       {/* Toggle — FIX: solo muestra "Conversión CA" si hay datos reales */}
->>>>>>> Stashed changes
       <div className="flex items-center justify-between">
         <p className="text-[13.5px] font-semibold text-stone-800 dark:text-stone-100">
           Alimentación

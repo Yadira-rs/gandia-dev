@@ -150,16 +150,6 @@ const ESTADO_CFG = {
 
 export default function TwinsHeroWidget({ perfil }: Props) {
   const estado = ESTADO_CFG[perfil.estado];
-<<<<<<< Updated upstream
-  const progPeso = Math.min(
-    100,
-    Math.round(
-      ((perfil.pesoActual - perfil.pesoNacimiento) /
-        (perfil.pesoMeta - perfil.pesoNacimiento)) *
-        100,
-    ),
-  );
-=======
 
   const _rangoPeso = perfil.pesoMeta - perfil.pesoNacimiento;
   const progPeso =
@@ -173,7 +163,6 @@ export default function TwinsHeroWidget({ perfil }: Props) {
       : 0;
 
   // FIX: diasMeta siempre muestra algo — "—" cuando no hay ganancia registrada
->>>>>>> Stashed changes
   const diasMeta =
     perfil.gananciaDiaria > 0
       ? Math.ceil((perfil.pesoMeta - perfil.pesoActual) / perfil.gananciaDiaria)

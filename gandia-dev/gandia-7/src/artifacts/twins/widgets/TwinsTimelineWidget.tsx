@@ -39,11 +39,8 @@ export type Movilizacion = EventoTimeline;
 interface Props {
   eventos: EventoTimeline[];
   ubicacionActual?: string;
-<<<<<<< Updated upstream
-=======
   siniiga?: string;
   onRefresh?: () => void;
->>>>>>> Stashed changes
 }
 
 // ─── CONFIG ───────────────────────────────────────────────────────────────────
@@ -210,8 +207,6 @@ export default function TwinsTimelineWidget({
 }: Props) {
   const [expanded, setExpanded] = useState<number | null>(null);
   const [filtroTipo, setFiltroTipo] = useState<EventoTipo | "todos">("todos");
-<<<<<<< Updated upstream
-=======
   const [showForm, setShowForm] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -253,7 +248,6 @@ export default function TwinsTimelineWidget({
 
   const inputCls =
     "w-full px-2.5 py-1.5 text-[12px] bg-white dark:bg-stone-800/60 border border-stone-200/70 dark:border-stone-700 rounded-lg text-stone-700 dark:text-stone-200 placeholder-stone-300 dark:placeholder-stone-600 outline-none focus:border-[#2FAF8F]/50 transition-colors";
->>>>>>> Stashed changes
 
   const tiposPresentes = new Set(eventos.map((e) => e.tipo));
   const filtrados =
@@ -268,9 +262,6 @@ export default function TwinsTimelineWidget({
 
   return (
     <div className="flex flex-col gap-4">
-<<<<<<< Updated upstream
-      {/* Stats */}
-=======
       {/* Header con botón nuevo evento */}
       {siniiga && (
         <div className="flex items-center justify-between">
@@ -421,7 +412,6 @@ export default function TwinsTimelineWidget({
       )}
 
       {/* Stats — FIX: 4 stats separados correctamente */}
->>>>>>> Stashed changes
       <div className="grid grid-cols-4 gap-2">
         {[
           {

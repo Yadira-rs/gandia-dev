@@ -53,6 +53,10 @@ import VinculacionAnima  from './vinculacion/VinculacionAnima'
 import DocumentosModulo from './documentos/DocumentosModulo'
 import DocumentosAnima  from './documentos/DocumentosAnima'
 
+// ── Marketplace ────────────────────────────────────────────────────────────────
+import MarketplaceModulo from './marketplace/MarketplaceModulo'
+import MarketplaceAnima  from './marketplace/MarketplaceAnima'
+
 // ─── PROPS ────────────────────────────────────────────────────────────────────
 
 interface Props {
@@ -191,6 +195,14 @@ function AwakeShell({
         />
       )
 
+    case 'marketplace:panel':
+      return (
+        <MarketplaceModulo
+          onClose={onClose}
+          onEscalate={onEscalate}
+        />
+      )
+
     default:
       return null
   }
@@ -291,6 +303,14 @@ function AnimaShell({
         />
       )
 
+    case 'marketplace':
+      return (
+        <MarketplaceAnima
+          onClose={onClose}
+          onEscalate={onDeescalate}
+        />
+      )
+
     default:
       return null
   }
@@ -310,6 +330,7 @@ const DOMAIN_COLOR: Record<ArtifactDomain, string> = {
   exportacion:   '#f97316',
   vinculacion:   '#0ea5e9',
   documentos:    '#3b82f6',
+  marketplace:   '#2FAF8F',
 }
 
 function ComingSoonAnima({

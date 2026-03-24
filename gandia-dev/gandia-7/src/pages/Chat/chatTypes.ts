@@ -14,6 +14,7 @@ export type UIMessage = {
   artifact?:        WidgetArtifact
   pinned?:          boolean
   edited?:          boolean
+  wiki_hechos?:     { id: string; afirmacion: string; fuente_nombre: string; hti: number; dominio: string }[]
 }
 
 export type Toast = { id: string; text: string; kind: 'error' | 'info' }

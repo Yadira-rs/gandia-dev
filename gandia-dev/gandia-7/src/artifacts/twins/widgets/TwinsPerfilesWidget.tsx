@@ -160,14 +160,6 @@ export default function TwinsPerfilesWidget({
       )}
 
       {/* Lista */}
-<<<<<<< Updated upstream
-      {animales.map((item) => {
-        const prog = Math.round(
-          ((item.perfil.pesoActual - item.perfil.pesoNacimiento) /
-            (item.perfil.pesoMeta - item.perfil.pesoNacimiento)) *
-            100,
-        );
-=======
       {animalesFiltrados.map((item) => {
         // FIX: mismo cálculo que TwinsHeroWidget — (actual - nacimiento) / (meta - nacimiento)
         const _rango = item.perfil.pesoMeta - item.perfil.pesoNacimiento;
@@ -183,7 +175,6 @@ export default function TwinsPerfilesWidget({
               )
             : 0;
 
->>>>>>> Stashed changes
         const estadoCfg = ESTADO_CFG[item.perfil.estado] ?? {
           label: item.perfil.estado,
           color: "text-stone-400",

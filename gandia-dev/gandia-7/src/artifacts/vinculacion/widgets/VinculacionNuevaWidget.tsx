@@ -1,51 +1,121 @@
 /**
  * VinculacionNuevaWidget
  * Formulario para solicitar una nueva vinculación.
- * Busca entidad por nombre/clave, elige tipo, mensaje opcional.
+ * Busca entidades reales en user_profiles via Supabase.
+ * onEnviar recibe: tipo, receptorId (UUID), mensaje, expiraDias?
  */
 
-import { useState } from 'react'
-import type { Vinculacion } from '../../artifactTypes'
+import { useState, useEffect, useRef } from 'react'
+import { createPortal } from 'react-dom'
+import type { VinculacionTipo } from '../../artifactTypes'
+import { buscarEntidades } from '../../../services/vinculacionService'
+import type { EntidadBuscable } from '../../../services/vinculacionService'
+import { useUser } from '../../../context/UserContext'
 
 const VIN_COLOR = '#0ea5e9'
 
-const TIPOS: { id: Vinculacion['tipo']; label: string; desc: string; color: string }[] = [
-  { id: 'sanitario', label: 'Sanitario',  desc: 'MVZ para registrar eventos de salud',   color: '#22c55e' },
-  { id: 'comercial', label: 'Comercial',  desc: 'Exportador para compra de un lote',     color: '#f97316' },
+const TIPOS: { id: VinculacionTipo; label: string; desc: string; color: string }[] = [
+  { id: 'sanitario', label: 'Sanitario',  desc: 'MVZ para registrar eventos de salud',    color: '#22c55e' },
+  { id: 'comercial', label: 'Comercial',  desc: 'Exportador para compra de un lote',      color: '#f97316' },
   { id: 'auditoria', label: 'Auditoría',  desc: 'Auditor con acceso temporal de lectura', color: '#a855f7' },
-  { id: 'union',     label: 'Unión',      desc: 'Unión Ganadera para reportes',           color: VIN_COLOR },
+  { id: 'union',     label: 'Unión',      desc: 'Unión Ganadera para reportes',            color: VIN_COLOR },
 ]
 
-// Mock de entidades buscables
-const ENTIDADES_MOCK = [
-  'MVZ Dr. García',
-  'MVZ Dra. Sánchez',
-  'Exportadora Norte',
-  'Exportadora Bajío',
-  'Auditor SENASICA',
-  'Unión Ganadera DGO',
-  'Unión Ganadera CHI',
-]
+const ROLE_LABEL: Record<string, string> = {
+  productor_ganadero: 'Productor',
+  producer:           'Productor',
+  mvz:                'MVZ',
+  exportador:         'Exportador',
+  exporter:           'Exportador',
+  auditor:            'Auditor',
+  union_ganadera:     'Unión Ganadera',
+  union:              'Unión Ganadera',
+  admin:              'Admin',
+}
 
 interface Props {
-  onEnviar?: (tipo: Vinculacion['tipo'], entidad: string, mensaje: string) => void
+  onEnviar?: (tipo: VinculacionTipo, receptorId: string, mensaje: string, expiraDias?: number) => Promise<void>
 }
 
 export default function VinculacionNuevaWidget({ onEnviar }: Props) {
-  const [busqueda,   setBusqueda]   = useState('')
-  const [entidad,    setEntidad]    = useState('')
-  const [tipo,       setTipo]       = useState<Vinculacion['tipo'] | null>(null)
-  const [mensaje,    setMensaje]    = useState('')
-  const [enviado,    setEnviado]    = useState(false)
-  const [expiraDias, setExpiraDias] = useState('30')
+  const { profile } = useUser()
+  const currentUserId = profile?.user_id ?? ''
+  const [busqueda,    setBusqueda]    = useState('')
+  const [resultados,  setResultados]  = useState<EntidadBuscable[]>([])
+  const [buscando,    setBuscando]    = useState(false)
+  const [entidad,     setEntidad]     = useState<EntidadBuscable | null>(null)
+  const [tipo,        setTipo]        = useState<VinculacionTipo | null>(null)
+  const [mensaje,     setMensaje]     = useState('')
+  const [expiraDias,  setExpiraDias]  = useState('30')
+  const [enviado,     setEnviado]     = useState(false)
+  const [enviando,    setEnviando]    = useState(false)
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  
+  // ── Portal position ───────────────────────────────────────────────────────
+  const inputRef = useRef<HTMLInputElement>(null)
+  const [dropdownStyle, setDropdownStyle] = useState<React.CSSProperties>({})
 
-  const sugerencias = busqueda.length > 1
-    ? ENTIDADES_MOCK.filter(e => e.toLowerCase().includes(busqueda.toLowerCase()) && e !== entidad)
-    : []
+  useEffect(() => {
+    if ((buscando || resultados.length > 0) && inputRef.current) {
+      const updatePosition = () => {
+        if (!inputRef.current) return
+        const rect = inputRef.current.getBoundingClientRect()
+        const newStyle: React.CSSProperties = {
+          position: 'fixed',
+          top: rect.bottom + 4,
+          left: rect.left,
+          width: rect.width,
+          zIndex: 99999, // Super alto
+          pointerEvents: 'auto',
+          visibility: rect.top === 0 ? 'hidden' : 'visible' // Evitar mostrar en 0,0 antes de calcular
+        }
+        setDropdownStyle(newStyle)
+      }
+      
+      updatePosition()
+      // Pequeño delay para asegurar que el DOM se asentó
+      const t = setTimeout(updatePosition, 50)
+      
+      window.addEventListener('resize', updatePosition)
+      window.addEventListener('scroll', updatePosition, true)
+      return () => {
+        clearTimeout(t)
+        window.removeEventListener('resize', updatePosition)
+        window.removeEventListener('scroll', updatePosition, true)
+      }
+    }
+  }, [buscando, resultados.length, busqueda]) // Añadido busqueda como dep
 
-  const handleEnviar = () => {
+  // ── Búsqueda con debounce de 300ms ────────────────────────────────────────
+
+  useEffect(() => {
+    if (debounceRef.current) clearTimeout(debounceRef.current)
+    if (!busqueda || busqueda.length < 2) {
+      setResultados([])
+      return
+    }
+    debounceRef.current = setTimeout(async () => {
+      setBuscando(true)
+      const found = await buscarEntidades(busqueda, currentUserId)
+      setResultados(found)
+      setBuscando(false)
+    }, 300)
+
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current)
+    }
+  }, [busqueda, currentUserId])
+
+  const handleEnviar = async () => {
     if (!entidad || !tipo) return
-    onEnviar?.(tipo, entidad, mensaje)
+    setEnviando(true)
+    await onEnviar?.(
+      tipo,
+      entidad.user_id,
+      mensaje,
+      tipo === 'auditoria' ? parseInt(expiraDias) : undefined
+    )
+    setEnviando(false)
     setEnviado(true)
   }
 
@@ -59,10 +129,17 @@ export default function VinculacionNuevaWidget({ onEnviar }: Props) {
         </div>
         <p className="text-[13px] font-semibold text-stone-700 dark:text-stone-200">Solicitud enviada</p>
         <p className="text-[11px] text-stone-400 dark:text-stone-500 max-w-56 leading-relaxed">
-          {entidad} recibirá la solicitud y podrá aceptar o rechazar.
+          {entidad?.nombre} recibirá la solicitud y podrá aceptar o rechazar.
         </p>
         <button
-          onClick={() => { setEnviado(false); setEntidad(''); setTipo(null); setMensaje(''); setBusqueda('') }}
+          onClick={() => {
+            setEnviado(false)
+            setEntidad(null)
+            setTipo(null)
+            setMensaje('')
+            setBusqueda('')
+            setResultados([])
+          }}
           className="text-[11px] font-medium cursor-pointer bg-transparent border-0 p-0 transition-colors"
           style={{ color: VIN_COLOR }}
         >
@@ -89,14 +166,18 @@ export default function VinculacionNuevaWidget({ onEnviar }: Props) {
       {/* Buscar entidad */}
       <div className="relative">
         <label className={label}>Buscar entidad</label>
+
         {entidad ? (
           <div className="flex items-center justify-between px-3 py-2 rounded-[8px] border border-sky-200 dark:border-sky-800/60 bg-sky-50/50 dark:bg-sky-950/10">
             <div className="flex items-center gap-2">
               <div className="w-1.5 h-1.5 rounded-full" style={{ background: VIN_COLOR }}/>
-              <p className="text-[12px] font-medium text-stone-700 dark:text-stone-200">{entidad}</p>
+              <div>
+                <p className="text-[12px] font-medium text-stone-700 dark:text-stone-200">{entidad.nombre}</p>
+                <p className="text-[9.5px] text-stone-400 dark:text-stone-500">{ROLE_LABEL[entidad.role] ?? entidad.role}</p>
+              </div>
             </div>
             <button
-              onClick={() => { setEntidad(''); setBusqueda('') }}
+              onClick={() => { setEntidad(null); setBusqueda(''); setResultados([]) }}
               className="text-stone-400 hover:text-stone-600 cursor-pointer bg-transparent border-0 p-0"
             >
               <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
@@ -107,23 +188,46 @@ export default function VinculacionNuevaWidget({ onEnviar }: Props) {
         ) : (
           <>
             <input
+              ref={inputRef}
               className={input}
-              placeholder="Nombre o clave de la entidad…"
+              placeholder="Nombre de la entidad…"
               value={busqueda}
               onChange={e => setBusqueda(e.target.value)}
             />
-            {sugerencias.length > 0 && (
-              <div className="absolute z-10 left-0 right-0 mt-1 rounded-[8px] border border-stone-200 dark:border-stone-700/60 bg-white dark:bg-stone-800 shadow-lg overflow-hidden">
-                {sugerencias.map(s => (
+
+            {/* Dropdown de resultados (Portal) */}
+            {(buscando || resultados.length > 0) && createPortal(
+              <div
+                style={dropdownStyle}
+                className="rounded-[8px] border border-stone-200 dark:border-stone-700/60 bg-white dark:bg-stone-800 shadow-lg overflow-hidden"
+              >
+                {buscando && (
+                  <div className="px-3 py-2.5 text-[11px] text-stone-400 dark:text-stone-500 flex items-center gap-2">
+                    <svg className="animate-spin w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M21 12a9 9 0 1 1-6.219-8.56"/>
+                    </svg>
+                    Buscando…
+                  </div>
+                )}
+                {!buscando && resultados.length === 0 && busqueda.length >= 2 && (
+                  <div className="px-3 py-2.5 text-[11px] text-stone-400 dark:text-stone-500">
+                    Sin resultados para "{busqueda}"
+                  </div>
+                )}
+                {resultados.map(r => (
                   <button
-                    key={s}
-                    onClick={() => { setEntidad(s); setBusqueda('') }}
-                    className="w-full text-left px-3 py-2.5 text-[12px] text-stone-700 dark:text-stone-200 hover:bg-stone-50 dark:hover:bg-stone-700/40 cursor-pointer border-0 bg-transparent transition-colors"
+                    key={r.user_id}
+                    onClick={() => { setEntidad(r); setBusqueda(''); setResultados([]) }}
+                    className="w-full text-left px-3 py-2.5 hover:bg-stone-50 dark:hover:bg-stone-700/40 cursor-pointer border-0 bg-transparent transition-colors"
                   >
-                    {s}
+                    <p className="text-[12px] text-stone-700 dark:text-stone-200">{r.nombre}</p>
+                    <p className="text-[9.5px] text-stone-400 dark:text-stone-500 mt-0.5">
+                      {ROLE_LABEL[r.role] ?? r.role}
+                    </p>
                   </button>
                 ))}
-              </div>
+              </div>,
+              document.body
             )}
           </>
         )}
@@ -190,14 +294,20 @@ export default function VinculacionNuevaWidget({ onEnviar }: Props) {
 
       <button
         onClick={handleEnviar}
-        disabled={!entidad || !tipo}
+        disabled={!entidad || !tipo || enviando}
         className="flex items-center justify-center gap-2 py-2.5 rounded-[10px] text-[12px] font-semibold text-white border-0 cursor-pointer hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
         style={{ background: VIN_COLOR }}
       >
-        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
-          <line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/>
-        </svg>
-        Enviar solicitud
+        {enviando ? (
+          <svg className="animate-spin w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <path d="M21 12a9 9 0 1 1-6.219-8.56"/>
+          </svg>
+        ) : (
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+            <line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/>
+          </svg>
+        )}
+        {enviando ? 'Enviando…' : 'Enviar solicitud'}
       </button>
 
     </div>

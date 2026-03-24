@@ -13,6 +13,7 @@ interface Noticia {
   titulo:              string
   cuerpo:              string
   fuente:              string
+  fuente_origen:       string
   url_original:        string | null
   categoria:           string
   urgente:             boolean
@@ -36,6 +37,14 @@ interface NoticiaRelacionada {
   tiempo_relativo:     string
   trust_index:         number
   verification_status: VerificationStatus
+}
+
+interface WikiHechoVinculado {
+  id:            string
+  afirmacion:    string
+  hti:           number
+  fuente_nombre: string
+  dominio:       string
 }
 
 // ─── ICONS ──────────────────────────────────────────────────────────────────
@@ -90,6 +99,23 @@ const URGENCIA_COLOR: Record<string, string>       = {
   baja:  'text-emerald-500',
 }
 
+const DOMINIO_ICON: Record<string, string> = {
+  sanidad:     '🧬',
+  exportacion: '✈️',
+  regulacion:  '⚖️',
+  razas:       '🐄',
+  nutricion:   '🌾',
+  mercado:     '📈',
+  bienestar:   '❤️',
+  clima:       '🌦️',
+}
+
+function htiColor(hti: number) {
+  if (hti >= 80) return '#2FAF8F'
+  if (hti >= 60) return '#f59e0b'
+  return '#ef4444'
+}
+
 function tiempoRelativo(fecha: string): string {
   const diff = Date.now() - new Date(fecha).getTime()
   const h = Math.floor(diff / 3600000)
@@ -120,6 +146,9 @@ export default function NoticiaDetallePage() {
   const [loading,     setLoading]     = useState(true)
   const [error,       setError]       = useState<string | null>(null)
 
+  // ── Wiki hechos vinculados ──────────────────────────────────────────────────
+  const [wikiHechos, setWikiHechos] = useState<WikiHechoVinculado[]>([])
+
   const inputRef   = useRef<HTMLInputElement>(null)
   const profileRef = useRef<HTMLDivElement>(null)
   const mainRef    = useRef<HTMLDivElement>(null)
@@ -144,7 +173,12 @@ export default function NoticiaDetallePage() {
         return
       }
 
-      setNoticia(data as Noticia)
+      const raw = data as Noticia
+      // acciones_ia puede venir como string '[]' desde el insert
+      if (typeof raw.acciones_ia === 'string') {
+        try { raw.acciones_ia = JSON.parse(raw.acciones_ia) } catch { raw.acciones_ia = [] }
+      }
+      setNoticia(raw)
 
       if (data.relacionadas?.length > 0) {
         const { data: rel } = await supabase
@@ -153,6 +187,23 @@ export default function NoticiaDetallePage() {
           .in('id', data.relacionadas)
           .limit(3)
         setRelacionadas((rel as NoticiaRelacionada[]) ?? [])
+      }
+
+      // ── Buscar Hechos Wiki vinculados a esta noticia ───────────────────────
+      const { data: vinculos } = await supabase
+        .from('wiki_hecho_noticias')
+        .select('hecho_id')
+        .eq('noticia_id', id)
+
+      if (vinculos && vinculos.length > 0) {
+        const ids = (vinculos as { hecho_id: string }[]).map(v => v.hecho_id)
+        const { data: hechos } = await supabase
+          .from('wiki_hechos')
+          .select('id,afirmacion,hti,fuente_nombre,dominio')
+          .in('id', ids)
+          .eq('estado', 'activo')
+          .order('hti', { ascending: false })
+        setWikiHechos((hechos as WikiHechoVinculado[]) ?? [])
       }
 
       setLoading(false)
@@ -377,7 +428,7 @@ export default function NoticiaDetallePage() {
             </h1>
 
             {/* Fuente + HTI */}
-            <div className="flex items-center justify-between mb-10 pb-8 border-b border-stone-100 dark:border-stone-800/60">
+            <div className="flex items-center justify-between mb-6 pb-6 border-b border-stone-100 dark:border-stone-800/60">
               <div className="flex items-center gap-3">
                 <div className="w-6 h-6 rounded-full bg-stone-100 dark:bg-stone-800 flex items-center justify-center shrink-0">
                   <Ico.Shield c="w-3 h-3 text-stone-400 dark:text-stone-500" />
@@ -386,20 +437,45 @@ export default function NoticiaDetallePage() {
                   <p className="text-[12px] font-semibold text-stone-700 dark:text-stone-300">
                     {noticia.fuente}
                   </p>
-                  {noticia.url_original && (
-                    <a
-                      href={noticia.url_original}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex items-center gap-1 text-[11px] text-stone-400 dark:text-stone-500 hover:text-[#2FAF8F] transition-colors mt-0.5"
-                    >
-                      Ver fuente original <Ico.ExternalLink c="w-3 h-3" />
-                    </a>
-                  )}
+                  <div className="flex items-center gap-2 mt-0.5">
+                    {/* Badge de origen */}
+                    {noticia.fuente_origen === 'api' && (
+                      <span className="text-[10px] font-medium text-stone-400 dark:text-stone-500 bg-stone-100 dark:bg-stone-800/60 px-1.5 py-0.5 rounded">
+                        IA · NewsAPI
+                      </span>
+                    )}
+                    {noticia.fuente_origen === 'comunidad' && (
+                      <span className="text-[10px] font-medium text-[#2FAF8F] bg-[#2FAF8F]/10 px-1.5 py-0.5 rounded">
+                        Comunidad
+                      </span>
+                    )}
+                    {noticia.url_original && (
+                      <a
+                        href={noticia.url_original}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-1 text-[11px] text-stone-400 dark:text-stone-500 hover:text-[#2FAF8F] transition-colors"
+                      >
+                        Ver fuente original <Ico.ExternalLink c="w-3 h-3" />
+                      </a>
+                    )}
+                  </div>
                 </div>
               </div>
               <HTIBadge size="md" score={noticia.trust_index} status={noticia.verification_status} showTooltip />
             </div>
+
+            {/* Disclaimer IA */}
+            {noticia.fuente_origen === 'api' && (
+              <div className="mb-8 px-4 py-3 rounded-xl bg-stone-50 dark:bg-stone-900/50 border border-stone-200/60 dark:border-stone-800/50 flex items-start gap-2.5">
+                <svg className="w-3.5 h-3.5 text-stone-400 dark:text-stone-500 shrink-0 mt-0.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round">
+                  <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+                </svg>
+                <p className="text-[11.5px] text-stone-400 dark:text-stone-500 leading-[1.6]">
+                  Este contenido fue procesado y resumido por IA a partir de fuentes externas. Puede contener errores o imprecisiones — verifica los datos críticos en la fuente original.
+                </p>
+              </div>
+            )}
 
             {/* ── PANEL ANÁLISIS IA ── */}
             <div className="mb-10 rounded-2xl border border-stone-200/70 dark:border-stone-800/60 bg-white dark:bg-[#141210] overflow-hidden shadow-[0_1px_12px_rgba(0,0,0,0.04)]">
@@ -451,14 +527,68 @@ export default function NoticiaDetallePage() {
               </div>
             </div>
 
-            {/* ── CUERPO ── */}
-            <div className="space-y-5 mb-10">
-              {noticia.cuerpo.split('\n\n').filter(Boolean).map((p, i) => (
-                <p key={i} className="text-[16px] text-stone-700 dark:text-stone-300 leading-[1.82] tracking-[-0.01em]">
-                  {p}
-                </p>
-              ))}
-            </div>
+            {/* ── CUERPO / BRIEFING ── */}
+            {(() => {
+              let briefing: { que_paso?: string; por_que_importa?: string; numeros_clave?: string[]; contexto?: string; que_sigue?: string } | null = null
+              try {
+                const raw = typeof noticia.cuerpo === 'string' ? JSON.parse(noticia.cuerpo) : noticia.cuerpo
+                if (raw && typeof raw === 'object' && raw.que_paso) briefing = raw
+              } catch { /* texto plano */ }
+
+              if (briefing) {
+                return (
+                  <div className="space-y-6 mb-10">
+                    {briefing.que_paso && (
+                      <div>
+                        <p className="text-[10px] font-semibold text-stone-400 dark:text-stone-500 uppercase tracking-[0.12em] mb-2">Qué pasó</p>
+                        <p className="text-[16px] text-stone-700 dark:text-stone-300 leading-[1.82] tracking-[-0.01em]">{briefing.que_paso}</p>
+                      </div>
+                    )}
+                    {briefing.por_que_importa && (
+                      <div>
+                        <p className="text-[10px] font-semibold text-stone-400 dark:text-stone-500 uppercase tracking-[0.12em] mb-2">Por qué importa</p>
+                        <p className="text-[15px] text-stone-600 dark:text-stone-400 leading-[1.8]">{briefing.por_que_importa}</p>
+                      </div>
+                    )}
+                    {briefing.numeros_clave && briefing.numeros_clave.length > 0 && (
+                      <div>
+                        <p className="text-[10px] font-semibold text-stone-400 dark:text-stone-500 uppercase tracking-[0.12em] mb-3">Números clave</p>
+                        <div className="flex flex-wrap gap-2">
+                          {briefing.numeros_clave.map((n, i) => (
+                            <span key={i} className="px-3 py-1.5 rounded-lg bg-stone-100 dark:bg-stone-800/60 text-[13px] font-medium text-stone-700 dark:text-stone-300">
+                              {n}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    {briefing.contexto && (
+                      <div>
+                        <p className="text-[10px] font-semibold text-stone-400 dark:text-stone-500 uppercase tracking-[0.12em] mb-2">Contexto</p>
+                        <p className="text-[14px] text-stone-500 dark:text-stone-400 leading-[1.8] italic">{briefing.contexto}</p>
+                      </div>
+                    )}
+                    {briefing.que_sigue && (
+                      <div className="p-4 rounded-xl border border-[#2FAF8F]/20 bg-[#2FAF8F]/[0.04]">
+                        <p className="text-[10px] font-semibold text-[#2FAF8F] uppercase tracking-[0.12em] mb-2">Qué sigue</p>
+                        <p className="text-[14px] text-stone-600 dark:text-stone-300 leading-[1.75]">{briefing.que_sigue}</p>
+                      </div>
+                    )}
+                  </div>
+                )
+              }
+
+              // Fallback — texto plano
+              return (
+                <div className="space-y-5 mb-10">
+                  {noticia.cuerpo.split('\n\n').filter(Boolean).map((p, i) => (
+                    <p key={i} className="text-[16px] text-stone-700 dark:text-stone-300 leading-[1.82] tracking-[-0.01em]">
+                      {p}
+                    </p>
+                  ))}
+                </div>
+              )
+            })()}
 
             {/* Ornament */}
             <div className="flex items-center justify-center gap-2 my-10">
@@ -466,6 +596,53 @@ export default function NoticiaDetallePage() {
                 <div key={i} className="w-1 h-1 rounded-full bg-stone-300 dark:bg-stone-600" />
               ))}
             </div>
+
+            {/* ── WIKI HANDEIA — Hechos vinculados ── */}
+            {wikiHechos.length > 0 && (
+              <div className="mb-10">
+                <div className="flex items-center gap-2 mb-3">
+                  <div className="w-1.5 h-1.5 rounded-full bg-[#2FAF8F]" />
+                  <p className="text-[10.5px] font-semibold text-stone-400 dark:text-stone-500 uppercase tracking-[0.08em]">
+                    En Wiki Handeia
+                  </p>
+                </div>
+                <div className="space-y-2">
+                  {wikiHechos.map(h => (
+                    <button
+                      key={h.id}
+                      onClick={() => navigate(`/wiki/hecho/${h.id}`)}
+                      className="w-full text-left p-3.5 rounded-xl border border-[#2FAF8F]/20 bg-[#2FAF8F]/[0.04] dark:bg-[#2FAF8F]/[0.07] hover:border-[#2FAF8F]/40 hover:bg-[#2FAF8F]/[0.08] transition-all group"
+                    >
+                      <div className="flex items-start gap-2.5">
+                        <span className="text-[14px] shrink-0 mt-px">{DOMINIO_ICON[h.dominio] ?? '📋'}</span>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-1">
+                            <span className="text-[9.5px] font-semibold text-[#2FAF8F] uppercase tracking-[0.08em]">
+                              Hecho verificado
+                            </span>
+                            <span
+                              className="text-[9px] font-bold px-1.5 py-px rounded-full"
+                              style={{ color: htiColor(h.hti), background: `${htiColor(h.hti)}20` }}
+                            >
+                              HTI {h.hti}
+                            </span>
+                          </div>
+                          <p className="text-[13px] font-medium text-stone-700 dark:text-stone-300 leading-[1.5] line-clamp-2 group-hover:text-stone-900 dark:group-hover:text-white transition-colors">
+                            {h.afirmacion}
+                          </p>
+                          <p className="text-[10.5px] text-stone-400 dark:text-stone-500 mt-1">
+                            {h.fuente_nombre}
+                          </p>
+                        </div>
+                        <svg className="w-3.5 h-3.5 text-[#2FAF8F]/40 group-hover:text-[#2FAF8F] transition-colors shrink-0 mt-1" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                          <polyline points="9 18 15 12 9 6"/>
+                        </svg>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {/* ── CHAT HISTORY ── */}
             {chatHistory.length > 0 && (

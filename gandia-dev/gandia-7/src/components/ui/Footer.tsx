@@ -51,10 +51,10 @@ const NAV_LINKS = {
     ['Certificaciones',  '/compliance'],
   ],
   contacto: [
-    ['contacto@gandia.mx', 'mailto:contacto@gandia.mx'],
-    ['legal@gandia.mx',    'mailto:legal@gandia.mx'],
-    ['soporte@gandia.mx',  'mailto:soporte@gandia.mx'],
-    ['+52 (618) 123-4567', 'tel:+526181234567'],
+    ['contacto@gandia7.com', 'mailto:contacto@gandia7.com'],
+    ['legal@gandia7.com',    'mailto:legal@gandia7.com'],
+    ['soporte@gandia7.com',  'mailto:soporte@gandia7.com'],
+    ['+52 (618) No disponible', '#'],
   ],
 } as const
 
@@ -321,7 +321,7 @@ export default function Footer() {
               <strong className="font-semibold" style={{ color: textSec }}>
                 GANDIA 7 Technologies S.A. de C.V.
               </strong><br />
-              RFC: GAN260213ABC<br />
+              RFC: No disponible<br />
               Durango, Durango, México
             </p>
 

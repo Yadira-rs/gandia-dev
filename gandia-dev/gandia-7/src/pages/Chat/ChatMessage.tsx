@@ -3,6 +3,7 @@ import type { ReactNode } from 'react'
 import type { AttachedFile } from '../../lib/chatService'
 import type { UIMessage } from './chatTypes'
 import { SavedThoughts } from './ThinkingBlock'
+import { WikiCardSet } from '../../components/WikiCard'
 import { fmt, getFileKind, FILE_STYLES, relativeTime } from './chatUtils'
 import { renderContent } from './chatContent'
 
@@ -282,6 +283,9 @@ export function ChatMessage({
                   <div className={`text-[14px] leading-[1.75] text-stone-700 dark:text-stone-200 space-y-1 ${msg.pinned ? 'border-l-2 border-[#2FAF8F]/50 pl-3' : ''}`}>
                     {renderContent(msg.content)}
                   </div>
+                  {msg.wiki_hechos && msg.wiki_hechos.length > 0 && (
+                    <WikiCardSet hechos={msg.wiki_hechos} />
+                  )}
                   {msg.artifact && artifact?.kind === 'module' && (
                     <div className="mt-3 flex items-center gap-2 text-[12px] text-stone-400 dark:text-stone-500">
                       <svg className="w-3.5 h-3.5 text-[#2FAF8F]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">

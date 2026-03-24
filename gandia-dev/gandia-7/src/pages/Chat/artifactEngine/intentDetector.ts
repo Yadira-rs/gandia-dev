@@ -11,6 +11,7 @@
 import {
   detectArtifactIntent,
   type ArtifactDomain,
+  canViewArtifact,
 } from '../../../artifacts/artifactTypes'
 
 export interface DetectedIntent {
@@ -84,29 +85,29 @@ const EXTENDED_RULES: Array<{
   },
 
   // ══════════════════════════════════════════════════════════════════
-  // FICHA GANADERA (passport)
+  // FICHA GANADERA (fichas)
   // ══════════════════════════════════════════════════════════════════
 
   // ── Espacio Gandia Ficha Ganadera (anima) ── máxima prioridad
-  { keywords: ['espacio gandia ficha', 'espacio ficha ganadera', 'abrir espacio ficha', 'espacio de fichas'],      widgetId: 'passport:perfiles', domain: 'passport', level: 'anima'  },
+  { keywords: ['espacio gandia ficha', 'espacio ficha ganadera', 'abrir espacio ficha', 'espacio de fichas'],      widgetId: 'fichas:perfiles', domain: 'fichas', level: 'anima'  },
   // ── Módulo Ficha Ganadera ──
-  { keywords: ['módulo ficha', 'modulo ficha', 'abrir módulo ficha', 'abrir modulo ficha', 'ficha completa', 'abrir ficha completa'], widgetId: 'passport:perfiles', domain: 'passport', level: 'module' },
+  { keywords: ['módulo ficha', 'modulo ficha', 'abrir módulo ficha', 'abrir modulo ficha', 'ficha completa', 'abrir ficha completa'], widgetId: 'fichas:perfiles', domain: 'fichas', level: 'module' },
   // ── Ficha · perfiles / hato ──
   { keywords: ['ver hato', 'todo el hato', 'lista del hato', 'animales del rancho', 'todos los animales',
-      'cuántos animales tengo', 'mis bovinos', 'inventario bovinos'],                                              widgetId: 'passport:perfiles',  domain: 'passport', level: 'widget' },
+      'cuántos animales tengo', 'mis bovinos', 'inventario bovinos'],                                              widgetId: 'fichas:perfiles',  domain: 'fichas', level: 'widget' },
   // ── Ficha · nueva ──
   { keywords: ['nueva ficha', 'crear ficha', 'nueva ficha ganadera', 'dar de alta bovino',
-      'registrar nuevo bovino', 'nuevo bovino', 'dar de alta animal', 'registro de animal'],                       widgetId: 'passport:nuevo',     domain: 'passport', level: 'widget' },
+      'registrar nuevo bovino', 'nuevo bovino', 'dar de alta animal', 'registro de animal'],                       widgetId: 'fichas:nuevo',     domain: 'fichas', level: 'widget' },
   // ── Ficha · huella de morro (puente biometría) ──
   { keywords: ['huella de morro', 'ver huella', 'morro del animal', 'noseprint',
-      'biometría del animal', 'huella bovina'],                                                                    widgetId: 'passport:biometria', domain: 'passport', level: 'widget' },
+      'biometría del animal', 'huella bovina'],                                                                    widgetId: 'fichas:biometria', domain: 'fichas', level: 'widget' },
   // ── Ficha · documentos de identificación ──
   { keywords: ['documentos de identificación', 'documentos del animal', 'papeles del animal',
-      'acta de herrado', 'certificado de origen', 'constancia sanitaria del animal'],                             widgetId: 'passport:documentos',domain: 'passport', level: 'widget' },
+      'acta de herrado', 'certificado de origen', 'constancia sanitaria del animal'],                             widgetId: 'fichas:documentos',domain: 'fichas', level: 'widget' },
   // ── Ficha · catch-all (frases simples y plurales) ──
   { keywords: ['ver ficha', 'abrir ficha', 'mi ficha', 'fichas ganaderas', 'las fichas',
       'ficha del bovino', 'abrir pasaporte', 'ver pasaporte', 'mis pasaportes',
-      'el pasaporte', 'ficha animal'],                                                                            widgetId: 'passport:card',      domain: 'passport', level: 'widget' },
+      'el pasaporte', 'ficha animal'],                                                                            widgetId: 'fichas:card',      domain: 'fichas', level: 'widget' },
 
   // ══════════════════════════════════════════════════════════════════
   // MONITOREO
@@ -245,6 +246,19 @@ const EXTENDED_RULES: Array<{
 
   // ── Trámites: nuevo ──
   { keywords: ['nuevo trámite', 'nuevo tramite', 'crear trámite', 'crear tramite', 'iniciar trámite', 'iniciar tramite', 'solicitar trámite', 'solicitar tramite', 'abrir trámite', 'abrir tramite'], widgetId: 'tramites:nuevo', domain: 'tramites', level: 'widget' },
+
+  // ══════════════════════════════════════════════════════════════════
+  // MARKETPLACE
+  // ══════════════════════════════════════════════════════════════════
+
+  // ── Espacio Gandia Marketplace (anima) ── máxima prioridad
+  { keywords: ['espacio gandia marketplace', 'espacio marketplace', 'abrir espacio marketplace', 'ecosistema gandia'],                                                widgetId: 'marketplace:kits',     domain: 'marketplace', level: 'anima'  },
+  // ── Módulo Marketplace ──
+  { keywords: ['módulo marketplace', 'modulo marketplace', 'abrir marketplace', 'ver marketplace', 'marketplace completo'],                                          widgetId: 'marketplace:kits',     domain: 'marketplace', level: 'module' },
+  // ── Partners ──
+  { keywords: ['ver partners', 'partners gandia', 'aliados gandia', 'quiénes son los partners', 'quienes son los partners', 'partners estratégicos', 'partners estrategicos', 'nvidia gandia', 'fermaca gandia', 'iot gandia'], widgetId: 'marketplace:partners', domain: 'marketplace', level: 'widget' },
+  // ── Kits / soluciones ──
+  { keywords: ['kit rancho', 'kits ganaderos', 'soluciones hardware', 'hardware ganadero', 'comprar hardware', 'necesito hardware', 'quiero sensores', 'sensores ganaderos', 'collar inteligente', 'cámara corral', 'camara corral', 'jetson', 'nvidia rancho', 'fermaca conectividad', 'internet rancho', 'iot rancho', 'conectividad rancho', 'sensores iot', 'báscula inteligente', 'bascula inteligente', 'gateway lora'], widgetId: 'marketplace:kits',     domain: 'marketplace', level: 'widget' },
 ]
 
 const PRODUCTOR_ONLY_WIDGETS = new Set([
@@ -259,15 +273,21 @@ const UNION_ONLY_WIDGETS = new Set([
 ])
 
 export function detectIntent(text: string, role?: string | null): DetectedIntent | null {
-  const lower   = text.toLowerCase()
-  const isUnion = role === 'union' || role === 'union_ganadera'
+  const lower    = text.toLowerCase()
+  const isUnion  = role === 'union' || role === 'union_ganadera'
+  const userRole = role || 'producer'
 
   for (const rule of EXTENDED_RULES) {
     if (rule.keywords.some(kw => lower.includes(kw))) {
-      // Bloquear widgets de productor si es unión
+      // Bloquear widgets específicos (hardcoded pre-RBAC logic)
       if (isUnion && PRODUCTOR_ONLY_WIDGETS.has(rule.widgetId)) return null
-      // Bloquear widgets de unión si es productor
       if (!isUnion && role && UNION_ONLY_WIDGETS.has(rule.widgetId)) return null
+
+      // Gatekeeper: RBAC Matrix Validation
+      const access = canViewArtifact(rule.domain, userRole)
+      // Si no es visual, forzar null para que la IA responda por texto puro en el chat.
+      if (access !== 'visual') return null
+
       return {
         widgetId: rule.widgetId,
         domain:   rule.domain,
@@ -279,6 +299,10 @@ export function detectIntent(text: string, role?: string | null): DetectedIntent
 
   const primary = detectArtifactIntent(text)
   if (primary) {
+    // Gatekeeper over fallback intent
+    const access = canViewArtifact(primary.domain, userRole)
+    if (access !== 'visual') return null
+
     return { widgetId: primary.id, domain: primary.domain, level: 'widget', action: 'read' }
   }
 

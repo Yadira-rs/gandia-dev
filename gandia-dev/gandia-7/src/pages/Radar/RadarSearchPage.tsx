@@ -13,6 +13,7 @@ interface SearchResult {
   fuentes:      { tipo: string; count: number; color: string }[]
   related:      RelatedNoticia[]
   loading:      boolean
+  sin_contexto?: boolean
   perspectivas?: { oficial: string; campo: string } | null
 }
 
@@ -167,8 +168,9 @@ export default function RadarSearchPage() {
 
       if (fnError) throw fnError
 
-      const answer: string           = fnData?.answer        ?? ''
-      const perspectivas             = fnData?.perspectivas  ?? null
+      const answer: string = fnData?.answer        ?? ''
+      const perspectivas   = fnData?.perspectivas  ?? null
+      const sin_contexto   = fnData?.sin_contexto  ?? false
 
       // Noticias relacionadas
       const terms   = q.toLowerCase().split(' ').filter((t: string) => t.length > 4)
@@ -185,6 +187,7 @@ export default function RadarSearchPage() {
         fuentes:     fuentesInfo,
         related,
         loading:     false,
+        sin_contexto,
         perspectivas,
       }
       setResult(finalResult)
@@ -362,6 +365,16 @@ export default function RadarSearchPage() {
                 </div>
               ) : (
                 <div className="space-y-4">
+                  {result.sin_contexto && (
+                    <div className="flex items-start gap-2.5 p-3.5 rounded-xl bg-amber-50 dark:bg-amber-950/20 border border-amber-200/60 dark:border-amber-800/30 mb-2">
+                      <svg className="w-3.5 h-3.5 text-amber-500 shrink-0 mt-0.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                        <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
+                      </svg>
+                      <p className="text-[12px] text-amber-700 dark:text-amber-400 leading-[1.6]">
+                        No hay noticias verificadas en Handeia sobre este tema. La siguiente respuesta es conocimiento general de la IA, no información verificada por Handeia.
+                      </p>
+                    </div>
+                  )}
                   {result.answer.split('\n\n').filter(Boolean).map((para, i) => (
                     <p key={i} className="text-[15px] text-stone-600 dark:text-stone-300 leading-[1.78]">
                       {para.replace(/\n/g, ' ')}
@@ -505,7 +518,7 @@ export default function RadarSearchPage() {
               </div>
 
               <p className="text-center text-[10.5px] text-stone-300 dark:text-stone-700 mt-2">
-                Consulta inteligente · Handeia Radar · Prioridad: {perfil}
+                Las respuestas son generadas por IA y pueden contener errores · Verifica con fuentes oficiales
               </p>
             </div>
           </div>

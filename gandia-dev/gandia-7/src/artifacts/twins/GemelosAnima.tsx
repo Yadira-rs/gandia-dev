@@ -32,15 +32,7 @@ import {
   useTwinsFeed,
 } from "../../hooks/useTwinsData";
 
-<<<<<<< Updated upstream
-import {
-  useAnimalesList,
-  useRanchoId,
-  getAuthUserId,
-} from "../../hooks/useAnimales";
-=======
 import { useRanchoId, getAuthUserId } from "../../hooks/useAnimales";
->>>>>>> Stashed changes
 
 // ─── TIPOS ────────────────────────────────────────────────────────────────────
 
@@ -171,24 +163,6 @@ export default function GemelosAnima({ onClose, onEscalate }: Props) {
     error: errorAnimales,
   } = useTwinsAnimales(ranchoId);
 
-<<<<<<< Updated upstream
-  // 3. Lista de animales
-  const { animales, loading: loadingAnimales } = useTwinsAnimales(ranchoId);
-
-  // 4. UUID del animal seleccionado
-  const { animales: animalesDB } = useAnimalesList(ranchoId);
-  const animalUUID = selectedAnimal
-    ? (animalesDB.find((a) => a.siniiga === selectedAnimal.perfil.arete)?.id ??
-      null)
-    : null;
-  const animalSiniiga = selectedAnimal?.perfil.arete ?? null;
-
-  // 5. Datos por widget
-  const { registros, loading: loadingPesos } = useTwinsPesos(animalUUID);
-  const { eventos, loading: loadingTimeline } = useTwinsTimeline(animalSiniiga);
-  const { datos, loading: loadingAlim } = useTwinsAlimentacion(
-    animalUUID,
-=======
   const animalSiniiga = selectedAnimal?.perfil.arete ?? null;
 
   const { registros, loading: loadingPesos } = useTwinsPesos(animalSiniiga);
@@ -203,7 +177,6 @@ export default function GemelosAnima({ onClose, onEscalate }: Props) {
     refetch: refetchAlim,
   } = useTwinsAlimentacion(
     animalSiniiga,
->>>>>>> Stashed changes
     selectedAnimal?.perfil.pesoActual,
     selectedAnimal?.perfil.pesoMeta,
     selectedAnimal?.perfil.gananciaDiaria,
@@ -415,9 +388,6 @@ export default function GemelosAnima({ onClose, onEscalate }: Props) {
             ) : datos ? (
               <TwinsAlimentacionWidget datos={datos} />
             ) : (
-<<<<<<< Updated upstream
-              <EmptyState mensaje="Sin datos de alimentación" />
-=======
               <TwinsAlimentacionWidget
                 datos={
                   datos ?? {
@@ -435,7 +405,6 @@ export default function GemelosAnima({ onClose, onEscalate }: Props) {
                 siniiga={animalSiniiga}
                 onRefresh={handleRefreshAlim}
               />
->>>>>>> Stashed changes
             ))}
 
           {/* ── AUDITORÍAS ── */}

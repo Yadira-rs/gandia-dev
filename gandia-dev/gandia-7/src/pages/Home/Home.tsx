@@ -1872,6 +1872,47 @@ function Home() {
 
         </main>
 
+        {/* ── SECCIÓN MODERADORES ─────────────────────────────────────────── */}
+        <div
+          className="border-t"
+          style={{ borderColor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.06)' }}
+        >
+          <div className="max-w-6xl mx-auto px-6 py-12">
+            <div className={`flex flex-col sm:flex-row items-center justify-between gap-6 p-7 rounded-2xl border ${
+              isDark ? 'border-stone-800/60 bg-stone-900/30' : 'border-stone-200/70 bg-stone-50/60'
+            }`}>
+              <div className="flex items-start gap-4">
+                <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 mt-0.5 ${
+                  isDark ? 'bg-[#2FAF8F]/10' : 'bg-[#2FAF8F]/08'
+                }`}>
+                  <svg className="w-4 h-4 text-[#2FAF8F]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/>
+                    <path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                  </svg>
+                </div>
+                <div>
+                  <p className={`text-[14px] font-semibold mb-1 ${isDark ? 'text-stone-200' : 'text-stone-800'}`}>
+                    ¿Tienes conocimiento del sector ganadero?
+                  </p>
+                  <p className={`text-[13px] leading-[1.6] max-w-[420px] ${isDark ? 'text-stone-400' : 'text-stone-500'}`}>
+                    Ayuda a verificar y mejorar la calidad de la información en Handeia Radar. MVZ, productores, exportadores y expertos son bienvenidos.
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => navigate('/moderador/acceso')}
+                className={`shrink-0 px-5 py-2.5 rounded-xl text-[13px] font-medium border transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] ${
+                  isDark
+                    ? 'border-stone-700 text-stone-300 hover:border-stone-500 hover:bg-stone-800/60'
+                    : 'border-stone-300 text-stone-700 hover:border-stone-400 hover:bg-white'
+                }`}
+              >
+                Unirme como moderador
+              </button>
+            </div>
+          </div>
+        </div>
+
         <Footer />
         <CookieBanner isDark={isDark} />
       </div>

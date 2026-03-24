@@ -138,18 +138,19 @@ function RecursosPage() {
       fecha: '13 Feb 2026', icono: BookOpen, destacado: true, roles: ['Productor'], descargas: 234, nuevo: true,
     },
     {
-      id: 'doc-api',
-      titulo: 'Documentación API REST',
-      descripcion: 'Referencia completa de endpoints, autenticación OAuth 2.0 y ejemplos de integración.',
-      categoria: 'tecnicos', estado: 'externo', tipo: 'Documento',
-      fecha: '10 Feb 2026', icono: Code, url: 'https://docs.gandia7.mx/api', destacado: true, descargas: 89,
+      id: 'guia-artefactos',
+      titulo: 'Guía de Artefactos',
+      descripcion: 'Aprende a usar los artefactos de GANDIA 7: pasaportes digitales, gemelos y certificaciones desde la interfaz.',
+      categoria: 'guias', estado: 'disponible', tipo: 'PDF', tamano: '3.2 MB',
+      fecha: '13 Feb 2026', icono: BookOpen, destacado: true, descargas: 0, nuevo: true,
     },
     {
       id: 'video-onboarding',
       titulo: 'Bienvenida a GANDIA 7',
       descripcion: 'Tour completo del sistema: navegación, módulos principales y primeras acciones.',
-      categoria: 'videos', estado: 'disponible', tipo: 'Video', duracion: '8:24',
+      categoria: 'videos', estado: 'externo', tipo: 'Video', duracion: '8:24',
       fecha: '8 Feb 2026', icono: Video, destacado: true, roles: ['Todos'], descargas: 456, nuevo: true,
+      url: 'https://youtube.com/@Gandia7',
     },
     {
       id: 'manual-pasaportes',
@@ -384,7 +385,7 @@ function RecursosPage() {
             <span className="text-[11px]" style={{ color: tx2 }}>{recurso.fecha}</span>
             <div className="flex items-center gap-1.5 text-[11.5px] font-medium text-stone-400 group-hover:text-[#2FAF8F] transition-colors duration-200">
               {recurso.estado === 'externo' ? (
-                <><span>Abrir</span><ExternalLink className="w-3.5 h-3.5" strokeWidth={2} /></>
+                <><span>Ver enlace</span><ExternalLink className="w-3.5 h-3.5" strokeWidth={2} /></>
               ) : (
                 <><span>Descargar</span><Download className="w-3.5 h-3.5" strokeWidth={2} /></>
               )}
@@ -920,7 +921,7 @@ function RecursosPage() {
           </Reveal>
         </section>
 
-        <Footer isDark={isDark} />
+        <Footer />
       </div>
     </>
   )

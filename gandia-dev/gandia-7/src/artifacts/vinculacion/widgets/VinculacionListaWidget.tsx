@@ -8,12 +8,7 @@ import type { Vinculacion } from '../../artifactTypes'
 
 const VIN_COLOR = '#0ea5e9'
 
-const MOCK: Vinculacion[] = [
-  { id: '1', entidad: 'MVZ Dr. García',       tipo: 'sanitario',  estado: 'activa',   fecha: '12 Ene 2025', expira: null },
-  { id: '2', entidad: 'Exportadora Norte',    tipo: 'comercial',  estado: 'activa',   fecha: '01 Mar 2025', expira: 'Al cerrar lote' },
-  { id: '3', entidad: 'Auditor SENASICA',     tipo: 'auditoria',  estado: 'activa',   fecha: '05 Mar 2025', expira: '04 Abr 2025' },
-  { id: '4', entidad: 'Unión Ganadera DGO',   tipo: 'union',      estado: 'activa',   fecha: '10 Feb 2025', expira: null },
-]
+
 
 const TIPO_META: Record<Vinculacion['tipo'], { label: string; color: string; bg: string }> = {
   sanitario: { label: 'Sanitario', color: '#22c55e', bg: 'bg-green-50  dark:bg-green-950/20'  },
@@ -26,11 +21,11 @@ interface Props {
   vinculaciones?: Vinculacion[]
   onExpand?:      () => void
   onNueva?:       () => void
-  onRevocar?:     (id: string) => void
+  onRevocar?:     (id: string) => void | Promise<void>
 }
 
 export default function VinculacionListaWidget({
-  vinculaciones = MOCK,
+  vinculaciones = [],
   onExpand,
   onNueva,
   onRevocar,
