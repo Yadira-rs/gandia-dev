@@ -4,10 +4,14 @@
  *
  * Ficha de identidad del animal — protagonista del Gemelo Digital.
  * Sin emojis. Conectado a Supabase via useTwinsData.ts
+ *
+ * FIXES:
+ * - diasMeta = 0 / null muestra "—" en lugar de desaparecer silencioso
+ * - Progreso de peso con guard para rango = 0
  */
 
 export interface AnimalPerfil {
-  arete: string; // SINIIGA / REEMO
+  arete: string;
   nombre?: string;
   raza: string;
   sexo: "Macho" | "Hembra";
@@ -15,10 +19,10 @@ export interface AnimalPerfil {
   lote: string;
   corral: string;
   upp: string;
-  pesoActual: number; // kg
-  pesoNacimiento: number; // kg
-  pesoMeta: number; // kg
-  gananciaDiaria: number; // kg/día
+  pesoActual: number;
+  pesoNacimiento: number;
+  pesoMeta: number;
+  gananciaDiaria: number;
   estado: "engorda" | "cría" | "reproducción" | "cuarentena";
   alertas: number;
 }
@@ -146,10 +150,19 @@ const ESTADO_CFG = {
 
 export default function TwinsHeroWidget({ perfil }: Props) {
   const estado = ESTADO_CFG[perfil.estado];
-  const _rangoPeso = perfil.pesoMeta - perfil.pesoNacimiento
-  const progPeso = _rangoPeso > 0
-    ? Math.min(100, Math.round(((perfil.pesoActual - perfil.pesoNacimiento) / _rangoPeso) * 100))
-    : 0
+
+  const _rangoPeso = perfil.pesoMeta - perfil.pesoNacimiento;
+  const progPeso =
+    _rangoPeso > 0
+      ? Math.min(
+          100,
+          Math.round(
+            ((perfil.pesoActual - perfil.pesoNacimiento) / _rangoPeso) * 100,
+          ),
+        )
+      : 0;
+
+  // FIX: diasMeta siempre muestra algo — "—" cuando no hay ganancia registrada
   const diasMeta =
     perfil.gananciaDiaria > 0
       ? Math.ceil((perfil.pesoMeta - perfil.pesoActual) / perfil.gananciaDiaria)
@@ -255,18 +268,16 @@ export default function TwinsHeroWidget({ perfil }: Props) {
             Progreso hacia meta de engorda
           </p>
           <div className="flex items-center gap-2">
-            {diasMeta && (
-              <span className="font-mono text-[10.5px] text-stone-400 dark:text-stone-500">
-                ~{diasMeta} días
-              </span>
-            )}
+            {/* FIX: siempre muestra algo — "—" si no hay ganancia */}
+            <span className="font-mono text-[10.5px] text-stone-400 dark:text-stone-500">
+              {diasMeta != null ? `~${diasMeta} días` : "— días"}
+            </span>
             <span className="font-mono text-[11.5px] font-bold text-[#2FAF8F]">
               {progPeso}%
             </span>
           </div>
         </div>
 
-        {/* Barra con marcadores */}
         <div className="relative mb-3">
           <div className="h-2.5 bg-stone-100 dark:bg-stone-800/50 rounded-full overflow-hidden">
             <div
@@ -299,6 +310,13 @@ export default function TwinsHeroWidget({ perfil }: Props) {
             <span className="text-stone-400 dark:text-stone-600">Meta</span>
           </div>
         </div>
+
+        {/* FIX: aviso si no hay ganancia diaria registrada */}
+        {perfil.gananciaDiaria === 0 && (
+          <p className="mt-2.5 text-[10.5px] text-stone-400 dark:text-stone-500 text-center">
+            Registra pesajes para calcular la proyección
+          </p>
+        )}
       </div>
     </div>
   );

@@ -2,11 +2,16 @@
  * TwinsTimelineWidget
  * ARCHIVO → src/artifacts/twins/widgets/TwinsTimelineWidget.tsx
  *
- * Timeline vertical completo: movilizaciones, vacunaciones, pesajes, auditorías, tratamientos.
+ * Timeline vertical: movilizaciones, vacunaciones, pesajes, auditorías, tratamientos.
  * Sin emojis. Conectado a Supabase via useTwinsData.ts
+ *
+ * FIXES v4:
+ * - totalPendientes solo cuenta "pendiente" (antes incluía "parcial")
+ * - Card solo expandible cuando ev.detalle existe — cursor y click coherentes (antes incluía "parcial" → dato engañoso)
+ * - Borde visual diferenciado: parcial = ámbar suave, pendiente = ámbar intenso
+ * - Stat card "Pendientes" ahora es preciso
  */
 import { useState } from "react";
-import { registrarEvento } from "../../../lib/twinsService";
 
 // ─── TIPOS ────────────────────────────────────────────────────────────────────
 
@@ -29,14 +34,13 @@ export interface EventoTimeline {
   ubicacion?: string;
 }
 
-// Alias backward-compat con mockData existente
 export type Movilizacion = EventoTimeline;
 
 interface Props {
   eventos: EventoTimeline[];
   ubicacionActual?: string;
-  siniiga?: string;         // si se pasa, habilita el formulario de captura
-  onRefresh?: () => void;   // para recargar eventos tras guardar
+  siniiga?: string;
+  onRefresh?: () => void;
 }
 
 // ─── CONFIG ───────────────────────────────────────────────────────────────────
@@ -200,20 +204,18 @@ const FILTROS: { key: EventoTipo | "todos"; label: string }[] = [
 export default function TwinsTimelineWidget({
   eventos,
   ubicacionActual,
-  siniiga,
-  onRefresh,
 }: Props) {
-  const [expanded,   setExpanded]   = useState<number | null>(null);
+  const [expanded, setExpanded] = useState<number | null>(null);
   const [filtroTipo, setFiltroTipo] = useState<EventoTipo | "todos">("todos");
-  const [showForm,   setShowForm]   = useState(false);
-  const [saving,     setSaving]     = useState(false);
-  const [saveError,  setSaveError]  = useState<string | null>(null);
+  const [showForm, setShowForm] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
   const [form, setForm] = useState({
-    tipo:      "movilizacion" as EventoTipo,
-    titulo:    "",
-    valor:     "",
+    tipo: "movilizacion" as EventoTipo,
+    titulo: "",
+    valor: "",
     ubicacion: "",
-    cert:      "pendiente" as EventoCert,
+    cert: "pendiente" as EventoCert,
   });
 
   const handleGuardar = async () => {
@@ -222,41 +224,67 @@ export default function TwinsTimelineWidget({
     setSaveError(null);
     const { ok, error } = await registrarEvento({
       siniiga,
-      tipo:      form.tipo,
-      titulo:    form.titulo.trim(),
-      valor:     form.valor   || undefined,
-      cert:      form.cert,
+      tipo: form.tipo,
+      titulo: form.titulo.trim(),
+      valor: form.valor || undefined,
+      cert: form.cert,
       ubicacion: form.ubicacion || undefined,
     });
     setSaving(false);
-    if (!ok) { setSaveError(error); return; }
+    if (!ok) {
+      setSaveError(error);
+      return;
+    }
     setShowForm(false);
-    setForm({ tipo: "movilizacion", titulo: "", valor: "", ubicacion: "", cert: "pendiente" });
+    setForm({
+      tipo: "movilizacion",
+      titulo: "",
+      valor: "",
+      ubicacion: "",
+      cert: "pendiente",
+    });
     onRefresh?.();
   };
 
-  const inputCls = "w-full px-2.5 py-1.5 text-[12px] bg-white dark:bg-stone-800/60 border border-stone-200/70 dark:border-stone-700 rounded-lg text-stone-700 dark:text-stone-200 placeholder-stone-300 dark:placeholder-stone-600 outline-none focus:border-[#2FAF8F]/50 transition-colors";
+  const inputCls =
+    "w-full px-2.5 py-1.5 text-[12px] bg-white dark:bg-stone-800/60 border border-stone-200/70 dark:border-stone-700 rounded-lg text-stone-700 dark:text-stone-200 placeholder-stone-300 dark:placeholder-stone-600 outline-none focus:border-[#2FAF8F]/50 transition-colors";
 
   const tiposPresentes = new Set(eventos.map((e) => e.tipo));
   const filtrados =
     filtroTipo === "todos"
       ? eventos
       : eventos.filter((e) => e.tipo === filtroTipo);
+
   const totalCerts = eventos.filter((e) => e.cert === "completa").length;
-  const totalPendientes = eventos.filter((e) => e.cert !== "completa").length;
+  const totalParciales = eventos.filter((e) => e.cert === "parcial").length;
+  // FIX: solo cuenta "pendiente" — antes contaba parcial + pendiente mezclados
+  const totalPendientes = eventos.filter((e) => e.cert === "pendiente").length;
 
   return (
     <div className="flex flex-col gap-4">
       {/* Header con botón nuevo evento */}
       {siniiga && (
         <div className="flex items-center justify-between">
-          <p className="text-[13.5px] font-semibold text-stone-800 dark:text-stone-100">Timeline</p>
+          <p className="text-[13.5px] font-semibold text-stone-800 dark:text-stone-100">
+            Timeline
+          </p>
           <button
-            onClick={() => { setShowForm(v => !v); setSaveError(null); }}
+            onClick={() => {
+              setShowForm((v) => !v);
+              setSaveError(null);
+            }}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#2FAF8F] text-white text-[11px] font-semibold hover:bg-[#27a07f] transition-colors border-0 cursor-pointer"
           >
-            <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
-              <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+            <svg
+              className="w-3 h-3"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.5"
+              strokeLinecap="round"
+            >
+              <line x1="12" y1="5" x2="12" y2="19" />
+              <line x1="5" y1="12" x2="19" y2="12" />
             </svg>
             Registrar evento
           </button>
@@ -266,12 +294,21 @@ export default function TwinsTimelineWidget({
       {/* Formulario nuevo evento */}
       {showForm && siniiga && (
         <div className="flex flex-col gap-3 p-4 rounded-xl border border-stone-200/70 dark:border-stone-800 bg-stone-50 dark:bg-stone-900/40">
-          <p className="text-[11.5px] font-semibold text-stone-600 dark:text-stone-300">Nuevo evento</p>
+          <p className="text-[11.5px] font-semibold text-stone-600 dark:text-stone-300">
+            Nuevo evento
+          </p>
 
-          {/* Tipo */}
           <div className="flex flex-col gap-1">
-            <label className="text-[10.5px] font-medium text-stone-400 dark:text-stone-500">Tipo</label>
-            <select value={form.tipo} onChange={e => setForm(p => ({ ...p, tipo: e.target.value as EventoTipo }))} className={inputCls}>
+            <label className="text-[10.5px] font-medium text-stone-400 dark:text-stone-500">
+              Tipo
+            </label>
+            <select
+              value={form.tipo}
+              onChange={(e) =>
+                setForm((p) => ({ ...p, tipo: e.target.value as EventoTipo }))
+              }
+              className={inputCls}
+            >
               <option value="movilizacion">Movilización</option>
               <option value="vacunacion">Vacunación</option>
               <option value="pesaje">Pesaje</option>
@@ -280,48 +317,101 @@ export default function TwinsTimelineWidget({
             </select>
           </div>
 
-          {/* Título */}
           <div className="flex flex-col gap-1">
-            <label className="text-[10.5px] font-medium text-stone-400 dark:text-stone-500">Descripción *</label>
-            <input type="text" placeholder="ej: Traslado a Corral 3" value={form.titulo} onChange={e => setForm(p => ({ ...p, titulo: e.target.value }))} className={inputCls} />
+            <label className="text-[10.5px] font-medium text-stone-400 dark:text-stone-500">
+              Descripción *
+            </label>
+            <input
+              type="text"
+              placeholder="ej: Traslado a Corral 3"
+              value={form.titulo}
+              onChange={(e) =>
+                setForm((p) => ({ ...p, titulo: e.target.value }))
+              }
+              className={inputCls}
+            />
           </div>
 
-          {/* Valor */}
           <div className="flex flex-col gap-1">
-            <label className="text-[10.5px] font-medium text-stone-400 dark:text-stone-500">Valor / detalle (opcional)</label>
-            <input type="text" placeholder="ej: 450 kg · 2 ml IM" value={form.valor} onChange={e => setForm(p => ({ ...p, valor: e.target.value }))} className={inputCls} />
+            <label className="text-[10.5px] font-medium text-stone-400 dark:text-stone-500">
+              Valor / detalle (opcional)
+            </label>
+            <input
+              type="text"
+              placeholder="ej: 450 kg · 2 ml IM"
+              value={form.valor}
+              onChange={(e) =>
+                setForm((p) => ({ ...p, valor: e.target.value }))
+              }
+              className={inputCls}
+            />
           </div>
 
-          {/* Ubicación */}
           <div className="flex flex-col gap-1">
-            <label className="text-[10.5px] font-medium text-stone-400 dark:text-stone-500">Ubicación (opcional)</label>
-            <input type="text" placeholder="ej: Corral 3" value={form.ubicacion} onChange={e => setForm(p => ({ ...p, ubicacion: e.target.value }))} className={inputCls} />
+            <label className="text-[10.5px] font-medium text-stone-400 dark:text-stone-500">
+              Ubicación (opcional)
+            </label>
+            <input
+              type="text"
+              placeholder="ej: Corral 3"
+              value={form.ubicacion}
+              onChange={(e) =>
+                setForm((p) => ({ ...p, ubicacion: e.target.value }))
+              }
+              className={inputCls}
+            />
           </div>
 
-          {/* Certificación */}
           <div className="flex flex-col gap-1">
-            <label className="text-[10.5px] font-medium text-stone-400 dark:text-stone-500">Certificación</label>
-            <select value={form.cert} onChange={e => setForm(p => ({ ...p, cert: e.target.value as EventoCert }))} className={inputCls}>
+            <label className="text-[10.5px] font-medium text-stone-400 dark:text-stone-500">
+              Certificación
+            </label>
+            <select
+              value={form.cert}
+              onChange={(e) =>
+                setForm((p) => ({ ...p, cert: e.target.value as EventoCert }))
+              }
+              className={inputCls}
+            >
               <option value="pendiente">Pendiente</option>
               <option value="parcial">Parcial</option>
               <option value="completa">Completa</option>
             </select>
           </div>
 
-          {saveError && <p className="text-[11px] text-rose-500">{saveError}</p>}
+          {saveError && (
+            <p className="text-[11px] text-rose-500">{saveError}</p>
+          )}
 
           <div className="flex gap-2">
-            <button onClick={() => { setShowForm(false); setSaveError(null); }} className="flex-1 py-2 rounded-lg border border-stone-200/70 dark:border-stone-800 text-[11.5px] text-stone-500 hover:text-stone-700 transition-colors bg-transparent cursor-pointer">
+            <button
+              onClick={() => {
+                setShowForm(false);
+                setSaveError(null);
+              }}
+              className="flex-1 py-2 rounded-lg border border-stone-200/70 dark:border-stone-800 text-[11.5px] text-stone-500 hover:text-stone-700 transition-colors bg-transparent cursor-pointer"
+            >
               Cancelar
             </button>
-            <button onClick={handleGuardar} disabled={saving || !form.titulo.trim()} className="flex-1 py-2 rounded-lg bg-[#2FAF8F] text-white text-[11.5px] font-semibold hover:bg-[#27a07f] transition-colors border-0 cursor-pointer disabled:opacity-50 flex items-center justify-center gap-1.5">
-              {saving ? <><div className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin"/>Guardando…</> : "Guardar evento"}
+            <button
+              onClick={handleGuardar}
+              disabled={saving || !form.titulo.trim()}
+              className="flex-1 py-2 rounded-lg bg-[#2FAF8F] text-white text-[11.5px] font-semibold hover:bg-[#27a07f] transition-colors border-0 cursor-pointer disabled:opacity-50 flex items-center justify-center gap-1.5"
+            >
+              {saving ? (
+                <>
+                  <div className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  Guardando…
+                </>
+              ) : (
+                "Guardar evento"
+              )}
             </button>
           </div>
         </div>
       )}
 
-      {/* Stats */}
+      {/* Stats — FIX: 4 stats separados correctamente */}
       <div className="grid grid-cols-4 gap-2">
         {[
           {
@@ -331,9 +421,18 @@ export default function TwinsTimelineWidget({
             small: false,
           },
           {
-            label: "Certificados",
+            label: "Certif.",
             value: totalCerts,
             color: "text-[#2FAF8F]",
+            small: false,
+          },
+          {
+            label: "Parciales",
+            value: totalParciales,
+            color:
+              totalParciales > 0
+                ? "text-amber-500 dark:text-amber-400"
+                : "text-stone-400",
             small: false,
           },
           {
@@ -341,15 +440,9 @@ export default function TwinsTimelineWidget({
             value: totalPendientes,
             color:
               totalPendientes > 0
-                ? "text-amber-500 dark:text-amber-400"
+                ? "text-rose-500 dark:text-rose-400"
                 : "text-stone-400",
             small: false,
-          },
-          {
-            label: "Ubicación",
-            value: ubicacionActual ?? "—",
-            color: "text-stone-700 dark:text-stone-200",
-            small: true,
           },
         ].map((s, i) => (
           <div
@@ -357,7 +450,7 @@ export default function TwinsTimelineWidget({
             className="bg-white dark:bg-[#1c1917] border border-stone-200/60 dark:border-stone-800/50 rounded-[10px] px-2.5 py-2.5 text-center"
           >
             <p
-              className={`font-bold leading-none tabular-nums mt-0.5 ${s.small ? "text-[13px]" : "text-[19px]"} ${s.color}`}
+              className={`text-[19px] font-bold leading-none tabular-nums mt-0.5 ${s.color}`}
             >
               {s.value}
             </p>
@@ -367,6 +460,31 @@ export default function TwinsTimelineWidget({
           </div>
         ))}
       </div>
+
+      {/* Ubicación actual */}
+      {ubicacionActual && (
+        <div className="flex items-center gap-2 px-3.5 py-2.5 bg-white dark:bg-[#1c1917] border border-stone-200/60 dark:border-stone-800/50 rounded-[10px]">
+          <svg
+            width="11"
+            height="11"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            className="text-stone-400 shrink-0"
+          >
+            <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+            <polyline points="9 22 9 12 15 12 15 22" />
+          </svg>
+          <span className="text-[11px] text-stone-400 dark:text-stone-500">
+            Ubicación actual:
+          </span>
+          <span className="text-[11px] font-semibold text-stone-700 dark:text-stone-200">
+            {ubicacionActual}
+          </span>
+        </div>
+      )}
 
       {/* Filtros */}
       <div className="flex gap-1.5 flex-wrap">
@@ -402,6 +520,15 @@ export default function TwinsTimelineWidget({
               const tipo = TIPO_CFG[ev.tipo];
               const isOpen = expanded === ev.id;
 
+              // FIX: borde visual diferenciado por estado de certificación
+              // completa → borde neutro | parcial → ámbar suave | pendiente → ámbar intenso
+              const borderCls =
+                ev.cert === "completa"
+                  ? "border border-stone-200/60 dark:border-stone-800/50"
+                  : ev.cert === "parcial"
+                    ? "border border-l-[3px] border-amber-100 dark:border-amber-900/30 border-l-amber-300 dark:border-l-amber-700"
+                    : "border border-l-[3px] border-amber-200 dark:border-amber-800/40 border-l-amber-400 dark:border-l-amber-600";
+
               return (
                 <div key={ev.id} className="flex gap-3">
                   <div className="shrink-0 z-10 mt-[7px]">
@@ -409,15 +536,10 @@ export default function TwinsTimelineWidget({
                   </div>
 
                   <div
-                    onClick={() => setExpanded(isOpen ? null : ev.id)}
-                    className={`flex-1 min-w-0 rounded-[10px] overflow-hidden cursor-pointer transition-all
-                      bg-white dark:bg-[#1c1917]
-                      ${
-                        ev.cert !== "completa"
-                          ? "border border-l-[3px] border-amber-200 dark:border-amber-800/40 border-l-amber-400 dark:border-l-amber-600"
-                          : "border border-stone-200/60 dark:border-stone-800/50"
-                      }
-                      hover:shadow-sm`}
+                    onClick={() =>
+                      ev.detalle && setExpanded(isOpen ? null : ev.id)
+                    }
+                    className={`flex-1 min-w-0 rounded-[10px] overflow-hidden transition-all bg-white dark:bg-[#1c1917] ${ev.detalle ? "cursor-pointer hover:shadow-sm" : "cursor-default"} ${borderCls}`}
                   >
                     <div className="flex items-start justify-between gap-2 px-3.5 py-2.5">
                       <div className="flex-1 min-w-0">

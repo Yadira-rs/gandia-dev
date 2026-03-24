@@ -4,6 +4,10 @@
  *
  * Auditorías y evidencias con jerarquía visual clara.
  * Sin emojis. Conectado a Supabase via useTwinsData.ts
+ *
+ * FIXES:
+ * - Barra de completitud ahora usa el prop `completitud` real (no conteo de tarjetas)
+ * - onSelect se pasa correctamente al padre
  */
 import { useState } from "react";
 
@@ -20,7 +24,6 @@ export interface Auditoria {
   pills: { label: string; ok: boolean }[];
   hash: string;
   hashOk: boolean;
-  // campo 'icono' ya no se usa — mantenemos por compat con mockData
   icono?: string;
 }
 
@@ -150,6 +153,29 @@ export default function TwinsFeedWidget({
     (a) => a.estado === "incompleto",
   ).length;
 
+  // FIX: empty state cuando no hay auditorías
+  if (auditorias.length === 0) {
+    return (
+      <div className="flex flex-col items-center gap-2 py-10">
+        <svg
+          width="20"
+          height="20"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.5"
+          className="text-stone-300 dark:text-stone-700"
+        >
+          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+          <polyline points="14 2 14 8 20 8" />
+        </svg>
+        <span className="text-[12px] text-stone-400 dark:text-stone-500">
+          Sin auditorías registradas
+        </span>
+      </div>
+    );
+  }
+
   return (
     <div className="flex flex-col gap-4">
       {/* Header */}
@@ -178,37 +204,43 @@ export default function TwinsFeedWidget({
           </span>
         </div>
 
-        {/* Barra segmentada */}
-        <div className="flex gap-0.5 h-2.5 rounded-full overflow-hidden">
-          {auditorias.map((a) => (
-            <div
-              key={a.id}
-              className={`flex-1 rounded-sm transition-all ${
-                a.estado === "aprobado"
-                  ? "bg-amber-400"
-                  : a.estado === "coincide"
-                    ? "bg-[#2FAF8F]"
-                    : "bg-rose-400 opacity-70"
-              }`}
-            />
-          ))}
-          {/* Relleno de la barra general */}
+        {/* FIX: barra usa el prop `completitud` real en lugar de contar tarjetas */}
+        <div className="relative h-2.5 bg-stone-100 dark:bg-stone-800/50 rounded-full overflow-hidden">
           <div
-            className="rounded-sm bg-stone-100 dark:bg-stone-800/50"
-            style={{ flex: Math.max(0, 10 - auditorias.length) }}
+            className={`h-full rounded-full transition-all duration-700 ${
+              completitud >= 90
+                ? "bg-[#2FAF8F]"
+                : completitud >= 70
+                  ? "bg-amber-400"
+                  : "bg-rose-400"
+            }`}
+            style={{ width: `${completitud}%` }}
           />
         </div>
 
+        {/* Leyenda conteo por estado */}
         <div className="flex items-center gap-4 mt-2">
           {[
-            { color: "bg-amber-400", label: "Aprobado" },
-            { color: "bg-[#2FAF8F]", label: "Coincide" },
-            { color: "bg-rose-400", label: "Incompleto" },
+            {
+              color: "bg-amber-400",
+              label: "Aprobado",
+              count: auditorias.filter((a) => a.estado === "aprobado").length,
+            },
+            {
+              color: "bg-[#2FAF8F]",
+              label: "Coincide",
+              count: auditorias.filter((a) => a.estado === "coincide").length,
+            },
+            {
+              color: "bg-rose-400",
+              label: "Incompleto",
+              count: auditorias.filter((a) => a.estado === "incompleto").length,
+            },
           ].map((l) => (
             <div key={l.label} className="flex items-center gap-1.5">
               <span className={`w-2 h-2 rounded-sm ${l.color}`} />
               <span className="text-[10px] text-stone-400 dark:text-stone-500">
-                {l.label}
+                {l.label} ({l.count})
               </span>
             </div>
           ))}
@@ -237,7 +269,6 @@ export default function TwinsFeedWidget({
             >
               {/* Fila principal */}
               <div className="flex items-start gap-3 px-4 py-3.5">
-                {/* Ícono tipo doc */}
                 <div className="w-7 h-7 rounded-[7px] flex items-center justify-center shrink-0 mt-0.5 text-stone-400 dark:text-stone-500">
                   <IcoDoc />
                 </div>
