@@ -5,15 +5,15 @@
 // Ejecutar vía cron en Supabase o trigger manual desde el panel editorial.
 // ─────────────────────────────────────────────────────────────────────────────
 
-import { serve }        from 'https://deno.land/std@0.177.0/http/server.ts'
+import { serve } from 'https://deno.land/std@0.177.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
-const SUPABASE_URL      = Deno.env.get('SUPABASE_URL')      ?? ''
-const SUPABASE_KEY      = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+const SUPABASE_URL = Deno.env.get('SUPABASE_URL') ?? ''
+const SUPABASE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
 const ANTHROPIC_API_KEY = Deno.env.get('ANTHROPIC_API_KEY') ?? ''
 
 const CORS = {
-  'Access-Control-Allow-Origin':  '*',
+  'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
 }
@@ -21,32 +21,32 @@ const CORS = {
 // ─── Tipos ────────────────────────────────────────────────────────────────────
 
 interface FuenteOficial {
-  id:          string
-  nombre:      string
-  tipo:        string
-  rss_url:     string | null
-  dominio:     string
-  trust_base:  number
+  id: string
+  nombre: string
+  tipo: string
+  rss_url: string | null
+  dominio: string
+  trust_base: number
   ultima_sync: string | null
 }
 
 interface RSSItem {
-  titulo:      string
+  titulo: string
   descripcion: string
-  url:         string
-  fecha:       string
+  url: string
+  fecha: string
 }
 
 interface HechoExtraido {
-  afirmacion:     string
-  contexto:       string
-  dominio:        string
-  tema:           string
-  fuente_nombre:  string
-  fuente_url:     string
-  fuente_fecha:   string
+  afirmacion: string
+  contexto: string
+  dominio: string
+  tema: string
+  fuente_nombre: string
+  fuente_url: string
+  fuente_fecha: string
   calidad_fuente: number
-  confianza:      number
+  confianza: number
 }
 
 // ─── Parser RSS básico (sin librerías externas) ───────────────────────────────
@@ -59,17 +59,17 @@ function parseRSS(xml: string): RSSItem[] {
   for (const match of itemMatches) {
     const content = match[1]
 
-    const titulo     = extractTag(content, 'title')
+    const titulo = extractTag(content, 'title')
     const descripcion = extractTag(content, 'description') || extractTag(content, 'summary')
-    const url        = extractTag(content, 'link') || extractTag(content, 'guid')
-    const fecha      = extractTag(content, 'pubDate') || extractTag(content, 'dc:date')
+    const url = extractTag(content, 'link') || extractTag(content, 'guid')
+    const fecha = extractTag(content, 'pubDate') || extractTag(content, 'dc:date')
 
     if (titulo && url) {
       items.push({
-        titulo:      cleanText(titulo),
+        titulo: cleanText(titulo),
         descripcion: cleanText(descripcion ?? ''),
-        url:         url.trim(),
-        fecha:       fecha ?? new Date().toISOString(),
+        url: url.trim(),
+        fecha: fecha ?? new Date().toISOString(),
       })
     }
   }
@@ -98,8 +98,8 @@ function cleanText(text: string): string {
 // Claude analiza el contenido del RSS y extrae afirmaciones verificables
 
 async function extraerHechos(
-  items:   RSSItem[],
-  fuente:  FuenteOficial,
+  items: RSSItem[],
+  fuente: FuenteOficial,
 ): Promise<HechoExtraido[]> {
   if (items.length === 0) return []
 
@@ -138,12 +138,12 @@ Responde SOLO en JSON válido, sin markdown:
   const res = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
     headers: {
-      'Content-Type':      'application/json',
-      'x-api-key':         ANTHROPIC_API_KEY,
+      'Content-Type': 'application/json',
+      'x-api-key': ANTHROPIC_API_KEY,
       'anthropic-version': '2023-06-01',
     },
     body: JSON.stringify({
-      model:      'claude-sonnet-4-20250514',
+      model: 'claude-sonnet-4-20250514',
       max_tokens: 2000,
       system,
       messages: [{ role: 'user', content: `Contenido a analizar de ${fuente.nombre}:\n\n${contenido}` }],
@@ -171,7 +171,7 @@ Responde SOLO en JSON válido, sin markdown:
 
 async function scrapeFuente(fuente: FuenteOficial, supabase: ReturnType<typeof createClient>) {
   let itemsHallados = 0
-  let itemsNuevos   = 0
+  let itemsNuevos = 0
   let error: string | undefined
 
   try {
@@ -179,8 +179,8 @@ async function scrapeFuente(fuente: FuenteOficial, supabase: ReturnType<typeof c
       // Fetch RSS — legal, son feeds públicos de gobierno
       const rssRes = await fetch(fuente.rss_url, {
         headers: {
-          'User-Agent':  'HandeiaBot/1.0 (wiki.handeia.mx; contacto@handeia.mx)',
-          'Accept':      'application/rss+xml, application/xml, text/xml',
+          'User-Agent': 'HandeiaBot/1.0 (wiki.handeia.mx; contacto@handeia.mx)',
+          'Accept': 'application/rss+xml, application/xml, text/xml',
         },
       })
 
@@ -189,7 +189,7 @@ async function scrapeFuente(fuente: FuenteOficial, supabase: ReturnType<typeof c
       }
 
       const rssText = await rssRes.text()
-      const items   = parseRSS(rssText)
+      const items = parseRSS(rssText)
       itemsHallados = items.length
 
       if (items.length > 0) {
@@ -208,19 +208,19 @@ async function scrapeFuente(fuente: FuenteOficial, supabase: ReturnType<typeof c
             const { error: insertError } = await supabase
               .from('wiki_hechos')
               .insert({
-                afirmacion:       hecho.afirmacion,
-                contexto:         hecho.contexto,
-                dominio:          hecho.dominio,
-                tema:             hecho.tema,
-                jurisdiccion:     'MX',
-                fuente_nombre:    hecho.fuente_nombre,
-                fuente_url:       hecho.fuente_url,
-                fuente_fecha:     hecho.fuente_fecha,
+                afirmacion: hecho.afirmacion,
+                contexto: hecho.contexto,
+                dominio: hecho.dominio,
+                tema: hecho.tema,
+                jurisdiccion: 'MX',
+                fuente_nombre: hecho.fuente_nombre,
+                fuente_url: hecho.fuente_url,
+                fuente_fecha: hecho.fuente_fecha,
                 fuente_oficial_id: fuente.id,
-                calidad_fuente:   hecho.calidad_fuente,
-                hti:              hecho.confianza,
-                estado:           'en_revision', // siempre empieza en revisión
-                origen:           'scraper',
+                calidad_fuente: hecho.calidad_fuente,
+                hti: hecho.confianza,
+                estado: 'en_revision', // siempre empieza en revisión
+                origen: 'scraper',
               })
 
             if (!insertError) itemsNuevos++
@@ -241,9 +241,9 @@ async function scrapeFuente(fuente: FuenteOficial, supabase: ReturnType<typeof c
 
   // Log del scrape
   await supabase.from('wiki_scrape_log').insert({
-    fuente_id:     fuente.id,
+    fuente_id: fuente.id,
     items_hallados: itemsHallados,
-    items_nuevos:   itemsNuevos,
+    items_nuevos: itemsNuevos,
     error,
   })
 
@@ -288,7 +288,7 @@ serve(async (req: Request) => {
     )
 
     const resumen = resultados.map((r, i) => ({
-      fuente:   (fuentes[i] as FuenteOficial).nombre,
+      fuente: (fuentes[i] as FuenteOficial).nombre,
       resultado: r.status === 'fulfilled' ? r.value : { error: 'Promise rejected' },
     }))
 

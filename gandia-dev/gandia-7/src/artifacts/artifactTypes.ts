@@ -12,7 +12,7 @@
 // ─── DOMINIOS ─────────────────────────────────────────────────────────────────
 
 export type ArtifactDomain =
-  | 'passport'       // Ficha Ganadera
+  | 'fichas'         // Ficha Ganadera
   | 'twins'          // Gemelo digital
   | 'monitoring'     // Monitoreo y sensores
   | 'certification'  // Certificaciones
@@ -29,11 +29,11 @@ export type ArtifactDomain =
 
 export type WidgetArtifactId =
   // Ficha Ganadera
-  | 'passport:card'
-  | 'passport:perfiles'
-  | 'passport:documentos'
-  | 'passport:biometria'
-  | 'passport:nuevo'
+  | 'fichas:card'
+  | 'fichas:perfiles'
+  | 'fichas:documentos'
+  | 'fichas:biometria'
+  | 'fichas:nuevo'
   // Gemelo digital
   | 'twins:timeline'
   | 'twins:feed'
@@ -113,7 +113,7 @@ export interface WidgetArtifact {
 
 export type ModuleArtifactId =
   // Ficha Ganadera
-  | 'passport:full'
+  | 'fichas:full'
   // Gemelo digital
   | 'twins:historial'
   | 'twins:alimentacion'
@@ -185,34 +185,34 @@ export function detectArtifactIntent(text: string): WidgetArtifact | null {
   const fichaHatoKw = ['hato', 'lista de animales', 'mis animales', 'ver animales',
     'cuántos animales', 'bovinos registrados', 'inventario animales', 'todos mis bovinos']
   if (fichaHatoKw.some(k => lower.includes(k))) {
-    return { kind: 'widget', id: 'passport:perfiles', domain: 'passport' }
+    return { kind: 'widget', id: 'fichas:perfiles', domain: 'fichas' }
   }
 
   // ── Ficha Ganadera · nueva ──
   const fichaNuevaKw = ['registrar animal', 'nueva ficha', 'crear ficha',
     'dar de alta animal', 'nuevo bovino', 'nuevo animal', 'registrar bovino', 'alta de animal']
   if (fichaNuevaKw.some(k => lower.includes(k))) {
-    return { kind: 'widget', id: 'passport:nuevo', domain: 'passport' }
+    return { kind: 'widget', id: 'fichas:nuevo', domain: 'fichas' }
   }
 
   // ── Ficha Ganadera · huella de morro ──
   const fichaHuellaKw = ['huella de morro', 'biometría de', 'noseprint', 'huella bovina', 'verificar identidad biométrica']
   if (fichaHuellaKw.some(k => lower.includes(k))) {
-    return { kind: 'widget', id: 'passport:biometria', domain: 'passport' }
+    return { kind: 'widget', id: 'fichas:biometria', domain: 'fichas' }
   }
 
   // ── Ficha Ganadera · documentos ──
   const fichaDocKw = ['documentos del animal', 'papeles del animal', 'certificado de origen',
     'acta de herrado', 'constancia sanitaria', 'documentos de identificación']
   if (fichaDocKw.some(k => lower.includes(k))) {
-    return { kind: 'widget', id: 'passport:documentos', domain: 'passport' }
+    return { kind: 'widget', id: 'fichas:documentos', domain: 'fichas' }
   }
 
   // ── Ficha Ganadera · card ──
   const passportKw = ['pasaporte', 'passport', 'ficha ganadera', 'ficha del animal', 'ejm', 'siniiga',
     'arete azul', 'trazabilidad', 'expediente', 'bovino', 'exportar animal']
   if (passportKw.some(k => lower.includes(k))) {
-    return { kind: 'widget', id: 'passport:card', domain: 'passport' }
+    return { kind: 'widget', id: 'fichas:card', domain: 'fichas' }
   }
 
   // ── Gemelo / timeline ──
@@ -263,11 +263,11 @@ export function detectArtifactIntent(text: string): WidgetArtifact | null {
 export function widgetToModule(dormantId: WidgetArtifactId): ModuleArtifact {
   const map: Record<WidgetArtifactId, ModuleArtifact> = {
     // Ficha Ganadera
-    'passport:card': { kind: 'module', id: 'passport:full', domain: 'passport', dormants: ['passport:card', 'passport:perfiles', 'passport:documentos', 'passport:biometria'] },
-    'passport:perfiles': { kind: 'module', id: 'passport:full', domain: 'passport', dormants: ['passport:perfiles', 'passport:card', 'passport:nuevo'] },
-    'passport:documentos': { kind: 'module', id: 'passport:full', domain: 'passport', dormants: ['passport:card', 'passport:documentos'] },
-    'passport:biometria': { kind: 'module', id: 'passport:full', domain: 'passport', dormants: ['passport:card', 'passport:biometria'] },
-    'passport:nuevo': { kind: 'module', id: 'passport:full', domain: 'passport', dormants: ['passport:nuevo'] },
+    'fichas:card': { kind: 'module', id: 'fichas:full', domain: 'fichas', dormants: ['fichas:card', 'fichas:perfiles', 'fichas:documentos', 'fichas:biometria'] },
+    'fichas:perfiles': { kind: 'module', id: 'fichas:full', domain: 'fichas', dormants: ['fichas:perfiles', 'fichas:card', 'fichas:nuevo'] },
+    'fichas:documentos': { kind: 'module', id: 'fichas:full', domain: 'fichas', dormants: ['fichas:card', 'fichas:documentos'] },
+    'fichas:biometria': { kind: 'module', id: 'fichas:full', domain: 'fichas', dormants: ['fichas:card', 'fichas:biometria'] },
+    'fichas:nuevo': { kind: 'module', id: 'fichas:full', domain: 'fichas', dormants: ['fichas:nuevo'] },
     // Gemelo digital
     'twins:timeline': { kind: 'module', id: 'twins:historial', domain: 'twins', dormants: ['twins:timeline', 'twins:feed'] },
     'twins:feed': { kind: 'module', id: 'twins:historial', domain: 'twins', dormants: ['twins:timeline', 'twins:feed'] },
@@ -394,7 +394,7 @@ export interface VinculacionHistorial {
 
 export function domainToAnima(domain: ArtifactDomain): AnimaArtifact {
   const map: Record<ArtifactDomain, AnimaArtifact> = {
-    passport: { kind: 'anima', domain: 'passport', awakes: ['passport:full'] },
+    fichas: { kind: 'anima', domain: 'fichas', awakes: ['fichas:full'] },
     twins: { kind: 'anima', domain: 'twins', awakes: ['twins:historial', 'twins:alimentacion'] },
     monitoring: { kind: 'anima', domain: 'monitoring', awakes: ['monitoring:dashboard'] },
     certification: { kind: 'anima', domain: 'certification', awakes: ['certification:detail', 'certification:expediente'] },
@@ -408,4 +408,28 @@ export function domainToAnima(domain: ArtifactDomain): AnimaArtifact {
     marketplace: { kind: 'anima', domain: 'marketplace', awakes: ['marketplace:panel'] },
   }
   return map[domain]
+}
+
+// ─── RBAC MATRIX ─────────────────────────────────────────────────────────────
+
+export type ArtifactAccessType = 'visual' | 'chat' | 'none'
+
+export const RBAC_MATRIX: Record<ArtifactDomain, Record<string, ArtifactAccessType>> = {
+  fichas:        { producer: 'visual', union: 'chat', mvz: 'chat', exporter: 'chat', auditor: 'chat' },
+  twins:         { producer: 'visual', union: 'chat', mvz: 'chat', exporter: 'chat', auditor: 'chat' },
+  monitoring:    { producer: 'visual', union: 'chat', mvz: 'chat', exporter: 'chat', auditor: 'chat' },
+  tramites:      { producer: 'visual', union: 'visual', mvz: 'none', exporter: 'none', auditor: 'none' },
+  certification: { producer: 'visual', union: 'chat', mvz: 'chat', exporter: 'chat', auditor: 'chat' },
+  verification:  { producer: 'visual', union: 'visual', mvz: 'visual', exporter: 'visual', auditor: 'visual' },
+  sanidad:       { producer: 'visual', union: 'chat', mvz: 'visual', exporter: 'chat', auditor: 'chat' },
+  biometria:     { producer: 'visual', union: 'chat', mvz: 'visual', exporter: 'chat', auditor: 'chat' }, 
+  exportacion:   { producer: 'visual', union: 'none', mvz: 'none', exporter: 'visual', auditor: 'none' },
+  vinculacion:   { producer: 'visual', union: 'visual', mvz: 'visual', exporter: 'visual', auditor: 'visual' },
+  documentos:    { producer: 'visual', union: 'visual', mvz: 'none', exporter: 'none', auditor: 'none' },
+  marketplace:   { producer: 'visual', union: 'none', mvz: 'none', exporter: 'none', auditor: 'none' },
+}
+
+export function canViewArtifact(domain: ArtifactDomain, role: string): ArtifactAccessType {
+  const access = RBAC_MATRIX[domain]?.[role]
+  return access ?? 'none'
 }

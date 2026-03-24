@@ -1,10 +1,11 @@
-﻿import { useState, useRef, useEffect, useCallback } from 'react'
+import { useState, useRef, useEffect, useCallback } from 'react'
 import { Outlet, useNavigate, useLocation } from 'react-router-dom'
 import NotificacionesPanel from '../pages/Notificaciones/Notificaciones'
 import { supabase } from '../lib/supabaseClient'
 import { useNotifications } from '../context/NotificationsContext'
 import { useUser } from '../context/UserContext'
 import { useVoiceNav, type VoiceChatCmd } from '../hooks/useVoiceNav'
+import { canViewArtifact } from '../artifacts/artifactTypes'
 
 // ─── Derived user display from UserContext ───────────────────────────────────
 const ROLE_NAMES: Record<string, string> = {
@@ -23,32 +24,34 @@ const TICKER_FALLBACK = [
 ]
 
 // ─── Nav groups ───────────────────────────────────────────────────────────────
-const NAV_GROUPS = [
-  {
-    label: 'Principal',
-    items: [
-      { label: 'Chat',       path: '/chat',                        icon: 'chat'         },
-      { label: 'Radar',     path: '/noticias',                    icon: 'radar'        },
-      { label: 'Fichas',     path: '/chat?open=passport',          icon: 'file'         },
-      { label: 'Gemelos',    path: '/chat?open=twins',             icon: 'copy'         },
-    ],
-  },
-  {
-    label: 'Operaciones',
-    items: [
-      { label: 'Monitoreo',     path: '/chat?open=monitoring',     icon: 'eye'          },
-      { label: 'Certificación', path: '/chat?open=certification',  icon: 'check-circle' },
-      { label: 'Trámites',      path: '/tramites',                 icon: 'tramites'     },
-      { label: 'Verificación',  path: '/chat?open=verification',   icon: 'verified'     },
-    ],
-  },
-  {
-    label: 'Registro',
-    items: [
-      { label: 'Historial', path: '/historial', icon: 'clock' },
-    ],
-  },
-]
+function getNavGroups(role: string) {
+  return [
+    {
+      label: 'Principal',
+      items: [
+        { label: 'Chat',       path: '/chat',                        icon: 'chat' },
+        { label: 'Radar',      path: '/noticias',                    icon: 'radar' },
+        canViewArtifact('fichas', role) === 'visual' ? { label: 'Fichas',     path: '/chat?open=fichas',          icon: 'file' } : null,
+        canViewArtifact('twins', role) === 'visual' ? { label: 'Gemelos',    path: '/chat?open=twins',             icon: 'copy' } : null,
+      ].filter(Boolean),
+    },
+    {
+      label: 'Operaciones',
+      items: [
+        canViewArtifact('monitoring', role) === 'visual' ? { label: 'Monitoreo',     path: '/chat?open=monitoring',     icon: 'eye' } : null,
+        canViewArtifact('certification', role) === 'visual' ? { label: 'Certificación', path: '/chat?open=certification',  icon: 'check-circle' } : null,
+        canViewArtifact('tramites', role) === 'visual' ? { label: 'Trámites',      path: role === 'producer' ? '/tramites' : '/tramites/panel', icon: 'tramites' } : null,
+        canViewArtifact('verification', role) === 'visual' ? { label: 'Verificación',  path: '/chat?open=verification',   icon: 'verified' } : null,
+      ].filter(Boolean),
+    },
+    {
+      label: 'Registro',
+      items: [
+        { label: 'Historial', path: '/historial', icon: 'clock' },
+      ],
+    },
+  ].filter(g => g.items.length > 0) as { label: string, items: { label: string, path: string, icon: string }[] }[]
+}
 
 // ─── Ícono por categoría ──────────────────────────────────────────────────────
 function TickerIcon({ categoria }: { categoria: string }) {
@@ -539,7 +542,7 @@ function AppLayout() {
 
           {/* Nav */}
           <nav className="flex-1 overflow-y-auto overflow-x-hidden py-2 px-2" aria-label="Menú">
-            {NAV_GROUPS.map((g) => (
+            {getNavGroups(roleCode).map((g) => (
               <NavGroup
                 key={g.label}
                 label={g.label}

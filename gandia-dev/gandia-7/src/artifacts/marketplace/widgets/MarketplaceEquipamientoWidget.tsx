@@ -38,8 +38,6 @@ export default function MarketplaceEquipamientoWidget() {
   const [notas, setNotas] = useState('')
   const [fechaAdq, setFechaAdq] = useState('')
 
-  // Todos los productos de todos los partners (para el select)
-  const allProducts: ProductDB[] = partners.flatMap((p: PartnerConProductos) => p.productos)
 
   const handleGuardar = async () => {
     if (!ranchoId || !selectedProductId) return

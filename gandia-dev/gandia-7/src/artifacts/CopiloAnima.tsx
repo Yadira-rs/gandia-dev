@@ -57,7 +57,7 @@ const IcoReport = () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColo
 // ─── ACCIONES SUGERIDAS POR DOMINIO ──────────────────────────────────────────
 
 const SUGGESTED_ACTIONS: Record<ArtifactDomain, CopiloAction[]> = {
-  passport: [{ id: 'create_passport', label: 'Crear pasaporte', icon: <IcoPlus /> }, { id: 'filter_eligible', label: 'Solo elegibles', icon: <IcoStar /> }, { id: 'export_list', label: 'Exportar lista', icon: <IcoDownload /> }],
+  fichas: [{ id: 'create_passport', label: 'Crear pasaporte', icon: <IcoPlus /> }, { id: 'filter_eligible', label: 'Solo elegibles', icon: <IcoStar /> }, { id: 'export_list', label: 'Exportar lista', icon: <IcoDownload /> }],
   twins: [{ id: 'view_timeline', label: 'Ver historial', icon: <IcoClock /> }, { id: 'add_event', label: 'Registrar evento', icon: <IcoPlus /> }, { id: 'view_feeding', label: 'Ver alimentación', icon: <IcoLeaf /> }],
   monitoring: [{ id: 'view_alerts', label: 'Ver alertas', icon: <IcoAlert /> }, { id: 'refresh_sensors', label: 'Actualizar', icon: <IcoRefresh /> }],
   certification: [{ id: 'new_cert', label: 'Nueva cert.', icon: <IcoBadge /> }, { id: 'expiring', label: 'Por vencer', icon: <IcoTimer /> }],
@@ -74,7 +74,7 @@ const SUGGESTED_ACTIONS: Record<ArtifactDomain, CopiloAction[]> = {
 // ─── fix #5 — hint contextual por dominio ────────────────────────────────────
 
 const DOMAIN_HINT: Record<ArtifactDomain, string> = {
-  passport: 'Gestiona fichas y expedientes ganaderos',
+  fichas: 'Gestiona fichas y expedientes ganaderos',
   twins: 'Consulta eventos, dieta e historial del animal',
   monitoring: 'Revisa alertas y estado de sensores en campo',
   certification: 'Administra certificaciones y vencimientos',
@@ -89,7 +89,7 @@ const DOMAIN_HINT: Record<ArtifactDomain, string> = {
 }
 
 const DOMAIN_LABEL: Record<ArtifactDomain, string> = {
-  passport: 'Ficha',
+  fichas: 'Ficha',
   twins: 'Gemelo',
   monitoring: 'Monitor',
   certification: 'Certif.',

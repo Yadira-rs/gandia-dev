@@ -4,7 +4,7 @@
  * GANDIA â€” Edge Function: analizar-noticia
  * VersiÃ³n: 1.0.0
  *
- * Recibe una noticia cruda (del pipeline n8n) y:
+ * Recibe una noticia cruda (del pipeline ) y:
  *  1. Valida y deduplica por content_hash
  *  2. Llama a Claude para anÃ¡lisis completo
  *  3. Inserta / actualiza la noticia enriquecida en Supabase
@@ -274,28 +274,28 @@ Deno.serve(async (req: Request) => {
 
     // â”€â”€ 5. Insertar en Supabase â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     const noticiaRow = {
-      titulo:           titulo.trim(),
-      titulo_original:  titulo.trim(),
-      cuerpo:           cuerpo.trim(),
-      fuente:           fuente.trim(),
+      titulo: titulo.trim(),
+      titulo_original: titulo.trim(),
+      cuerpo: cuerpo.trim(),
+      fuente: fuente.trim(),
       fuente_origen,
-      url_original:     body.url_original ?? null,
-      autor:            body.autor ?? null,
-      publicada_en:     body.publicada_en ?? new Date().toISOString(),
-      content_hash:     contentHash,
-      procesada_ia:     true,
+      url_original: body.url_original ?? null,
+      autor: body.autor ?? null,
+      publicada_en: body.publicada_en ?? new Date().toISOString(),
+      content_hash: contentHash,
+      procesada_ia: true,
 
       // Campos del anÃ¡lisis IA
-      categoria:        analisis.categoria,
-      urgente:          analisis.urgente,
-      urgencia_nivel:   analisis.urgencia_nivel,
-      resumen_general:  analisis.resumen_general,
-      resumenes_ia:     analisis.resumenes_ia,
-      relevancia:       analisis.relevancia,
-      impacto_ia:       analisis.impacto_ia,
-      acciones_ia:      analisis.acciones_ia,
-      lectura_minutos:  analisis.lectura_minutos,
-      activa:           true,
+      categoria: analisis.categoria,
+      urgente: analisis.urgente,
+      urgencia_nivel: analisis.urgencia_nivel,
+      resumen_general: analisis.resumen_general,
+      resumenes_ia: analisis.resumenes_ia,
+      relevancia: analisis.relevancia,
+      impacto_ia: analisis.impacto_ia,
+      acciones_ia: analisis.acciones_ia,
+      lectura_minutos: analisis.lectura_minutos,
+      activa: true,
     }
 
     const { data: insertada, error: insertError } = await supabase
