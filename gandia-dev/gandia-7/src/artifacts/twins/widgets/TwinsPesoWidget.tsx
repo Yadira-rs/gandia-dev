@@ -4,12 +4,16 @@
  *
  * Curva de crecimiento: peso real vs curva objetivo.
  * Sin emojis. Conectado a Supabase via useTwinsData.ts
+ *
+ * FIXES:
+ * - Guard explícito para rango = 0 en getXY (ya estaba, confirmado)
+ * - Empty state con mensaje si registros = [] (antes retornaba null silencioso)
  */
 
 export interface RegistroPeso {
-  fecha: string; // 'DD MMM'
-  peso: number; // kg real
-  objetivo?: number; // kg objetivo esperado para esa fecha
+  fecha: string;
+  peso: number;
+  objetivo?: number;
 }
 
 interface Props {
@@ -37,10 +41,9 @@ function getXY(
   max: number,
 ): [number, number] {
   const x = PAD_L + (i / Math.max(n - 1, 1)) * DRAW_W;
-  const rango = max - min
-  const y = rango > 0
-    ? PAD_T + (1 - (v - min) / rango) * DRAW_H
-    : PAD_T + DRAW_H / 2;
+  const rango = max - min;
+  const y =
+    rango > 0 ? PAD_T + (1 - (v - min) / rango) * DRAW_H : PAD_T + DRAW_H / 2;
   return [x, y];
 }
 
@@ -64,7 +67,27 @@ export default function TwinsPesoWidget({
   pesoMeta,
   gananciaDiaria,
 }: Props) {
-  if (!registros.length) return null;
+  // FIX: empty state explícito en lugar de null silencioso
+  if (!registros.length) {
+    return (
+      <div className="bg-white dark:bg-[#1c1917] border border-stone-200/60 dark:border-stone-800/50 rounded-[12px] px-4 py-8 flex flex-col items-center gap-2">
+        <svg
+          width="20"
+          height="20"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.5"
+          className="text-stone-300 dark:text-stone-700"
+        >
+          <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
+        </svg>
+        <span className="text-[12px] text-stone-400 dark:text-stone-500">
+          Sin registros de peso aún
+        </span>
+      </div>
+    );
+  }
 
   const allPesos = registros.map((r) => r.peso);
   const allObjs = registros
@@ -82,18 +105,14 @@ export default function TwinsPesoWidget({
   const puntosReal = registros.map(
     (r, i) => getXY(i, n, r.peso, vMin, vMax) as [number, number],
   );
-  const puntosObj = registros
-    .filter((r) => r.objetivo != null)
-    .map(
-      (r, i) =>
-        getXY(
-          i,
-          registros.filter((x) => x.objetivo != null).length || n,
-          r.objetivo!,
-          vMin,
-          vMax,
-        ) as [number, number],
-    );
+  const registrosConObj = registros.filter((r) => r.objetivo != null);
+  const puntosObj = registrosConObj.map(
+    (r, i) =>
+      getXY(i, registrosConObj.length || n, r.objetivo!, vMin, vMax) as [
+        number,
+        number,
+      ],
+  );
 
   const gridVals = [
     Math.round(vMin + (vMax - vMin) * 0.25),
@@ -101,13 +120,9 @@ export default function TwinsPesoWidget({
     Math.round(vMin + (vMax - vMin) * 0.75),
   ];
 
-  // Punto más reciente
   const ultimo = puntosReal[puntosReal.length - 1];
-  const penultimo =
-    puntosReal.length > 1 ? puntosReal[puntosReal.length - 2] : null;
-  const tendencia = penultimo
-    ? registros[n - 1].peso - registros[n - 2].peso
-    : 0;
+  const tendencia =
+    puntosReal.length > 1 ? registros[n - 1].peso - registros[n - 2].peso : 0;
 
   return (
     <div className="bg-white dark:bg-[#1c1917] border border-stone-200/60 dark:border-stone-800/50 rounded-[12px] overflow-hidden">

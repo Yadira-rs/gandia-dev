@@ -4,8 +4,15 @@
  * ARCHIVO → src/artifacts/twins/GemelosAnima.tsx
  *
  * ✅ Conectado a Supabase — sin mock data
+ *
+ * FIXES v4:
+ * - onSelect cambia a tab "perfil" automáticamente al elegir animal
+ * - TABS declarado fuera del componente (no se recrea en cada render)
+ * - auditorias.filter sin tipo explícito redundante
+ * - Timeline muestra widget aunque eventos = [] (para poder agregar el primero)
+ * - pesoNacimiento pasado a useTwinsAlimentacion
  */
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import CopiloAnima from "../CopiloAnima";
 
 import TwinsTimelineWidget from "./widgets/TwinsTimelineWidget";
@@ -25,10 +32,7 @@ import {
   useTwinsFeed,
 } from "../../hooks/useTwinsData";
 
-import {
-  useRanchoId,
-  getAuthUserId,
-} from "../../hooks/useAnimales";
+import { useRanchoId, getAuthUserId } from "../../hooks/useAnimales";
 
 // ─── TIPOS ────────────────────────────────────────────────────────────────────
 
@@ -38,6 +42,14 @@ interface Props {
   onClose: () => void;
   onEscalate: () => void;
 }
+
+// FIX: fuera del componente — no se recrea en cada render
+const TABS: { key: Tab; label: string; requiresAnimal: boolean }[] = [
+  { key: "perfil", label: "Perfil", requiresAnimal: false },
+  { key: "timeline", label: "Timeline", requiresAnimal: true },
+  { key: "alimentacion", label: "Alimentación", requiresAnimal: true },
+  { key: "auditorias", label: "Auditorías", requiresAnimal: true },
+];
 
 // ─── HELPERS ─────────────────────────────────────────────────────────────────
 
@@ -75,6 +87,43 @@ function EmptyState({ mensaje }: { mensaje: string }) {
   );
 }
 
+function ErrorState({
+  mensaje,
+  onRetry,
+}: {
+  mensaje: string;
+  onRetry?: () => void;
+}) {
+  return (
+    <div className="flex flex-col items-center gap-3 py-10">
+      <svg
+        width="20"
+        height="20"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        className="text-rose-400 dark:text-rose-500"
+      >
+        <circle cx="12" cy="12" r="10" />
+        <line x1="12" y1="8" x2="12" y2="13" />
+        <circle cx="12" cy="17" r="0.5" fill="currentColor" />
+      </svg>
+      <span className="text-[12px] text-stone-500 dark:text-stone-400 text-center max-w-[240px]">
+        {mensaje}
+      </span>
+      {onRetry && (
+        <button
+          onClick={onRetry}
+          className="text-[11px] text-[#2FAF8F] border border-[#2FAF8F]/40 px-3 py-1 rounded-lg bg-transparent cursor-pointer hover:bg-[#2FAF8F]/08 transition-colors"
+        >
+          Reintentar
+        </button>
+      )}
+    </div>
+  );
+}
+
 function IcoCopy() {
   return (
     <svg
@@ -103,42 +152,55 @@ export default function GemelosAnima({ onClose, onEscalate }: Props) {
   );
   const [userId, setUserId] = useState<string | null>(null);
 
-  // 1. userId de la sesión activa
   useEffect(() => {
     getAuthUserId().then(setUserId);
   }, []);
 
-  // 2. ranchoId del usuario
   const { ranchoId } = useRanchoId(userId);
+  const {
+    animales,
+    loading: loadingAnimales,
+    error: errorAnimales,
+  } = useTwinsAnimales(ranchoId);
 
-  // 3. Lista de animales
-  const { animales, loading: loadingAnimales } = useTwinsAnimales(ranchoId);
-
-  // 4. Siniiga del animal seleccionado (todos los hooks twins usan siniiga)
   const animalSiniiga = selectedAnimal?.perfil.arete ?? null;
 
-  // 5. Datos por widget
-  // NOTA: twins_pesos y twins_alimentacion usan siniiga como animal_id (no UUID)
   const { registros, loading: loadingPesos } = useTwinsPesos(animalSiniiga);
-  const { eventos, loading: loadingTimeline } = useTwinsTimeline(animalSiniiga);
-  const { datos, loading: loadingAlim } = useTwinsAlimentacion(
+  const {
+    eventos,
+    loading: loadingTimeline,
+    refetch: refetchTimeline,
+  } = useTwinsTimeline(animalSiniiga);
+  const {
+    datos,
+    loading: loadingAlim,
+    refetch: refetchAlim,
+  } = useTwinsAlimentacion(
     animalSiniiga,
     selectedAnimal?.perfil.pesoActual,
     selectedAnimal?.perfil.pesoMeta,
     selectedAnimal?.perfil.gananciaDiaria,
+    selectedAnimal?.perfil.pesoNacimiento, // FIX: ahora se pasa
   );
   const { auditorias, completitud } = useTwinsFeed(animalSiniiga);
 
+  // FIX: tipo limpio — Auditoria ya está tipado correctamente desde el hook
   const pendientesAudit = auditorias.filter(
-    (a: { estado: string }) => a.estado === "incompleto",
+    (a) => a.estado === "incompleto",
   ).length;
 
-  const TABS: { key: Tab; label: string; alerta?: boolean }[] = [
-    { key: "perfil", label: "Perfil" },
-    { key: "timeline", label: "Timeline" },
-    { key: "alimentacion", label: "Alimentación" },
-    { key: "auditorias", label: "Auditorías", alerta: pendientesAudit > 0 },
-  ];
+  const handleRefreshTimeline = useCallback(() => {
+    refetchTimeline?.();
+  }, [refetchTimeline]);
+  const handleRefreshAlim = useCallback(() => {
+    refetchAlim?.();
+  }, [refetchAlim]);
+
+  // FIX: siempre navega a "perfil" al seleccionar un animal
+  const handleSelectAnimal = useCallback((item: AnimalListItem) => {
+    setSelectedAnimal(item);
+    setActiveTab("perfil");
+  }, []);
 
   return (
     <div className="fixed inset-0 flex flex-col z-50 bg-stone-50 dark:bg-[#0e0d0c]">
@@ -175,25 +237,34 @@ export default function GemelosAnima({ onClose, onEscalate }: Props) {
         {/* Tabs centrados */}
         <div className="hidden md:flex absolute left-1/2 -translate-x-1/2 gap-0.5 bg-stone-100 dark:bg-[#141210] border border-stone-200/70 dark:border-stone-800/60 rounded-[12px] p-[3px]">
           {TABS.map((t) => {
-            const disabled = t.key !== "perfil" && !selectedAnimal;
+            const disabled = t.requiresAnimal && !selectedAnimal;
+            const isAlerta =
+              t.key === "auditorias" && pendientesAudit > 0 && !!selectedAnimal;
             return (
-              <button
-                key={t.key}
-                onClick={() => !disabled && setActiveTab(t.key)}
-                className={`relative flex items-center gap-1.5 px-3.5 py-1.5 rounded-[9px] border-0 text-[12px] transition-all
-                  ${
-                    disabled
-                      ? "text-stone-300 dark:text-stone-700 cursor-not-allowed bg-transparent"
-                      : activeTab === t.key
-                        ? "bg-white dark:bg-[#1c1917] text-stone-700 dark:text-stone-200 font-semibold shadow-sm cursor-pointer"
-                        : "bg-transparent text-stone-400 dark:text-stone-500 font-normal hover:text-stone-600 dark:hover:text-stone-300 cursor-pointer"
-                  }`}
-              >
-                {t.label}
-                {t.alerta && !disabled && (
-                  <span className="absolute -top-[3px] -right-[3px] w-[7px] h-[7px] rounded-full bg-amber-400 border-[1.5px] border-white dark:border-[#141210]" />
+              <div key={t.key} className="relative group">
+                <button
+                  onClick={() => !disabled && setActiveTab(t.key)}
+                  className={`relative flex items-center gap-1.5 px-3.5 py-1.5 rounded-[9px] border-0 text-[12px] transition-all
+                    ${
+                      disabled
+                        ? "text-stone-300 dark:text-stone-700 cursor-not-allowed bg-transparent"
+                        : activeTab === t.key
+                          ? "bg-white dark:bg-[#1c1917] text-stone-700 dark:text-stone-200 font-semibold shadow-sm cursor-pointer"
+                          : "bg-transparent text-stone-400 dark:text-stone-500 font-normal hover:text-stone-600 dark:hover:text-stone-300 cursor-pointer"
+                    }`}
+                >
+                  {t.label}
+                  {isAlerta && (
+                    <span className="absolute -top-[3px] -right-[3px] w-[7px] h-[7px] rounded-full bg-amber-400 border-[1.5px] border-white dark:border-[#141210]" />
+                  )}
+                </button>
+                {disabled && (
+                  <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-stone-800 dark:bg-stone-100 text-white dark:text-stone-900 text-[10px] rounded-[6px] whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10">
+                    Selecciona un animal
+                    <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-stone-800 dark:border-t-stone-100" />
+                  </div>
                 )}
-              </button>
+              </div>
             );
           })}
         </div>
@@ -245,6 +316,11 @@ export default function GemelosAnima({ onClose, onEscalate }: Props) {
           {activeTab === "perfil" &&
             (loadingAnimales ? (
               <LoadingState mensaje="Cargando animales..." />
+            ) : errorAnimales ? (
+              <ErrorState
+                mensaje="No se pudieron cargar los animales. Verifica tu conexión."
+                onRetry={() => window.location.reload()}
+              />
             ) : selectedAnimal ? (
               <div className="flex flex-col gap-4">
                 <button
@@ -278,56 +354,95 @@ export default function GemelosAnima({ onClose, onEscalate }: Props) {
                 )}
               </div>
             ) : (
+              // FIX: handleSelectAnimal siempre lleva a tab "perfil"
               <TwinsPerfilesWidget
                 animales={animales}
                 selected={selectedAnimal}
-                onSelect={setSelectedAnimal}
+                onSelect={handleSelectAnimal}
               />
             ))}
 
           {/* ── TIMELINE ── */}
           {activeTab === "timeline" &&
-            (loadingTimeline ? (
+            (!animalSiniiga ? (
+              <EmptyState mensaje="Selecciona un animal primero" />
+            ) : loadingTimeline ? (
               <LoadingState mensaje="Cargando historial..." />
-            ) : eventos.length > 0 ? (
+            ) : (
+              // FIX: widget siempre visible con siniiga — aunque eventos = []
+              // el widget maneja internamente el estado vacío con botón de registro
               <TwinsTimelineWidget
                 eventos={eventos}
                 ubicacionActual={selectedAnimal?.perfil.corral ?? "—"}
+                siniiga={animalSiniiga}
+                onRefresh={handleRefreshTimeline}
               />
-            ) : (
-              <EmptyState mensaje="Sin eventos registrados" />
             ))}
 
           {/* ── ALIMENTACIÓN ── */}
           {activeTab === "alimentacion" &&
-            (loadingAlim ? (
+            (!animalSiniiga ? (
+              <EmptyState mensaje="Selecciona un animal primero" />
+            ) : loadingAlim ? (
               <LoadingState mensaje="Cargando alimentación..." />
+            ) : datos ? (
+              <TwinsAlimentacionWidget datos={datos} />
             ) : (
               <TwinsAlimentacionWidget
-                datos={datos ?? { semanas: [], caActual: 0, caObjetivo: 7.0, caIndustria: 8.2, proyDias: 0, proyFecha: '—', pesoMeta: selectedAnimal?.perfil.pesoMeta ?? 500, pesoActual: selectedAnimal?.perfil.pesoActual ?? 0 }}
-                siniiga={animalSiniiga ?? undefined}
+                datos={
+                  datos ?? {
+                    semanas: [],
+                    caActual: 0,
+                    caObjetivo: 7.0,
+                    caIndustria: 8.2,
+                    proyDias: 0,
+                    proyFecha: "—",
+                    pesoMeta: selectedAnimal?.perfil.pesoMeta ?? 500,
+                    pesoActual: selectedAnimal?.perfil.pesoActual ?? 0,
+                    pesoNacimiento: selectedAnimal?.perfil.pesoNacimiento ?? 0,
+                  }
+                }
+                siniiga={animalSiniiga}
+                onRefresh={handleRefreshAlim}
               />
             ))}
 
           {/* ── AUDITORÍAS ── */}
-          {activeTab === "auditorias" && (
-            <TwinsFeedWidget
-              auditorias={auditorias}
-              completitud={completitud}
-            />
-          )}
+          {activeTab === "auditorias" &&
+            (!animalSiniiga ? (
+              <EmptyState mensaje="Selecciona un animal primero" />
+            ) : (
+              <TwinsFeedWidget
+                auditorias={auditorias}
+                completitud={completitud}
+                onSelect={(a) => {
+                  // FIX: onSelect conectado — por ahora abre el detalle en la misma vista
+                  // expandiendo la card (el widget ya maneja el expand internamente).
+                  // Si en el futuro se necesita navegar a un detalle externo,
+                  // pasar el handler desde el nivel de página aquí.
+                  console.info(
+                    "[Twins] Auditoría seleccionada:",
+                    a.nombre,
+                    a.estado,
+                  );
+                }}
+              />
+            ))}
         </div>
       </div>
 
       {/* NAV MÓVIL */}
-      <div className="md:hidden shrink-0 flex items-center bg-white dark:bg-[#141210] border-t border-stone-200/60 dark:border-stone-800/50">
+      <div className="md:hidden shrink-0 flex items-center bg-white dark:bg-[#141210] border-t border-stone-200/60 dark:border-stone-800/50 overflow-x-auto [&::-webkit-scrollbar]:hidden">
         {TABS.map((t) => {
-          const disabled = t.key !== "perfil" && !selectedAnimal;
+          const disabled = t.requiresAnimal && !selectedAnimal;
+          const isAlerta =
+            t.key === "auditorias" && pendientesAudit > 0 && !!selectedAnimal;
           return (
             <button
               key={t.key}
               onClick={() => !disabled && setActiveTab(t.key)}
-              className={`relative flex-1 py-3 text-[11px] font-medium transition-colors bg-transparent border-0
+              title={disabled ? "Selecciona un animal primero" : undefined}
+              className={`relative flex-none px-4 py-3 text-[11px] font-medium transition-colors bg-transparent border-0 whitespace-nowrap
                 ${
                   disabled
                     ? "text-stone-300 dark:text-stone-700 cursor-not-allowed"
@@ -340,7 +455,7 @@ export default function GemelosAnima({ onClose, onEscalate }: Props) {
               {activeTab === t.key && !disabled && (
                 <span className="absolute bottom-0 left-1/2 -translate-x-1/2 w-4 h-0.5 bg-[#2FAF8F] rounded-full" />
               )}
-              {t.alerta && !disabled && (
+              {isAlerta && (
                 <span className="absolute top-2 right-1/2 translate-x-3 w-[5px] h-[5px] rounded-full bg-amber-400" />
               )}
             </button>
