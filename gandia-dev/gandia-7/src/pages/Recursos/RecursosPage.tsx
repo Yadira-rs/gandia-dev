@@ -138,9 +138,9 @@ function RecursosPage() {
       fecha: '13 Feb 2026', icono: BookOpen, destacado: true, roles: ['Productor'], descargas: 234, nuevo: true,
     },
     {
-      id: 'guia-artefactos',
+      id: 'manual_artefactos_anima',
       titulo: 'Guía de Artefactos',
-      descripcion: 'Aprende a usar los artefactos de GANDIA 7: pasaportes digitales, gemelos y certificaciones desde la interfaz.',
+      descripcion: 'Aprende a usar los artefactos de GANDIA 7: fichas, gemelos y certificaciones desde la interfaz.',
       categoria: 'guias', estado: 'disponible', tipo: 'PDF', tamano: '3.2 MB',
       fecha: '13 Feb 2026', icono: BookOpen, destacado: true, descargas: 0, nuevo: true,
     },
@@ -153,9 +153,9 @@ function RecursosPage() {
       url: 'https://youtube.com/@Gandia7',
     },
     {
-      id: 'manual-pasaportes',
-      titulo: 'Manual de Pasaportes Digitales',
-      descripcion: 'Creación, edición y gestión de pasaportes. Incluye identificación biométrica y vinculación RFID.',
+      id: 'manual-fichas-ganaderas',
+      titulo: 'Manual de Fichas Ganaderas',
+      descripcion: 'Creación, edición y gestión de fichas. Incluye identificación biométrica y vinculación RFID.',
       categoria: 'manuales', estado: 'disponible', tipo: 'PDF', tamano: '4.1 MB',
       fecha: '5 Feb 2026', icono: FileText, roles: ['Productor', 'MVZ'], descargas: 167,
     },
@@ -209,7 +209,7 @@ function RecursosPage() {
       items: [
         { titulo: 'Guía de Inicio Productores', estado: 'completado' },
         { titulo: 'Video de Bienvenida', estado: 'completado' },
-        { titulo: 'Manual de Pasaportes', estado: 'completado' },
+        { titulo: 'Manual de Fichas Ganaderas', estado: 'completado' },
       ],
     },
     {
@@ -258,8 +258,9 @@ function RecursosPage() {
     }
     if (recurso.estado === 'disponible') {
       const link = document.createElement('a')
-      link.href = `/api/recursos/descargar/${recurso.id}`
-      link.download = `${recurso.id}.${recurso.tipo.toLowerCase()}`
+      link.href = `/docs/${recurso.id}.pdf`
+      link.download = `${recurso.id}.pdf`
+      link.target = '_blank'
       document.body.appendChild(link)
       link.click()
       document.body.removeChild(link)

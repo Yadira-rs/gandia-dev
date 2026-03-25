@@ -32,7 +32,7 @@ const LegalPage = () => {
             </button>
             <div className="flex items-center gap-2">
               <Shield className="w-5 h-5 text-[#2FAF8F]" />
-              <span className="font-semibold">GANDIA</span>
+              <span className="font-semibold">GANDIA 7</span>
             </div>
           </div>
         </div>
@@ -85,18 +85,18 @@ const LegalPage = () => {
 const TermsContent = () => (
   <div>
     <h1>Términos y Condiciones de Uso</h1>
-    <p className="text-sm text-stone-500 dark:text-stone-600">Última actualización: 13 de febrero de 2026</p>
+    <p className="text-sm text-stone-500 dark:text-stone-600">Última actualización: 24 de marzo de 2026</p>
 
     <h2>1. Aceptación de los Términos</h2>
     <p>
-      Al acceder y utilizar la plataforma GANDIA (en adelante, "la Plataforma"), usted acepta estar sujeto a estos Términos y Condiciones, 
+      Al acceder y utilizar la plataforma GANDIA 7 (en adelante, "la Plataforma"), usted acepta estar sujeto a estos Términos y Condiciones, 
       así como a todas las leyes y regulaciones aplicables en los Estados Unidos Mexicanos. Si no está de acuerdo con alguno de estos términos, 
       no debe utilizar esta Plataforma.
     </p>
 
     <h2>2. Definiciones</h2>
     <ul>
-      <li><strong>GANDIA:</strong> Sistema Institucional de Trazabilidad Ganadera, infraestructura digital operada por GANDIA Technologies S.A. de C.V.</li>
+      <li><strong>GANDIA 7:</strong> Sistema Institucional de Trazabilidad Ganadera, infraestructura digital operada por GANDIA Technologies S.A. de C.V.</li>
       <li><strong>Usuario:</strong> Persona física o moral autorizada para acceder a la Plataforma.</li>
       <li><strong>Rancho:</strong> Unidad de Producción Pecuaria registrada en la Plataforma.</li>
       <li><strong>Pasaporte Digital:</strong> Documento electrónico oficial que contiene la identificación y trazabilidad del ganado.</li>
@@ -105,16 +105,16 @@ const TermsContent = () => (
 
     <h2>3. Naturaleza del Servicio</h2>
     <p>
-      GANDIA es una infraestructura digital complementaria que NO sustituye los registros oficiales ante autoridades competentes. 
+      GANDIA 7 es una infraestructura digital complementaria que NO sustituye los registros oficiales ante autoridades competentes. 
       Opera como herramienta de apoyo para la trazabilidad, documentación y certificación del ganado bovino, ovino y caprino.
     </p>
     <p>
-      Los certificados emitidos por GANDIA tienen validez para fines comerciales y de exportación, siempre y cuando estén acompañados 
+      Los certificados emitidos por GANDIA 7 tienen validez para fines comerciales y de exportación, siempre y cuando estén acompañados 
       de la documentación oficial requerida por las autoridades sanitarias correspondientes.
     </p>
 
     <h2>4. Acceso Institucional Controlado</h2>
-    <p>El acceso a GANDIA está restringido a:</p>
+    <p>El acceso a GANDIA 7 está restringido a:</p>
     <ul>
       <li>Productores ganaderos con registro oficial ante SAGARPA/SADER</li>
       <li>Médicos Veterinarios Zootecnistas certificados (MVZ)</li>
@@ -125,11 +125,11 @@ const TermsContent = () => (
     </ul>
     <p>
       Las solicitudes de acceso son revisadas y aprobadas en un plazo de 24 a 48 horas hábiles. 
-      GANDIA se reserva el derecho de aceptar o rechazar cualquier solicitud sin obligación de justificar su decisión.
+      GANDIA 7 se reserva el derecho de aceptar o rechazar cualquier solicitud sin obligación de justificar su decisión.
     </p>
 
     <h2>5. Obligaciones del Usuario</h2>
-    <p>Al utilizar GANDIA, el Usuario se compromete a:</p>
+    <p>Al utilizar GANDIA 7, el Usuario se compromete a:</p>
     <ul>
       <li>Proporcionar información veraz, exacta y actualizada</li>
       <li>Mantener la confidencialidad de sus credenciales de acceso</li>
@@ -142,20 +142,20 @@ const TermsContent = () => (
 
     <h2>6. Propiedad Intelectual</h2>
     <p>
-      Todos los derechos de propiedad intelectual sobre GANDIA, incluyendo pero no limitado a software, diseño, marca, 
+      Todos los derechos de propiedad intelectual sobre GANDIA 7, incluyendo pero no limitado a software, diseño, marca, 
       logotipos, contenido y documentación, son propiedad exclusiva de GANDIA Technologies S.A. de C.V.
     </p>
     <p>
-      Los datos ingresados por el Usuario permanecen como propiedad del Usuario, quien otorga a GANDIA una licencia 
+      Los datos ingresados por el Usuario permanecen como propiedad del Usuario, quien otorga a GANDIA 7 una licencia 
       no exclusiva para procesarlos, almacenarlos y utilizarlos únicamente para la prestación del servicio.
     </p>
 
     <h2>7. Responsabilidad y Limitaciones</h2>
     <p>
-      GANDIA opera bajo el principio de "mejor esfuerzo" y no garantiza la disponibilidad ininterrumpida del servicio. 
+      GANDIA 7 opera bajo el principio de "mejor esfuerzo" y no garantiza la disponibilidad ininterrumpida del servicio. 
       La Plataforma puede experimentar mantenimiento programado o interrupciones técnicas.
     </p>
-    <p>GANDIA NO es responsable por:</p>
+    <p>GANDIA 7 NO es responsable por:</p>
     <ul>
       <li>Pérdida de datos debido a fallas técnicas, desastres naturales o caso fortuito</li>
       <li>Decisiones comerciales, sanitarias o legales basadas en la información de la Plataforma</li>
@@ -166,7 +166,7 @@ const TermsContent = () => (
 
     <h2>8. Seguridad de la Información</h2>
     <p>
-      GANDIA implementa medidas de seguridad técnicas y organizativas para proteger la información del Usuario, 
+      GANDIA 7 implementa medidas de seguridad técnicas y organizativas para proteger la información del Usuario, 
       incluyendo encriptación AES-256, autenticación multifactor y auditoría de logs.
     </p>
     <p>
@@ -176,12 +176,12 @@ const TermsContent = () => (
 
     <h2>9. Modificaciones al Servicio</h2>
     <p>
-      GANDIA se reserva el derecho de modificar, suspender o descontinuar cualquier parte de la Plataforma en cualquier momento, 
+      GANDIA 7 se reserva el derecho de modificar, suspender o descontinuar cualquier parte de la Plataforma en cualquier momento, 
       con o sin previo aviso. Las actualizaciones de estos Términos serán notificadas a través de la Plataforma.
     </p>
 
     <h2>10. Terminación de Acceso</h2>
-    <p>GANDIA puede suspender o terminar el acceso del Usuario en caso de:</p>
+    <p>GANDIA 7 puede suspender o terminar el acceso del Usuario en caso de:</p>
     <ul>
       <li>Incumplimiento de estos Términos</li>
       <li>Uso fraudulento o malintencionado de la Plataforma</li>
@@ -201,11 +201,11 @@ const TermsContent = () => (
     <p>Para consultas sobre estos Términos, contacte a:</p>
     <p>
       <strong>GANDIA Technologies S.A. de C.V.</strong><br />
-      Blvd. Francisco Villa 1234, Col. Tierra Blanca<br />
-      Durango, Dgo. C.P. 34080<br />
-      RFC: GAN260213ABC<br />
-      Email: legal@gandia.mx<br />
-      Teléfono: +52 (618) 123-4567
+      Carretera Durango – Mezquital, Km. 4.5<br />
+      C.P. 34308, Durango, Durango<br />
+      RFC: Próximamente<br />
+      Email: legal@gandia7.com<br />
+      Teléfono: No disponible
     </p>
   </div>
 )
@@ -217,12 +217,12 @@ const TermsContent = () => (
 const PrivacyContent = () => (
   <div>
     <h1>Política de Privacidad</h1>
-    <p className="text-sm text-stone-500 dark:text-stone-600">Última actualización: 13 de febrero de 2026</p>
+    <p className="text-sm text-stone-500 dark:text-stone-600">Última actualización: 24 de marzo de 2026</p>
 
     <h2>1. Responsable del Tratamiento</h2>
     <p>
-      <strong>GANDIA Technologies S.A. de C.V.</strong> (en adelante "GANDIA"), con domicilio en Blvd. Francisco Villa 1234, 
-      Col. Tierra Blanca, Durango, Dgo. C.P. 34080, es responsable del tratamiento de sus datos personales.
+      <strong>GANDIA Technologies S.A. de C.V.</strong> (en adelante "GANDIA 7"), con domicilio en Carretera Durango – Mezquital, Km. 4.5, 
+      C.P. 34308, Durango, Durango, es responsable del tratamiento de sus datos personales.
     </p>
 
     <h2>2. Datos Personales Recopilados</h2>
@@ -287,7 +287,7 @@ const PrivacyContent = () => (
     </p>
 
     <h2>4. Compartición de Datos</h2>
-    <p>GANDIA puede compartir sus datos personales con:</p>
+    <p>GANDIA 7 puede compartir sus datos personales con:</p>
     <ul>
       <li><strong>Autoridades Sanitarias:</strong> SENASICA, SEDAGRO, cuando sea requerido por normativa</li>
       <li><strong>Organismos Certificadores:</strong> Para validación de certificados de exportación</li>
@@ -337,7 +337,7 @@ const PrivacyContent = () => (
       <li><strong>Oponerse</strong> al tratamiento para fines específicos</li>
     </ul>
     <p>
-      Para ejercer sus derechos ARCO, envíe solicitud a: <strong>privacidad@gandia.mx</strong>
+      Para ejercer sus derechos ARCO, envíe solicitud a: <strong>privacidad@gandia7.com</strong>
     </p>
     <p>Incluya:</p>
     <ul>
@@ -350,20 +350,20 @@ const PrivacyContent = () => (
     <h2>9. Revocación del Consentimiento</h2>
     <p>
       Puede revocar su consentimiento para el tratamiento de datos en cualquier momento, 
-      enviando solicitud a privacidad@gandia.mx. La revocación no tendrá efectos retroactivos.
+      enviando solicitud a privacidad@gandia7.com. La revocación no tendrá efectos retroactivos.
     </p>
 
     <h2>10. Cambios a esta Política</h2>
     <p>
-      GANDIA se reserva el derecho de actualizar esta Política de Privacidad. Las modificaciones se notificarán 
+      GANDIA 7 se reserva el derecho de actualizar esta Política de Privacidad. Las modificaciones se notificarán 
       a través de la Plataforma y por correo electrónico con 10 días de anticipación.
     </p>
 
     <h2>11. Contacto</h2>
     <p>
-      Oficial de Privacidad: Lic. Patricia Ramírez López<br />
-      Email: privacidad@gandia.mx<br />
-      Teléfono: +52 (618) 123-4567 ext. 200
+      Oficial de Privacidad: Diego Frías Ramírez<br />
+      Email: privacidad@gandia7.com<br />
+      Teléfono: No disponible
     </p>
   </div>
 )
@@ -381,8 +381,8 @@ const LFPDPPPContent = () => (
 
     <h2>Identidad y Domicilio del Responsable</h2>
     <p>
-      <strong>GANDIA Technologies S.A. de C.V.</strong>, con domicilio en Blvd. Francisco Villa 1234, 
-      Colonia Tierra Blanca, C.P. 34080, Durango, Durango, México, es responsable del tratamiento 
+      <strong>GANDIA Technologies S.A. de C.V.</strong>, con domicilio en Carretera Durango – Mezquital, Km. 4.5, 
+      C.P. 34308, Durango, Durango, México, es responsable del tratamiento 
       (obtención, uso, divulgación o almacenamiento) de sus datos personales.
     </p>
 
@@ -471,7 +471,7 @@ const LFPDPPPContent = () => (
 
     <p>
       <strong>En caso de no desear que sus datos personales sean tratados para estas finalidades secundarias, 
-      puede manifestarlo enviando un correo a: privacidad@gandia.mx</strong>
+      puede manifestarlo enviando un correo a: privacidad@gandia7.com</strong>
     </p>
     <p>
       La negativa para el uso de sus datos personales para estas finalidades no podrá ser un motivo para 
@@ -482,7 +482,7 @@ const LFPDPPPContent = () => (
     <p>Usted puede limitar el uso o divulgación de sus datos personales mediante:</p>
     <ul>
       <li>Su inscripción en el Registro Público para Evitar Publicidad (REPEP) de la PROFECO</li>
-      <li>Enviando solicitud a privacidad@gandia.mx indicando qué finalidades desea limitar</li>
+      <li>Enviando solicitud a privacidad@gandia7.com indicando qué finalidades desea limitar</li>
       <li>Configurando las preferencias de privacidad dentro de su cuenta en la plataforma</li>
     </ul>
 
@@ -497,8 +497,8 @@ const LFPDPPPContent = () => (
 
     <p>Para ejercer los derechos ARCO, debe enviar solicitud a:</p>
     <p>
-      <strong>Email:</strong> privacidad@gandia.mx<br />
-      <strong>Domicilio:</strong> Blvd. Francisco Villa 1234, Col. Tierra Blanca, Durango, Dgo. C.P. 34080
+      <strong>Email:</strong> privacidad@gandia7.com<br />
+      <strong>Domicilio:</strong> Carretera Durango – Mezquital, Km. 4.5, C.P. 34308, Durango, Durango
     </p>
 
     <p>Su solicitud deberá contener:</p>
@@ -623,7 +623,7 @@ const LFPDPPPContent = () => (
     </p>
 
     <p className="mt-8 text-sm text-stone-600 dark:text-stone-500">
-      <strong>Fecha de última actualización:</strong> 13 de febrero de 2026<br />
+      <strong>Fecha de última actualización:</strong> 24 de marzo de 2026<br />
       <strong>Responsable:</strong> GANDIA Technologies S.A. de C.V.
     </p>
   </div>
@@ -636,7 +636,7 @@ const LFPDPPPContent = () => (
 const CookiesContent = () => (
   <div>
     <h1>Política de Cookies</h1>
-    <p className="text-sm text-stone-500 dark:text-stone-600">Última actualización: 13 de febrero de 2026</p>
+    <p className="text-sm text-stone-500 dark:text-stone-600">Última actualización: 24 de marzo de 2026</p>
 
     <h2>¿Qué son las Cookies?</h2>
     <p>
@@ -645,7 +645,7 @@ const CookiesContent = () => (
       su visita, como su idioma preferido y otras configuraciones.
     </p>
 
-    <h2>¿Qué Cookies Utiliza GANDIA?</h2>
+    <h2>¿Qué Cookies Utiliza GANDIA 7?</h2>
     
     <h3>1. Cookies Estrictamente Necesarias</h3>
     <p>
@@ -740,7 +740,7 @@ const CookiesContent = () => (
     
     <h3>Panel de Consentimiento</h3>
     <p>
-      Al acceder a GANDIA por primera vez, verá un banner de cookies donde puede aceptar o rechazar 
+      Al acceder a GANDIA 7 por primera vez, verá un banner de cookies donde puede aceptar o rechazar 
       cookies no esenciales. Puede cambiar sus preferencias en cualquier momento desde la configuración 
       de su cuenta.
     </p>
@@ -760,7 +760,7 @@ const CookiesContent = () => (
 
     <h2>Cookies de Terceros</h2>
     <p>
-      GANDIA puede utilizar servicios de terceros que establecen sus propias cookies. Estos terceros tienen 
+      GANDIA 7 puede utilizar servicios de terceros que establecen sus propias cookies. Estos terceros tienen 
       sus propias políticas de privacidad:
     </p>
     <ul>
@@ -776,9 +776,9 @@ const CookiesContent = () => (
 
     <h2>Contacto</h2>
     <p>
-      Si tiene preguntas sobre el uso de cookies en GANDIA, puede contactarnos en:<br />
-      <strong>Email:</strong> privacidad@gandia.mx<br />
-      <strong>Teléfono:</strong> +52 (618) 123-4567
+      Si tiene preguntas sobre el uso de cookies en GANDIA 7, puede contactarnos en:<br />
+      <strong>Email:</strong> privacidad@gandia7.com<br />
+      <strong>Teléfono:</strong> No disponible
     </p>
   </div>
 )
