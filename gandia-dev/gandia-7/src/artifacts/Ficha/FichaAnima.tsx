@@ -170,7 +170,7 @@ export default function FichaAnima({ onClose, onEscalate }: Props) {
       </div>
 
       {/* ── Copiloto flotante ── */}
-      <CopiloAnima domain="passport" />
+      <CopiloAnima domain="fichas" />
     </div>
   )
 }

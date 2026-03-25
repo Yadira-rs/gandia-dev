@@ -112,7 +112,7 @@ function AwakeShell({
 }) {
   switch (artifact.id) {
 
-    case 'passport:full':
+    case 'fichas:full':
       return (
         <FichaModulo
           onClose={onClose}
@@ -221,7 +221,7 @@ function AnimaShell({
 }) {
   switch (artifact.domain) {
 
-    case 'passport':
+    case 'fichas':
       return (
         <FichaAnima
           onClose={onClose}
@@ -319,7 +319,7 @@ function AnimaShell({
 // ─── PLACEHOLDERS ─────────────────────────────────────────────────────────────
 
 const DOMAIN_COLOR: Record<ArtifactDomain, string> = {
-  passport:      '#2FAF8F',
+  fichas:        '#2FAF8F',
   twins:         '#6366f1',
   monitoring:    '#f59e0b',
   certification: '#3b82f6',

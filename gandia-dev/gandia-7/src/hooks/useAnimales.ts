@@ -374,13 +374,30 @@ export function useRanchoId(userId: string | null) {
   const fetchRancho = useCallback(async (uid: string | null) => {
     if (!uid) { setRanchoId(null); return }
     setLoading(true)
-    const { data } = await supabase
-      .from('ranch_extended_profiles')
-      .select('id')
-      .eq('user_id', uid)
-      .single()
-    setRanchoId(data?.id ?? null)
-    setLoading(false)
+    try {
+      // 1. Intentar perfil extendido (específico de ranchos)
+      const { data: ext } = await supabase
+        .from('ranch_extended_profiles')
+        .select('id')
+        .eq('user_id', uid)
+        .maybeSingle()
+      
+      if (ext?.id) {
+        setRanchoId(ext.id)
+      } else {
+        // 2. Fallback: perfil base (account_id suele ser el ID operativo)
+        const { data: base } = await supabase
+          .from('user_profiles')
+          .select('account_id')
+          .eq('user_id', uid)
+          .maybeSingle()
+        setRanchoId(base?.account_id ?? null)
+      }
+    } catch {
+      setRanchoId(null)
+    } finally {
+      setLoading(false)
+    }
   }, [])
 
   // eslint-disable-next-line react-hooks/set-state-in-effect

@@ -12,6 +12,7 @@
  * - Stat card "Pendientes" ahora es preciso
  */
 import { useState } from "react";
+import { registrarEvento } from "../../../lib/twinsService";
 
 // ─── TIPOS ────────────────────────────────────────────────────────────────────
 
@@ -204,6 +205,8 @@ const FILTROS: { key: EventoTipo | "todos"; label: string }[] = [
 export default function TwinsTimelineWidget({
   eventos,
   ubicacionActual,
+  siniiga,
+  onRefresh,
 }: Props) {
   const [expanded, setExpanded] = useState<number | null>(null);
   const [filtroTipo, setFiltroTipo] = useState<EventoTipo | "todos">("todos");

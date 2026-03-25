@@ -176,7 +176,7 @@ export function useTwinsAlimentacion(
   pesosRef.current = { pesoActual, pesoMeta, gananciaDiaria, pesoNacimiento }
 
   const fetch = useCallback(async () => {
-    if (!siniiga) { setDatos(null); return }
+    if (!animalId) { setDatos(null); return }
     setLoading(true); setError(null)
 
     const { _pa, _pm, _gd, _pn } = (() => {
@@ -220,7 +220,7 @@ export function useTwinsAlimentacion(
       pesoNacimiento: _pn,
     })
     setLoading(false)
-  }, [siniiga]) // Solo siniiga — los pesos se leen desde pesosRef dentro del fetch
+  }, [animalId]) 
 
   useEffect(() => { void fetch() }, [fetch])
   return { datos, loading, error, refetch: fetch }
@@ -228,18 +228,19 @@ export function useTwinsAlimentacion(
 
 // ── 5. useTwinsFeed ───────────────────────────────────────────────────────────
 
-export function useTwinsFeed(_animalId: string | null) {
+export function useTwinsFeed(animalId: string | null) {
   const [auditorias,  setAuditorias]  = useState<Auditoria[]>([])
   const [completitud, setCompletitud] = useState(0)
   const [loading,     setLoading]     = useState(false)
+  const [error,       setError]       = useState<string | null>(null)
 
   const fetch = useCallback(async () => {
-    if (!siniiga) { setAuditorias([]); setCompletitud(0); return }
+    if (!animalId) { setAuditorias([]); setCompletitud(0); return }
     setLoading(true); setError(null)
     const { data, error: err } = await supabase
       .from('v_twins_auditorias')
       .select('id, nombre, sub, fecha, estado, hash_ipfs, hash_ok')
-      .eq('siniiga', siniiga)
+      .eq('siniiga', animalId)
       .order('fecha', { ascending: false })
     if (err) { setError(err.message); setLoading(false); return }
 
@@ -254,7 +255,7 @@ export function useTwinsFeed(_animalId: string | null) {
     const completas = mapped.filter(a => a.estado !== 'incompleto').length
     setCompletitud(total > 0 ? Math.round((completas / total) * 100) : 0)
     setLoading(false)
-  }, [siniiga])
+  }, [animalId])
 
   useEffect(() => { void fetch() }, [fetch])
   return { auditorias, completitud, loading, error, refetch: fetch }

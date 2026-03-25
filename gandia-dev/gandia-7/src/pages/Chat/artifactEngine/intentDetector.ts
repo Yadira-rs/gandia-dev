@@ -272,10 +272,25 @@ const UNION_ONLY_WIDGETS = new Set([
   'documentos:panel',
 ])
 
+/**
+ * Normaliza el rol del usuario para que coincida con las claves de RBAC_MATRIX.
+ * Mapea nombres largos (de la DB o SignUp) a los identificadores cortos.
+ */
+function normalizeRole(role?: string | null): string {
+  if (!role) return 'producer'
+  const r = role.toLowerCase()
+  if (r.includes('productor')) return 'producer'
+  if (r.includes('union') || r.includes('unión')) return 'union'
+  if (r.includes('veterinario') || r.includes('mvz')) return 'mvz'
+  if (r.includes('export')) return 'exporter'
+  if (r.includes('auditor') || r.includes('inspector')) return 'auditor'
+  return r
+}
+
 export function detectIntent(text: string, role?: string | null): DetectedIntent | null {
   const lower    = text.toLowerCase()
-  const isUnion  = role === 'union' || role === 'union_ganadera'
-  const userRole = role || 'producer'
+  const userRole = normalizeRole(role)
+  const isUnion  = userRole === 'union'
 
   for (const rule of EXTENDED_RULES) {
     if (rule.keywords.some(kw => lower.includes(kw))) {

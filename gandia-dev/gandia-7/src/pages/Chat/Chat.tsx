@@ -164,7 +164,7 @@ export default function Chat() {
 
   // ── Abrir anima desde sidebar (?open=domain) ────────────────────────────────
   const VALID_DOMAINS: ArtifactDomain[] = [
-    'passport', 'twins', 'monitoring', 'certification', 'verification', 'documentos',
+    'fichas', 'twins', 'monitoring', 'certification', 'verification', 'documentos', 'marketplace',
   ]
   useEffect(() => {
     const params = new URLSearchParams(location.search)
