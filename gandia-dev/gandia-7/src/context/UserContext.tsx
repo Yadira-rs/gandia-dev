@@ -14,7 +14,7 @@ import { supabase } from '../lib/supabaseClient'
 
 export interface AppPreferences {
   theme: 'dark' | 'light'
-  font:  'geist' | 'serif' | 'lora'
+  font: 'geist' | 'serif' | 'lora'
 }
 
 export type AuthStatus = 'loading' | 'authenticated' | 'unauthenticated'
@@ -22,7 +22,7 @@ export type AuthStatus = 'loading' | 'authenticated' | 'unauthenticated'
 const FONT_FAMILIES: Record<AppPreferences['font'], string> = {
   geist: "'Geist', system-ui, sans-serif",
   serif: "'Instrument Serif', Georgia, serif",
-  lora:  "'Lora', Georgia, serif",
+  lora: "'Lora', Georgia, serif",
 }
 
 const DEFAULT_PREFERENCES: AppPreferences = { theme: 'dark', font: 'geist' }
@@ -57,29 +57,29 @@ function applyPreferencesToDOM(prefs: AppPreferences) {
 // ─── CONTEXT ──────────────────────────────────────────────────────────────────
 
 interface UserContextValue {
-  profile:         UserProfile | null
-  role:            UserRole | null
-  preferences:     AppPreferences
-  authStatus:      AuthStatus
-  isLoading:       boolean
+  profile: UserProfile | null
+  role: UserRole | null
+  preferences: AppPreferences
+  authStatus: AuthStatus
+  isLoading: boolean
   isAuthenticated: boolean
-  hasProfile:      boolean
-  profileReady:    boolean   // ← TRUE cuando fetchProfile terminó (con o sin resultado)
-  refreshProfile:  () => Promise<void>
-  clearProfile:    () => void
+  hasProfile: boolean
+  profileReady: boolean   // ← TRUE cuando fetchProfile terminó (con o sin resultado)
+  refreshProfile: () => Promise<void>
+  clearProfile: () => void
 }
 
 const UserContext = createContext<UserContextValue>({
-  profile:         null,
-  role:            null,
-  authStatus:      'loading',
-  isLoading:       true,
+  profile: null,
+  role: null,
+  authStatus: 'loading',
+  isLoading: true,
   isAuthenticated: false,
-  hasProfile:      false,
-  profileReady:    false,
-  preferences:     DEFAULT_PREFERENCES,
-  refreshProfile:  async () => {},
-  clearProfile:    () => {},
+  hasProfile: false,
+  profileReady: false,
+  preferences: DEFAULT_PREFERENCES,
+  refreshProfile: async () => { },
+  clearProfile: () => { },
 })
 
 // ─── HELPER ───────────────────────────────────────────────────────────────────
@@ -109,6 +109,22 @@ async function fetchProfile(uid: string): Promise<UserProfile | null> {
     const data = await res.json()
     return data && data.length > 0 ? (data[0] as UserProfile) : null
   } catch {
+    // Fallback offline: si falla la red, intentar cargar contexto mínimo guardado
+    try {
+      const raw = localStorage.getItem('gandia-campo-context')
+      if (raw) {
+        const ctx = JSON.parse(raw)
+        return {
+          user_id: uid,
+          role: 'producer',
+          status: 'approved',
+          onboarding_completed: true,
+          personal_data: { nombre: ctx.operadorNombre, fullName: ctx.operadorNombre },
+          institutional_data: { rancho: ctx.ranchoNombre, ranchName: ctx.ranchoNombre, rancho_id: ctx.ranchoId, ranchId: ctx.ranchoId },
+          preferences: { theme: 'dark', font: 'geist' }
+        } as unknown as UserProfile
+      }
+    } catch { /* ignore */ }
     return null
   }
 }
@@ -116,13 +132,13 @@ async function fetchProfile(uid: string): Promise<UserProfile | null> {
 // ─── PROVIDER ─────────────────────────────────────────────────────────────────
 
 export const UserProvider = ({ children }: { children: ReactNode }) => {
-  const [profile,      setProfile]      = useState<UserProfile | null>(null)
-  const [preferences,  setPrefs]        = useState<AppPreferences>(DEFAULT_PREFERENCES)
-  const [hasProfile,   setHasProfile]   = useState(false)
+  const [profile, setProfile] = useState<UserProfile | null>(null)
+  const [preferences, setPrefs] = useState<AppPreferences>(DEFAULT_PREFERENCES)
+  const [hasProfile, setHasProfile] = useState(false)
   const [profileReady, setProfileReady] = useState(false)  // ← nuevo flag
-  const [authStatus,   setAuthStatus]   = useState<AuthStatus>(getInitialAuthStatus)
+  const [authStatus, setAuthStatus] = useState<AuthStatus>(getInitialAuthStatus)
 
-  const isLoading       = authStatus === 'loading'
+  const isLoading = authStatus === 'loading'
   const isAuthenticated = authStatus === 'authenticated'
 
   // ── Setters ───────────────────────────────────────────────────────────────
@@ -134,10 +150,23 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
     setProfileReady(true)   // ← perfil resuelto (con o sin datos)
     const prefs: AppPreferences = {
       theme: p?.preferences?.theme ?? DEFAULT_PREFERENCES.theme,
-      font:  p?.preferences?.font  ?? DEFAULT_PREFERENCES.font,
+      font: p?.preferences?.font ?? DEFAULT_PREFERENCES.font,
     }
     setPrefs(prefs)
     applyPreferencesToDOM(prefs)
+
+    // Persistir contexto para uso offline en Campo
+    if (p) {
+      const pd_ = (p.personal_data as Record<string, string> | null) ?? {}
+      const id__ = (p.institutional_data as Record<string, string> | null) ?? {}
+      const offlineCtx = {
+        userId: (p as unknown as Record<string, string>).user_id ?? '',
+        ranchoId: id__.ranchId ?? id__.rancho_id ?? '',
+        ranchoNombre: id__.ranchName ?? id__.rancho ?? '',
+        operadorNombre: pd_.fullName ?? pd_.nombre ?? '',
+      }
+      try { localStorage.setItem('gandia-campo-context', JSON.stringify(offlineCtx)) } catch { /* quota */ }
+    }
   }, [])
 
   const clearProfile = useCallback(() => {
@@ -195,7 +224,7 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
         console.log('[UserContext]', event)
-        if (event === 'INITIAL_SESSION') return  // ya manejado arriba
+        if (event === 'INITIAL_SESSION') return 
 
         if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
           if (session?.user?.id) {
@@ -203,7 +232,11 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
           }
           return
         }
-        if (event === 'SIGNED_OUT') clearProfile()
+        
+        // NO limpiar sesión si estamos offline
+        if (event === 'SIGNED_OUT' && navigator.onLine) {
+          clearProfile()
+        }
       }
     )
 
@@ -233,7 +266,7 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
   return (
     <UserContext.Provider value={{
       profile,
-      role:         profile?.role ?? null,
+      role: profile?.role ?? null,
       preferences,
       authStatus,
       isLoading,

@@ -9,29 +9,29 @@ import { supabase } from './supabaseClient'
 // ─── TIPOS ────────────────────────────────────────────────────────────────────
 
 export interface NuevoPesoInput {
-  siniiga:   string
-  peso:      number
+  siniiga: string
+  peso: number
   objetivo?: number
-  fecha?:    string
+  fecha?: string
 }
 
 export interface NuevoEventoInput {
-  siniiga:    string
-  tipo:       'pesaje' | 'vacunacion' | 'movilizacion' | 'tratamiento' | 'auditoria' | 'otro'
-  titulo:     string
-  valor?:     string
-  cert?:      'completa' | 'parcial' | 'pendiente'
+  siniiga: string
+  tipo: 'pesaje' | 'vacunacion' | 'movilizacion' | 'tratamiento' | 'auditoria' | 'otro'
+  titulo: string
+  valor?: string
+  cert?: 'completa' | 'parcial' | 'pendiente'
   ubicacion?: string
-  fecha?:     string
+  fecha?: string
 }
 
 export interface NuevaAlimentacionInput {
-  siniiga:          string
-  semana_inicio?:   string
-  forraje_pct?:     number
+  siniiga: string
+  semana_inicio?: string
+  forraje_pct?: number
   concentrado_pct?: number
-  suplemento_pct?:  number
-  ca_valor?:        number
+  suplemento_pct?: number
+  ca_valor?: number
 }
 
 function hoy(): string {
@@ -39,7 +39,7 @@ function hoy(): string {
 }
 
 function lunesDeEstaSemana(): string {
-  const d   = new Date()
+  const d = new Date()
   const day = d.getDay()
   const diff = d.getDate() - day + (day === 0 ? -6 : 1)
   d.setDate(diff)
@@ -57,8 +57,8 @@ export async function registrarPeso(
       .from('twins_pesos')
       .upsert({
         animal_id: input.siniiga,
-        peso:      input.peso,
-        objetivo:  input.objetivo ?? input.peso,
+        peso: input.peso,
+        objetivo: input.objetivo ?? input.peso,
         fecha,
       }, { onConflict: 'animal_id,fecha' })
     if (error) throw error
@@ -85,12 +85,12 @@ export async function registrarEvento(
       .from('twins_eventos')
       .insert({
         animal_id: input.siniiga,
-        tipo:      input.tipo,
-        fecha:     new Date(fecha).toISOString(),
+        tipo: input.tipo,
+        fecha: new Date(fecha).toISOString(),
         data: {
-          titulo:    input.titulo,
-          valor:     input.valor    ?? '',
-          cert:      input.cert     ?? 'pendiente',
+          titulo: input.titulo,
+          valor: input.valor ?? '',
+          cert: input.cert ?? 'pendiente',
           ubicacion: input.ubicacion ?? '',
         },
       })
@@ -111,12 +111,12 @@ export async function registrarAlimentacion(
     const { error } = await supabase
       .from('twins_alimentacion')
       .upsert({
-        animal_id:       input.siniiga,
-        semana_inicio:   semana,
-        forraje_pct:     input.forraje_pct,
+        animal_id: input.siniiga,
+        semana_inicio: semana,
+        forraje_pct: input.forraje_pct,
         concentrado_pct: input.concentrado_pct,
-        suplemento_pct:  input.suplemento_pct,
-        ca_valor:        input.ca_valor,
+        suplemento_pct: input.suplemento_pct,
+        ca_valor: input.ca_valor,
       }, { onConflict: 'animal_id,semana_inicio' })
     if (error) throw error
     return { ok: true, error: null }
@@ -128,9 +128,9 @@ export async function registrarAlimentacion(
 // ─── PARSER ───────────────────────────────────────────────────────────────────
 
 export interface ParsedTwinsAction {
-  action:  'peso' | 'evento' | 'alimentacion'
+  action: 'peso' | 'evento' | 'alimentacion'
   siniiga: string
-  data:    Record<string, unknown>
+  data: Record<string, unknown>
 }
 
 export function parseTwinsAction(text: string): ParsedTwinsAction | null {
@@ -156,7 +156,7 @@ export function parseTwinsAction(text: string): ParsedTwinsAction | null {
 
   if (lower.includes('traslad') || lower.includes('movili')) {
     const corrales = text.match(/corral\s+\d+/gi) ?? []
-    const valor    = corrales.length >= 2 ? `${corrales[0]} → ${corrales[1]}` : corrales[0] ?? ''
+    const valor = corrales.length >= 2 ? `${corrales[0]} → ${corrales[1]}` : corrales[0] ?? ''
     return { action: 'evento', siniiga, data: { tipo: 'movilizacion', titulo: 'Traslado registrado desde chat', valor, cert: 'parcial', ubicacion: corrales[corrales.length - 1] ?? '' } }
   }
 
@@ -164,9 +164,9 @@ export function parseTwinsAction(text: string): ParsedTwinsAction | null {
     return {
       action: 'alimentacion', siniiga,
       data: {
-        forraje_pct:     text.match(/forraje[:\s]+(\d+)/i)     ? parseFloat(text.match(/forraje[:\s]+(\d+)/i)![1])     : undefined,
+        forraje_pct: text.match(/forraje[:\s]+(\d+)/i) ? parseFloat(text.match(/forraje[:\s]+(\d+)/i)![1]) : undefined,
         concentrado_pct: text.match(/concentrado[:\s]+(\d+)/i) ? parseFloat(text.match(/concentrado[:\s]+(\d+)/i)![1]) : undefined,
-        suplemento_pct:  text.match(/suplemento[:\s]+(\d+)/i)  ? parseFloat(text.match(/suplemento[:\s]+(\d+)/i)![1])  : undefined,
+        suplemento_pct: text.match(/suplemento[:\s]+(\d+)/i) ? parseFloat(text.match(/suplemento[:\s]+(\d+)/i)![1]) : undefined,
       },
     }
   }

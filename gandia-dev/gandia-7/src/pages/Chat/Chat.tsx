@@ -395,10 +395,14 @@ export default function Chat() {
         .ch-input { transition: box-shadow 180ms ease; }
         .ch-input:focus-within { box-shadow: 0 4px 24px rgba(0,0,0,0.08); }
         .dark .ch-input:focus-within { box-shadow: 0 4px 28px rgba(0,0,0,0.35); }
-        .ch-scroll::-webkit-scrollbar { width: 3px; }
+        .ch-scroll { scrollbar-width: thin; scrollbar-color: rgba(168,162,158,0.4) transparent; }
+        .dark .ch-scroll { scrollbar-color: rgba(168,162,158,0.25) transparent; }
+        .ch-scroll::-webkit-scrollbar { width: 2px; }
         .ch-scroll::-webkit-scrollbar-track { background: transparent; }
-        .ch-scroll::-webkit-scrollbar-thumb { background: #e7e5e4; border-radius: 999px; }
-        .dark .ch-scroll::-webkit-scrollbar-thumb { background: #3c3836; }
+        .ch-scroll::-webkit-scrollbar-thumb { background-color: rgba(168,162,158,0.4); border-radius: 999px; }
+        .ch-scroll::-webkit-scrollbar-thumb:hover { background-color: rgba(168,162,158,0.6); }
+        .dark .ch-scroll::-webkit-scrollbar-thumb { background-color: rgba(168,162,158,0.25); }
+        .dark .ch-scroll::-webkit-scrollbar-thumb:hover { background-color: rgba(168,162,158,0.4); }
         @keyframes ch-dd { from { opacity:0; transform:translateY(4px) scale(.98) } to { opacity:1; transform:translateY(0) scale(1) } }
         .ch-dd { animation: ch-dd 130ms cubic-bezier(.16,1,.3,1) both; }
         @keyframes ch-msg { from { opacity:0; transform:translateY(6px) } to { opacity:1; transform:translateY(0) } }
@@ -525,9 +529,10 @@ export default function Chat() {
             )}
 
             {/* Scrollable messages */}
-            <div ref={scrollAreaRef} className="ch-scroll flex-1 overflow-y-auto px-4 lg:px-6 pb-6 pt-6">
+            <div ref={scrollAreaRef} className="ch-scroll flex-1 overflow-y-auto overflow-x-hidden flex flex-col relative w-full">
+              <div className="flex-1 flex flex-col px-4 lg:px-6 pt-6">
               {messages.length === 0 ? (
-                <div className="flex items-center justify-center min-h-full">
+                <div className="flex flex-col items-center justify-center flex-1 min-h-[50vh]">
                   <div className="w-full max-w-130 px-2 py-8">
                     <div className="ch-hero text-center mb-10">
                       <h1 className="ch-serif text-[36px] sm:text-[42px] text-stone-900 dark:text-stone-50 leading-[1.18] italic">
@@ -553,7 +558,7 @@ export default function Chat() {
                   </div>
                 </div>
               ) : (
-                <div className="max-w-170 mx-auto space-y-8 pb-4" aria-live="polite" aria-label="Mensajes del chat">
+                <div className="w-full max-w-170 mx-auto space-y-8 pb-4" aria-live="polite" aria-label="Mensajes del chat">
                   {messages.map((msg, idx) => (
                     <ChatMessage
                       key={msg.id}
@@ -614,16 +619,14 @@ export default function Chat() {
                     </div>
                   )}
 
-                  <div ref={messagesEndRef} />
+                  <div ref={messagesEndRef} className="h-4" />
                 </div>
               )}
-            </div>
+              </div>
 
-            {/* Gradient — overlapa el scroll sin ocupar espacio */}
-            
-
-            {/* Input bar */}
-            <ChatInputBar
+              {/* Input bar flotante anclado en la parte inferior del scroll */}
+              <div className="sticky bottom-0 z-20 mt-auto pt-8 pb-0 bg-gradient-to-t from-[#fafaf9] via-[#fafaf9] via-60% to-transparent dark:from-[#0c0a09] dark:via-[#0c0a09] dark:via-60%">
+                <ChatInputBar
               message={message}
               onMessageChange={setMessage}
               attachedFiles={attachedFiles}
@@ -653,6 +656,8 @@ export default function Chat() {
               dictationActive={dictation.active}
               onDictationStop={dictation.stop}
             />
+              </div>
+            </div>
           </div>
 
           {/* ── Artifact pane ──────────────────────────────────────── */}

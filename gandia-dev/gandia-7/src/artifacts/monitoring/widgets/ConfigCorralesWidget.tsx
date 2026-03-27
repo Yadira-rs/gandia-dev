@@ -153,12 +153,19 @@ export default function ConfigCorralesWidget({ corrales: corraleProp }: Props) {
     if (!id) return
     const { data: dbC } = await supabase.from('corrales').select('*').eq('rancho_id', id).eq('activo', true).order('label')
     if (dbC) setFetched(dbC.map((c: Record<string,unknown>, i: number) => ({
-      id: i+1, label: c.label as string, animales: (c.animales as number) ?? 0,
-      capacidad: c.capacidad as number, estado: c.estado as 'normal'|'atencion'|'cuarentena',
-      temp: (c.temperatura as number) ?? 22, humedad: (c.humedad as number) ?? 60,
-      camara: c.tiene_camara as boolean, _dbId: c.id as string,
-      lat: c.pos_x as number | undefined,
-      lng: c.pos_y as number | undefined,
+      id: i+1, 
+      label: c.label as string, 
+      animales: (c.animales as number) ?? 0,
+      capacidad: c.capacidad as number, 
+      estado: c.estado as 'normal'|'atencion'|'cuarentena',
+      temp: (c.temperatura as number) ?? 22, 
+      humedad: (c.humedad as number) ?? 60,
+      camara: c.tiene_camara as boolean, 
+      _dbId: c.id as string,
+      pos_x: c.pos_x as number | undefined, // Cambiado
+      pos_y: c.pos_y as number | undefined, // Cambiado
+      gps_lat: c.lat as number | undefined,
+      gps_lng: c.lng as number | undefined,
     })))
   }, [ranchoId])
 
@@ -180,8 +187,10 @@ export default function ConfigCorralesWidget({ corrales: corraleProp }: Props) {
     setForm(c ? {
       label: c.label, capacidad: String(c.capacidad), superficie_ha: '', estado: c.estado,
       tiene_camara: c.camara,
-      pos_x: c.lat ?? null, pos_y: c.lng ?? null,
-      gps_lat: '', gps_lng: '',
+      pos_x: c.pos_x ?? null, // Cambiado
+      pos_y: c.pos_y ?? null, // Cambiado
+      gps_lat: c.gps_lat ? String(c.gps_lat) : '',
+      gps_lng: c.gps_lng ? String(c.gps_lng) : '',
     } : { label: '', capacidad: '', superficie_ha: '', estado: 'normal', tiene_camara: false, pos_x: null, pos_y: null, gps_lat: '', gps_lng: '' })
     setError(null)
     setShowForm(true)
@@ -290,7 +299,11 @@ export default function ConfigCorralesWidget({ corrales: corraleProp }: Props) {
           {/* Mini mapa interactivo */}
           <div style={{ marginBottom: 10 }}>
             <MiniMapaPicker
-              corrales={corrales.filter(c => c._dbId !== editando?._dbId)}
+              corrales={corrales.filter(c => c._dbId !== editando?._dbId).map(c => ({
+                ...c,
+                lat: c.pos_x, // El picker usa lat/lng internamente para pos_x/y
+                lng: c.pos_y
+              }))}
               posX={form.pos_x}
               posY={form.pos_y}
               onPick={(x, y) => setForm(f => ({ ...f, pos_x: x, pos_y: y }))}
@@ -376,7 +389,7 @@ export default function ConfigCorralesWidget({ corrales: corraleProp }: Props) {
                 <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: 3 }}>
                   <p style={{ fontSize: 11, fontWeight: 700, color: '#F0F0F0', margin: 0, fontFamily: 'ui-monospace, monospace' }}>Corral {c.label}</p>
                   <span style={{ fontSize: 8, fontWeight: 700, background: col.bg, color: col.txt, border: `1px solid ${col.border}`, borderRadius: 4, padding: '2px 6px', fontFamily: 'ui-monospace, monospace' }}>{col.label}</span>
-                  {c.lat != null && (
+                  {(c.pos_x != null || c.gps_lat != null) && (
                     <span style={{ fontSize: 8, color: '#2FAF8F', fontFamily: 'ui-monospace, monospace' }}>📍 En mapa</span>
                   )}
                 </div>

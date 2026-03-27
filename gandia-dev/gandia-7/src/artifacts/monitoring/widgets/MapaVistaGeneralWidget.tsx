@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
+import maplibregl, { type Map as MLMap, type Marker as MLMarker } from 'maplibre-gl'
 import 'maplibre-gl/dist/maplibre-gl.css'
-import type { Map as MLMap, Marker as MLMarker } from 'maplibre-gl'
 import { supabase } from '../../../lib/supabaseClient'
 import { getVisionScore } from '../../../lib/visionApi'
 import { useUser } from '../../../context/UserContext'
@@ -8,8 +8,11 @@ import { useUser } from '../../../context/UserContext'
 export interface Corral {
   id: number; label: string; animales: number; capacidad: number
   estado: 'normal'|'atencion'|'cuarentena'; temp: number; humedad: number
-  camara: boolean; lat?: number; lng?: number
-  gps_lat?: number; gps_lng?: number; superficie_ha?: number; _dbId?: string
+  camara: boolean; 
+  lat?: number; lng?: number // GPS reales
+  pos_x?: number; pos_y?: number // Relativos
+  gps_lat?: number; gps_lng?: number // Alias para compatibilidad
+  superficie_ha?: number; _dbId?: string
 }
 
 interface Props {
@@ -70,10 +73,29 @@ export default function MapaVistaGeneralWidget({corrales:corraleProp,onSelectCor
       map.addLayer({id:'rancho-border',type:'line',source:'rancho-perimeter',paint:{'line-color':'#2FAF8F','line-width':2.5,'line-dasharray':[6,3]}} as Parameters<typeof map.addLayer>[0])
     }
 
-    const conGPS = corrales.filter(c=>c.gps_lat&&c.gps_lng&&!isNaN(c.gps_lat!)&&!isNaN(c.gps_lng!))
-    const lista  = conGPS.length>0
-      ? conGPS.map(c=>({...c,_la:c.gps_lat!,_ln:c.gps_lng!}))
-      : corrales.map((c,i)=>{const a=(i/Math.max(corrales.length,1))*2*Math.PI;return{...c,_la:geo.lat+Math.cos(a)*0.0006,_ln:geo.lng+Math.sin(a)*0.0006}})
+    // 1. Filtrar corrales con ubicación (GPS real o relativo calculado)
+    const lista = corrales.map((c, i) => {
+      let _la = c.lat
+      let _ln = c.lng
+
+      // Si no hay GPS real, intentamos calcularlo desde pos_x/y relativo al rancho
+      if ((_la == null || _ln == null) && c.pos_x != null && c.pos_y != null && geo.ancho_m && geo.largo_m) {
+        // ancho_m -> longitud | largo_m -> latitud
+        const dlat = ((c.pos_y - 0.5) * geo.largo_m) / 111000
+        const dlng = ((c.pos_x - 0.5) * geo.ancho_m) / (111000 * Math.cos(geo.lat * Math.PI / 180))
+        _la = geo.lat - dlat // y=0 es arriba (Norte) en el picker, resta dlat
+        _ln = geo.lng + dlng
+      }
+
+      // Si sigue sin haber ubicación, los ponemos en un círculo decorativo
+      if (_la == null || _ln == null) {
+        const a = (i / Math.max(corrales.length, 1)) * 2 * Math.PI
+        _la = geo.lat + Math.cos(a) * 0.0006
+        _ln = geo.lng + Math.sin(a) * 0.0006
+      }
+
+      return { ...c, _la, _ln }
+    })
 
     const polFeats=lista.filter(c=>c.superficie_ha&&c.superficie_ha>0).map(c=>({
       type:'Feature' as const,
@@ -86,14 +108,24 @@ export default function MapaVistaGeneralWidget({corrales:corraleProp,onSelectCor
       map.addLayer({id:'corrales-border',type:'line',source:'corrales-polys',paint:{'line-color':['get','color'],'line-width':2,'line-dasharray':[3,2]}} as Parameters<typeof map.addLayer>[0])
     }
 
-    import('maplibre-gl').then(({default:mgl})=>{
-      lista.forEach(c=>{
-        const color=COL[c.estado],pct=c.capacidad>0?Math.round(c.animales/c.capacidad*100):0
-        const el=document.createElement('div')
-        el.innerHTML=`<div style="background:rgba(10,10,9,.95);border:2px solid ${color};border-radius:8px;padding:5px 10px;display:flex;align-items:center;gap:6px;white-space:nowrap;box-shadow:0 2px 16px rgba(0,0,0,.6);font-family:ui-monospace,monospace;cursor:pointer;"><span style="width:8px;height:8px;border-radius:50%;background:${color};"></span><span style="font-size:12px;font-weight:800;color:#F0F0F0;">${c.label}</span><span style="font-size:11px;color:${color};font-weight:700;">${c.animales}</span><span style="font-size:10px;color:#777;">${pct}%</span></div><div style="width:0;height:0;margin:0 auto;border-left:5px solid transparent;border-right:5px solid transparent;border-top:7px solid ${color};"></div>`
-        el.addEventListener('click',()=>onSelRef.current?.(c))
-        markersRef.current.push(new mgl.Marker({element:el,anchor:'bottom'}).setLngLat([c._ln,c._la]).addTo(map))
-      })
+    lista.forEach(c => {
+      const color = COL[c.estado] || '#2FAF8F'
+      const pct = c.capacidad > 0 ? Math.round(c.animales / c.capacidad * 100) : 0
+      const el = document.createElement('div')
+      el.innerHTML = `
+        <div style="background:rgba(10,10,9,0.92); backdrop-filter:blur(8px); border:1.5px solid ${color}80; border-radius:10px; padding:6px 12px; display:flex; align-items:center; gap:8px; white-space:nowrap; box-shadow: 0 8px 32px rgba(0,0,0,0.5); font-family:ui-monospace,monospace; cursor:pointer; color:#F0F0F0;">
+          <span style="width:8px; height:8px; border-radius:50%; background:${color}; box-shadow: 0 0 10px ${color}"></span>
+          <span style="font-size:12px; font-weight:800;">${c.label}</span>
+          <span style="font-size:12px; color:${color}; font-weight:900;">${c.animales}</span>
+          <span style="font-size:10px; color:#555; font-weight:600;">${pct}%</span>
+        </div>
+        <div style="width:0; height:0; margin:0 auto; border-left:6px solid transparent; border-right:6px solid transparent; border-top:8px solid ${color}80;"></div>
+      `
+      el.addEventListener('click', () => onSelRef.current?.(c))
+      const m = new maplibregl.Marker({ element: el, anchor: 'bottom' })
+        .setLngLat([c._ln, c._la])
+        .addTo(map)
+      markersRef.current.push(m)
     })
   },[])
 
@@ -112,8 +144,10 @@ export default function MapaVistaGeneralWidget({corrales:corraleProp,onSelectCor
         id:i+1,label:c.label as string,animales:(c.animales as number)??0,capacidad:c.capacidad as number,
         estado:c.estado as 'normal'|'atencion'|'cuarentena',temp:22,humedad:60,
         camara:c.tiene_camara as boolean,
-        gps_lat:c.lat!=null?parseFloat(String(c.lat)):undefined,
-        gps_lng:c.lng!=null?parseFloat(String(c.lng)):undefined,
+        lat:c.lat!=null?parseFloat(String(c.lat)):undefined,
+        lng:c.lng!=null?parseFloat(String(c.lng)):undefined,
+        pos_x:c.pos_x!=null?parseFloat(String(c.pos_x)):undefined,
+        pos_y:c.pos_y!=null?parseFloat(String(c.pos_y)):undefined,
         superficie_ha:c.superficie_ha as number|undefined,_dbId:c.id as string,
       })))
       const vs=await getVisionScore(r.id)
@@ -123,23 +157,40 @@ export default function MapaVistaGeneralWidget({corrales:corraleProp,onSelectCor
   },[corraleProp])
 
   // Init mapa
-  useEffect(()=>{
-    if(!divRef.current||mapRef.current) return
-    import('maplibre-gl').then(({default:mgl})=>{
-      const map=new mgl.Map({
-        container:divRef.current!,
-        style:{version:8,sources:{osm:{type:'raster',tiles:['https://tile.openstreetmap.org/{z}/{x}/{y}.png'],tileSize:256}},layers:[{id:'osm',type:'raster',source:'osm'}]},
-        center:[-105.8123,24.9234],zoom:15,attributionControl:false,
-      })
-      mapRef.current=map
-      map.on('load',()=>{
-        const geo=geoRef.current
-        if(geo) dibujar(map,geo,corraleProp??fetchedRef.current)
-      })
+  useEffect(() => {
+    if (!divRef.current || mapRef.current) return
+    
+    const map = new maplibregl.Map({
+      container: divRef.current!,
+      style: {
+        version: 8,
+        sources: {
+          osm: {
+            type: 'raster',
+            tiles: ['https://tile.openstreetmap.org/{z}/{x}/{y}.png'],
+            tileSize: 256
+          }
+        },
+        layers: [
+          { id: 'osm', type: 'raster', source: 'osm' }
+        ]
+      },
+      center: [-105.8123, 24.9234],
+      zoom: 15,
+      attributionControl: false,
     })
-    return ()=>{mapRef.current?.remove();mapRef.current=null}
+    mapRef.current = map
+    map.on('load', () => {
+      const geo = geoRef.current
+      if (geo) dibujar(map, geo, corraleProp ?? fetchedRef.current)
+    })
+    
+    return () => {
+      mapRef.current?.remove()
+      mapRef.current = null
+    }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  },[])
+  }, [])
 
   // Redibujar cuando llegan datos
   useEffect(()=>{
@@ -159,27 +210,27 @@ export default function MapaVistaGeneralWidget({corrales:corraleProp,onSelectCor
 
   return(
     <div style={{display:'flex',flexDirection:'column',gap:10,height:corraleProp?'100%':520,minHeight:corraleProp?undefined:520,fontFamily:'system-ui,sans-serif'}}>
-      <div style={{display:'grid',gridTemplateColumns:scoreSanitario!=null?'repeat(5,1fr)':'repeat(4,1fr)',gap:8}}>
+      <div style={{display:'grid',gridTemplateColumns:scoreSanitario!=null?'repeat(5,1fr)':'repeat(4,1fr)',gap:10}}>
         {scoreSanitario!=null&&(
-          <div style={{background:'#171717',border:`1px solid ${sColor}30`,borderRadius:10,padding:'10px 14px',position:'relative',overflow:'hidden'}}>
-            <div style={{position:'absolute',top:0,left:0,right:0,height:2,background:`linear-gradient(90deg,${sColor},transparent)`}}/>
-            <div style={{fontSize:10,color:'#555',marginBottom:4}}>Score Sanitario</div>
-            <div style={{display:'flex',alignItems:'baseline',gap:5}}>
-              <div style={{fontSize:24,fontWeight:700,lineHeight:1,color:sColor,fontFamily:'ui-monospace,monospace'}}>{scoreSanitario}</div>
-              <div style={{fontSize:9,color:sColor,fontWeight:600}}>{sl(scoreSanitario)}</div>
+          <div style={{background:'rgba(23,23,23,0.6)',backdropFilter:'blur(10px)',border:`1px solid ${sColor}40`,borderRadius:12,padding:'12px 14px',position:'relative',overflow:'hidden', boxShadow: '0 4px 20px rgba(0,0,0,0.3)'}}>
+            <div style={{position:'absolute',top:0,left:0,right:0,height:2.5,background:`linear-gradient(90deg,${sColor},transparent)`}}/>
+            <div style={{fontSize:9,fontWeight:700,color:'#555',marginBottom:6, letterSpacing: '0.05em'}}>SCORE SANITARIO</div>
+            <div style={{display:'flex',alignItems:'baseline',gap:6}}>
+              <div style={{fontSize:26,fontWeight:800,lineHeight:1,color:sColor,fontFamily:'ui-monospace,monospace'}}>{scoreSanitario}</div>
+              <div style={{fontSize:9,color:sColor,fontWeight:800, letterSpacing: '0.1em'}}>{sl(scoreSanitario)}</div>
             </div>
           </div>
         )}
         {[
-          {label:'CORRALES',value:corrales.length,sub:`${alertas} alertas`},
-          {label:'ANIMALES',value:total,sub:`${pctOcup}% ocupación`},
-          {label:'CAPACIDAD',value:cap,sub:'total cabezas'},
-          {label:'GPS',value:corrales.filter(c=>c.gps_lat).length,sub:`de ${corrales.length}`},
+          {label:'CORRALES',value:corrales.length,sub:`${alertas} alertas`, color: '#F0F0F0'},
+          {label:'ANIMALES',value:total,sub:`${pctOcup}% ocupación`, color: '#F0F0F0'},
+          {label:'CAPACIDAD',value:cap,sub:'total cabezas', color: '#666'},
+          {label:'GPS',value:corrales.filter(c=>c.lat || c.pos_x).length,sub:`de ${corrales.length}`, color: '#2FAF8F'},
         ].map((s,i)=>(
-          <div key={i} style={{background:'#171717',border:'1px solid #1E1E1E',borderRadius:10,padding:'10px 14px'}}>
-            <div style={{fontSize:9,color:'#555',fontFamily:'ui-monospace,monospace',letterSpacing:'0.07em',marginBottom:4}}>{s.label}</div>
-            <div style={{fontSize:22,fontWeight:700,color:'#F0F0F0',lineHeight:1,fontFamily:'ui-monospace,monospace'}}>{s.value}</div>
-            <div style={{fontSize:9,color:'#444',marginTop:3,fontFamily:'ui-monospace,monospace'}}>{s.sub}</div>
+          <div key={i} style={{background:'rgba(23,23,23,0.4)', backdropFilter:'blur(8px)', border:'1px solid rgba(255,255,255,0.05)',borderRadius:12,padding:'12px 14px', boxShadow: '0 4px 15px rgba(0,0,0,0.2)'}}>
+            <div style={{fontSize:9,color:'#555',fontFamily:'ui-monospace,monospace',letterSpacing:'0.08em',marginBottom:6}}>{s.label}</div>
+            <div style={{fontSize:24,fontWeight:800,color:s.color,lineHeight:1,fontFamily:'ui-monospace,monospace'}}>{s.value}</div>
+            <div style={{fontSize:9,color:'#444',marginTop:4,fontFamily:'ui-monospace,monospace', fontWeight: 600}}>{s.sub}</div>
           </div>
         ))}
       </div>

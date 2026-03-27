@@ -1,0 +1,45 @@
+{
+    "name": "GANDIA 7",
+    "short_name": "GANDIA",
+    "description": "Sistema institucional de trazabilidad ganadera en México",
+    "start_url": "/campo",
+    "scope": "/",
+    "display": "standalone",
+    "orientation": "portrait-primary",
+    "background_color": "#0c0a09",
+    "theme_color": "#0c0a09",
+    "categories": [
+        "productivity",
+        "utilities"
+    ],
+    "lang": "es-MX",
+    "icons": [
+        {
+            "src": "/icons/icon-192.png",
+            "sizes": "192x192",
+            "type": "image/png",
+            "purpose": "any"
+        },
+        {
+            "src": "/icons/icon-512.png",
+            "sizes": "512x512",
+            "type": "image/png",
+            "purpose": "any"
+        },
+        {
+            "src": "/icons/icon-maskable-512.png",
+            "sizes": "512x512",
+            "type": "image/png",
+            "purpose": "maskable"
+        }
+    ],
+    "screenshots": [
+        {
+            "src": "/icons/screenshot-mobile.png",
+            "sizes": "390x844",
+            "type": "image/png",
+            "form_factor": "narrow",
+            "label": "GANDIA Campo — Agente de campo offline"
+        }
+    ]
+}

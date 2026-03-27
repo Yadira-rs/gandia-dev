@@ -43,7 +43,11 @@ function Splash() {
     supabase.auth.getSession()
       .then(({ data: { session } }) => {
         clearTimeout(fallback)
-        go(session?.user ? '/chat' : '/home')
+        // Si hay sesión: si hay internet va al chat, si no hay internet va a campo
+        const target = session?.user 
+          ? (navigator.onLine ? '/chat' : '/campo') 
+          : '/home'
+        go(target)
       })
       .catch(() => {
         clearTimeout(fallback)

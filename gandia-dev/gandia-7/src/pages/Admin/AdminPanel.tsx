@@ -101,8 +101,23 @@ interface PendingUser {
 
 type AuthStep = 'credentials' | 'master-key' | '2fa' | 'authenticated'
 type FilterType = 'all' | 'pending' | 'approved' | 'rejected'
-type MainTab = 'usuarios' | 'creadores' | 'aportes' | 'moderadores'
+type MainTab = 'usuarios' | 'creadores' | 'aportes' | 'wiki' | 'moderadores'
 interface Toast { id: string; type: 'success' | 'error' | 'info'; message: string }
+
+interface WikiPropuesta {
+  id:               string
+  user_id:          string
+  tipo_propuesta:   string
+  afirmacion:       string
+  contexto:         string | null
+  dominio:          string
+  tema_slug:        string | null
+  fuente_nombre:    string
+  fuente_articulo:  string | null
+  fuente_url:       string | null
+  status:           string
+  created_at:       string
+}
 
 interface CreatorRequest {
   id: string; user_id: string; creator_type: string; nivel: number
@@ -411,6 +426,12 @@ const AdminPanel = () => {
   const [submissionsLoading, setSubmissionsLoading] = useState(false)
   const [submissionFilter, setSubmissionFilter] = useState<'pendiente' | 'publicado' | 'rechazado' | 'todos'>('pendiente')
 
+  // ── Wiki ──
+  const [wikiProps, setWikiProps] = useState<WikiPropuesta[]>([])
+  const [selectedWiki, setSelectedWiki] = useState<WikiPropuesta | null>(null)
+  const [wikiLoading, setWikiLoading] = useState(false)
+  const [wikiFilter, setWikiFilter] = useState<'pending' | 'aprobado' | 'rechazado' | 'todos'>('pending')
+
   const showToast = useCallback((message: string, type: Toast['type'] = 'info') => {
     const id = Math.random().toString(36).substring(7)
     setToasts(p => [...p, { id, message, type }])
@@ -458,6 +479,23 @@ const AdminPanel = () => {
     finally { if (!silent) setSubmissionsLoading(false) }
   }
 
+  // ── Load wiki proposals ──
+  const loadWikiProps = async (silent = false) => {
+    if (!silent) setWikiLoading(true)
+    try {
+      const { data, error } = await supabase
+        .from('wiki_propuestas')
+        .select('*')
+        .order('created_at', { ascending: false })
+      if (error) {
+        console.error('[AdminPanel] error loading wiki_propuestas:', error)
+        showToast('Error cargando Wiki: ' + error.message, 'error')
+      }
+      setWikiProps((data as WikiPropuesta[]) ?? [])
+    } catch (err) { console.error('[AdminPanel] loadWikiProps catch:', err) }
+    finally { if (!silent) setWikiLoading(false) }
+  }
+
   // ── Realtime subscription: cualquier cambio en user_profiles → recarga ──
   const subscribeRealtime = useCallback(() => {
     if (realtimeChannel.current) {
@@ -489,6 +527,7 @@ const AdminPanel = () => {
     loadUsers()
     loadCreators()
     loadSubmissions()
+    loadWikiProps()
     loadModApps()
     subscribeRealtime()
     resetInactivityTimer()
@@ -687,6 +726,57 @@ const AdminPanel = () => {
       await loadSubmissions(); setSelectedSubmission(null)
       showToast('Aporte rechazado', 'success')
     } catch { showToast('Error al rechazar', 'error') }
+    finally { setIsActionLoading(false) }
+  }
+
+  // ── Wiki actions ──
+  const handleApproveWiki = async (p: WikiPropuesta) => {
+    setIsActionLoading(true)
+    try {
+      // 1. Crear el hecho en la Wiki
+      const { data: hecho, error: insErr } = await supabase.from('wiki_hechos').insert({
+        afirmacion:      p.afirmacion,
+        contexto:        p.contexto,
+        dominio:         p.dominio,
+        tema:            p.tema_slug ?? p.dominio,
+        fuente_nombre:   p.fuente_nombre,
+        fuente_articulo: p.fuente_articulo,
+        fuente_url:      p.fuente_url,
+        jurisdiccion:    'MX', // Default
+        hti:             75,   // Confianza inicial media-alta por ser verificado por admin
+        calidad_fuente:  4,
+        num_fuentes:     1,
+        sin_conflictos:  true,
+        estado:          'activo',
+        origen:          'comunitario',
+        verificado_at:   new Date().toISOString(),
+      }).select('id').single()
+
+      if (insErr) throw insErr
+
+      // 2. Marcar propuesta como aprobada
+      const { error: updErr } = await supabase.from('wiki_propuestas').update({
+        status: 'aprobado',
+        hecho_creado_id: (hecho as { id: string }).id
+      }).eq('id', p.id)
+
+      if (updErr) throw updErr
+
+      await loadWikiProps()
+      setSelectedWiki(null)
+      showToast('Hecho publicado en la Wiki ✓', 'success')
+    } catch (e: unknown) { showToast(e instanceof Error ? e.message : 'Error al aprobar Wiki', 'error') }
+    finally { setIsActionLoading(false) }
+  }
+
+  const handleRejectWiki = async (id: string) => {
+    setIsActionLoading(true)
+    try {
+      await supabase.from('wiki_propuestas').update({ status: 'rechazado' }).eq('id', id)
+      await loadWikiProps()
+      setSelectedWiki(null)
+      showToast('Propuesta Wiki rechazada', 'success')
+    } catch (e: unknown) { showToast(e instanceof Error ? e.message : 'Error al rechazar Wiki', 'error') }
     finally { setIsActionLoading(false) }
   }
 
@@ -931,12 +1021,19 @@ const AdminPanel = () => {
 
           {/* ── MAIN TABS ── */}
           <div className={`flex items-center gap-1 p-1 rounded-xl border mb-6 w-fit ${ isDark ? 'bg-[#121212] border-[#2A2A2A]' : 'bg-white border-[#EAEAEA]'}`}>
-            {(['usuarios', 'creadores', 'aportes', 'moderadores'] as MainTab[]).map(t => {
-              const labels: Record<MainTab, string> = { usuarios: 'Usuarios', creadores: 'Creadores', aportes: 'Aportes', moderadores: 'Moderadores' }
+            {(['usuarios', 'creadores', 'aportes', 'wiki', 'moderadores'] as MainTab[]).map(t => {
+              const labels: Record<MainTab, string> = { 
+                usuarios: 'Usuarios', 
+                creadores: 'Creadores', 
+                aportes: 'Aportes', 
+                wiki: 'Wiki',
+                moderadores: 'Moderadores' 
+              }
               const counts: Record<MainTab, number> = {
                 usuarios: users.filter(u => u.status === 'pending').length,
                 creadores: creators.filter(c => c.status === 'pendiente').length,
                 aportes: submissions.filter(s => s.status === 'pendiente').length,
+                wiki: wikiProps.filter(w => w.status === 'pending' || w.status === 'pendiente').length,
                 moderadores: modApps.filter(m => m.status === 'pendiente').length,
               }
               return (
@@ -1223,6 +1320,84 @@ const AdminPanel = () => {
             </div>
           )}
 
+          {/* ══ WIKI ══ */}
+          {mainTab === 'wiki' && (
+            <div>
+              <div className={`flex p-1 rounded-xl border gap-1 mb-5 w-fit ${ isDark ? 'bg-[#121212] border-[#2A2A2A]' : 'bg-white border-[#EAEAEA]'}`}>
+                {(['pending','aprobado','rechazado','todos'] as const).map(f => (
+                  <button key={f} onClick={() => setWikiFilter(f)}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all capitalize ${
+                      wikiFilter === f ? 'bg-[#2FAF8F] text-white shadow-md' : sec
+                    }`}>
+                    {f === 'pending' ? 'Pendientes' : f.charAt(0).toUpperCase() + f.slice(1)}
+                  </button>
+                ))}
+              </div>
+              {wikiLoading ? <SkeletonLoader isDark={isDark} /> : (
+                <div className="space-y-3">
+                  {wikiProps
+                    .filter(w => wikiFilter === 'todos' || w.status === (wikiFilter === 'pending' ? 'pendiente' : wikiFilter) || w.status === wikiFilter)
+                    .map(w => (
+                      <div key={w.id} className={`p-4 sm:p-5 rounded-2xl border transition-all hover:scale-[1.002] ${card}`}>
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="flex items-start gap-3 flex-1 min-w-0">
+                            <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${
+                              w.status === 'aprobado' ? 'bg-[#2FAF8F]/10' : w.status === 'rechazado' ? 'bg-red-500/10' : 'bg-orange-500/10'
+                            }`}>
+                              <Shield className={`w-5 h-5 ${
+                                w.status === 'aprobado' ? 'text-[#2FAF8F]' : w.status === 'rechazado' ? 'text-red-500' : 'text-orange-500'
+                              }`} />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2 flex-wrap mb-0.5">
+                                <h3 className="font-semibold text-sm truncate max-w-[400px]">{w.afirmacion}</h3>
+                                <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full shrink-0 ${
+                                  w.status === 'aprobado' ? 'bg-[#2FAF8F]/15 text-[#2FAF8F]'
+                                  : w.status === 'rechazado' ? 'bg-red-500/15 text-red-500'
+                                  : 'bg-orange-500/15 text-orange-500'
+                                }`}>{w.status}</span>
+                              </div>
+                              <p className={`text-xs mb-1 ${sec}`}>
+                                {w.dominio.toUpperCase()}
+                                {w.fuente_nombre ? ` · Fuente: ${w.fuente_nombre}` : ''}
+                              </p>
+                              <p className={`text-xs ${sec} line-clamp-2`}>{w.contexto}</p>
+                              <p className={`text-xs mt-1 ${sec}`}><Clock className="w-3 h-3 inline mr-1" />{timeAgo(w.created_at)}</p>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-1.5 shrink-0">
+                            <button onClick={() => setSelectedWiki(w)} title="Ver"
+                              className={`p-2.5 rounded-xl border transition-all hover:scale-110 ${ isDark ? 'border-[#2A2A2A] hover:bg-[#1A1A1A]' : 'border-[#EAEAEA] hover:bg-stone-50'}`}>
+                              <Eye className="w-4 h-4" strokeWidth={2} />
+                            </button>
+                            {(w.status === 'pendiente' || w.status === 'pending') && (
+                              <>
+                                <button onClick={() => handleApproveWiki(w)} disabled={isActionLoading}
+                                  className="p-2.5 rounded-xl bg-[#2FAF8F]/10 text-[#2FAF8F] hover:bg-[#2FAF8F]/25 transition-all hover:scale-110 disabled:opacity-50">
+                                  <CheckCircle className="w-4 h-4" strokeWidth={2} />
+                                </button>
+                                <button onClick={() => handleRejectWiki(w.id)} disabled={isActionLoading}
+                                  className="p-2.5 rounded-xl bg-red-500/10 text-red-500 hover:bg-red-500/25 transition-all hover:scale-110 disabled:opacity-50">
+                                  <XCircle className="w-4 h-4" strokeWidth={2} />
+                                </button>
+                              </>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    ))
+                  }
+                  {wikiProps.filter(w => wikiFilter === 'todos' || w.status === (wikiFilter === 'pending' ? 'pendiente' : wikiFilter) || w.status === wikiFilter).length === 0 && (
+                    <div className={`py-20 rounded-2xl border text-center ${card}`}>
+                      <p className="font-semibold text-lg mb-1">Sin propuestas Wiki</p>
+                      <p className={`text-sm ${sec}`}>No hay propuestas en este estado</p>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+
           {/* ══ MODERADORES ══ */}
           {mainTab === 'moderadores' && (
             <div>
@@ -1273,7 +1448,51 @@ const AdminPanel = () => {
         </div>
       </div>
 
-      {/* Modal detalle creador */}
+      {/* Modal detalle Wiki */}
+      {selectedWiki && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-md z-[100] flex items-center justify-center p-4" onClick={() => setSelectedWiki(null)}>
+          <div onClick={(e: React.MouseEvent) => e.stopPropagation()} className={`w-full max-w-lg rounded-2xl border shadow-2xl overflow-hidden flex flex-col ${ isDark ? 'bg-[#0c0a09] border-[#2A2A2A]' : 'bg-white border-stone-200'}`}>
+            <div className={`px-6 py-5 border-b flex items-start justify-between ${ isDark ? 'border-[#2A2A2A]' : 'border-stone-200'}`}>
+              <div>
+                <h2 className={`text-lg font-semibold mb-0.5 ${isDark ? 'text-stone-100' : 'text-stone-900'}`}>Propuesta de Hecho</h2>
+                <p className={`text-sm ${sec}`}>{selectedWiki.dominio.toUpperCase()} · {selectedWiki.status}</p>
+              </div>
+              <button onClick={() => setSelectedWiki(null)} className={`p-2 rounded-xl ${ isDark ? 'hover:bg-[#1A1A1A]' : 'hover:bg-stone-100'}`}>
+                <CloseIcon className={`w-5 h-5 ${isDark ? 'text-stone-400' : 'text-stone-600'}`} strokeWidth={2} />
+              </button>
+            </div>
+            <div className="p-6 space-y-4 overflow-y-auto max-h-[60vh]">
+              <div><p className={`text-xs font-semibold uppercase tracking-wider mb-1 ${sec}`}>Afirmación</p>
+              <p className={`text-sm leading-relaxed ${isDark ? 'text-stone-200' : 'text-stone-800'}`}>{selectedWiki.afirmacion}</p></div>
+              
+              {selectedWiki.contexto && (
+                <div><p className={`text-xs font-semibold uppercase tracking-wider mb-1 ${sec}`}>Contexto</p>
+                <p className={`text-sm leading-relaxed ${isDark ? 'text-stone-300' : 'text-stone-600'}`}>{selectedWiki.contexto}</p></div>
+              )}
+
+              <div><p className={`text-xs font-semibold uppercase tracking-wider mb-2 ${sec}`}>Fuente</p>
+              <p className="text-sm font-medium">{selectedWiki.fuente_nombre}</p>
+              {selectedWiki.fuente_articulo && <p className="text-xs text-stone-500">{selectedWiki.fuente_articulo}</p>}
+              {selectedWiki.fuente_url && (
+                <a key="url" href={selectedWiki.fuente_url} target="_blank" rel="noopener noreferrer"
+                  className="block text-xs text-[#2FAF8F] hover:underline truncate mt-1">{selectedWiki.fuente_url}</a>
+              )}</div>
+            </div>
+            {(selectedWiki.status === 'pendiente' || selectedWiki.status === 'pending') && (
+              <div className={`px-6 py-4 border-t flex gap-3 ${ isDark ? 'border-[#2A2A2A]' : 'border-stone-200'}`}>
+                <button onClick={() => handleApproveWiki(selectedWiki)} disabled={isActionLoading}
+                  className="flex-1 h-11 bg-[#2FAF8F] text-white rounded-xl font-semibold text-sm hover:bg-[#278F75] disabled:opacity-50 flex items-center justify-center gap-2">
+                  {isActionLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <><CheckCircle className="w-4 h-4" />Aprobar y Publicar</>}
+                </button>
+                <button onClick={() => handleRejectWiki(selectedWiki.id)} disabled={isActionLoading}
+                  className="flex-1 h-11 bg-red-500 text-white rounded-xl font-semibold text-sm hover:bg-red-600 disabled:opacity-50 flex items-center justify-center gap-2">
+                  <XCircle className="w-4 h-4" />Rechazar
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
       {selectedCreator && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-md z-[100] flex items-center justify-center p-4" onClick={() => setSelectedCreator(null)}>
           <div onClick={(e: React.MouseEvent) => e.stopPropagation()} className={`w-full max-w-lg rounded-2xl border shadow-2xl overflow-hidden flex flex-col ${ isDark ? 'bg-[#0c0a09] border-[#2A2A2A]' : 'bg-white border-stone-200'}`}>

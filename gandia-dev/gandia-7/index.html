@@ -1,57 +1,71 @@
 <!doctype html>
 <html lang="es-MX">
-  <head>
-    <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/favicon.ico" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>GANDIA 7 - Sistema Institucional de Trazabilidad Ganadera en México</title>
-    <meta name="description" content="Sistema oficial de trazabilidad ganadera para México. Pasaporte digital, gemelo digital, monitoreo 24/7 y certificación internacional. Cumplimiento NOM-001-ZOO-1994." />
-    <meta name="keywords" content="trazabilidad ganadera, ganado bovino México, pasaporte digital animal, SENASICA, SAGARPA, exportación ganado, certificación ganadera" />
 
-    <!-- Open Graph -->
-    <meta property="og:title" content="GANDIA 7 - Trazabilidad Ganadera Digital" />
-    <meta property="og:description" content="Infraestructura digital para trazabilidad del ecosistema ganadero mexicano. Operación offline-first, evidencia verificable." />
-    <meta property="og:type" content="website" />
-    <meta property="og:url" content="https://gandia.mx" />
-    <meta property="og:locale" content="es_MX" />
+<head>
+  <meta charset="UTF-8" />
+  <link rel="icon" type="image/svg+xml" href="/favicon.ico" />
+  <link rel="manifest" href="/manifest.json" />
+  <link rel="apple-touch-icon" href="/icons/icon-192.png" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="GANDIA" />
+  <meta name="theme-color" content="#0c0a09" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>GANDIA 7 - Sistema Institucional de Trazabilidad Ganadera en México</title>
+  <meta name="description"
+    content="Sistema oficial de trazabilidad ganadera para México. Pasaporte digital, gemelo digital, monitoreo 24/7 y certificación internacional. Cumplimiento NOM-001-ZOO-1994." />
+  <meta name="keywords"
+    content="trazabilidad ganadera, ganado bovino México, pasaporte digital animal, SENASICA, SAGARPA, exportación ganado, certificación ganadera" />
 
-    <!-- Twitter Card -->
-    <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:title" content="GANDIA 7 - Sistema de Trazabilidad Ganadera" />
-    <meta name="twitter:description" content="Sistema institucional para el ecosistema ganadero mexicano" />
+  <!-- Open Graph -->
+  <meta property="og:title" content="GANDIA 7 - Trazabilidad Ganadera Digital" />
+  <meta property="og:description"
+    content="Infraestructura digital para trazabilidad del ecosistema ganadero mexicano. Operación offline-first, evidencia verificable." />
+  <meta property="og:type" content="website" />
+  <meta property="og:url" content="https://gandia.mx" />
+  <meta property="og:locale" content="es_MX" />
 
-    <!-- Canonical -->
-    <link rel="canonical" href="https://gandia.mx" />
+  <!-- Twitter Card -->
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="GANDIA 7 - Sistema de Trazabilidad Ganadera" />
+  <meta name="twitter:description" content="Sistema institucional para el ecosistema ganadero mexicano" />
 
-    <!-- Anti-FOUC: aplica clase dark antes del primer paint -->
-    <script>
-      (function(){
-        try {
-          var t = localStorage.getItem('gandia-theme')
-          if (t === 'dark') {
+  <!-- Canonical -->
+  <link rel="canonical" href="https://gandia.mx" />
+
+  <!-- Anti-FOUC: aplica clase dark antes del primer paint -->
+  <script>
+    (function () {
+      try {
+        var t = localStorage.getItem('gandia-theme')
+        if (t === 'dark') {
+          document.documentElement.classList.add('dark')
+        } else if (t === 'light') {
+          document.documentElement.classList.remove('dark')
+        } else {
+          if (window.matchMedia('(prefers-color-scheme: dark)').matches)
             document.documentElement.classList.add('dark')
-          } else if (t === 'light') {
-            document.documentElement.classList.remove('dark')
-          } else {
-            if (window.matchMedia('(prefers-color-scheme: dark)').matches)
-              document.documentElement.classList.add('dark')
-          }
-        } catch(e) {}
-      })()
-    </script>
+        }
+      } catch (e) { }
+    })()
+  </script>
 
-    <!-- Font preference — GANDIA 7 -->
-    <style>
-      :root {
-        --font-app: 'Geist', system-ui, sans-serif;
-      }
-      body {
-        font-family: var(--font-app, 'Geist', system-ui, sans-serif);
-      }
-    </style>
-  </head>
-  <body>
-    <div id="root"></div>
-    <script type="module" src="/src/main.tsx"></script>
-  </body>
+  <!-- Font preference — GANDIA 7 -->
+  <style>
+    :root {
+      --font-app: 'Geist', system-ui, sans-serif;
+    }
+
+    body {
+      font-family: var(--font-app, 'Geist', system-ui, sans-serif);
+    }
+  </style>
+</head>
+
+<body>
+  <div id="root"></div>
+  <script type="module" src="/src/main.tsx"></script>
+</body>
+
 </html>

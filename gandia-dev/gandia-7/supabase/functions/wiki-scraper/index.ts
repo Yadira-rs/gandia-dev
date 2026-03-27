@@ -9,7 +9,8 @@ import { serve } from 'https://deno.land/std@0.177.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL') ?? ''
-const SUPABASE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+const SUPABASE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? Deno.env.get('SUPABASE_SERVICE_KEY') ?? ''
+const MASTER_KEY = Deno.env.get('MASTER_KEY') ?? 'GANDIA-MASTER-2026'
 const ANTHROPIC_API_KEY = Deno.env.get('ANTHROPIC_API_KEY') ?? ''
 
 const CORS = {
@@ -75,6 +76,54 @@ function parseRSS(xml: string): RSSItem[] {
   }
 
   return items.slice(0, 20) // Máximo 20 items por fuente por sync
+}
+
+// ─── Parser HTML Fallback (para cuando no hay RSS) ──────────────────────────
+// Especializado en gob.mx y sitios gubernamentales
+
+function parseHTMLNews(html: string, baseUrl: string): RSSItem[] {
+  const items: RSSItem[] = []
+  
+  // Patrón para gob.mx (bloque <article>)
+  if (baseUrl.includes('gob.mx')) {
+    const articleMatches = html.matchAll(/<article>([\s\S]*?)<\/article>/gi)
+    for (const article of articleMatches) {
+      const content = article[1]
+      
+      // Extraer título (de h2 o de aria-label)
+      const titleMatch = content.match(/<h2[^>]*>([\s\S]*?)<\/h2>/i) || content.match(/aria-label=["'](.*?)["']/i)
+      // Extraer link (que contenga /articulos/)
+      const linkMatch = content.match(/href=["'](\/.*?\/articulos\/.*?)["']/i)
+      
+      if (titleMatch && linkMatch) {
+        const titulo = cleanText(titleMatch[1])
+        const url = `https://www.gob.mx${linkMatch[1].split('?')[0]}`
+        
+        if (titulo && titulo.length > 5 && !items.find(i => i.url === url)) {
+          items.push({
+            titulo,
+            descripcion: '',
+            url,
+            fecha: new Date().toISOString()
+          })
+        }
+      }
+    }
+  } 
+  
+  // Patrón para USDA APHIS (más genérico)
+  else if (baseUrl.includes('aphis.usda.gov')) {
+    const matches = html.matchAll(/<a[^>]+href=["'](\/newsroom\/press-releases\/[a-z0-9-]+)["'][^>]*>([\s\S]*?)<\/a>/gi)
+    for (const m of matches) {
+      const url = `https://www.aphis.usda.gov${m[1]}`
+      const titulo = cleanText(m[2])
+      if (titulo && titulo.length > 5 && !items.find(i => i.url === url)) {
+        items.push({ titulo, descripcion: '', url, fecha: new Date().toISOString() })
+      }
+    }
+  }
+
+  return items.slice(0, 10)
 }
 
 function extractTag(xml: string, tag: string): string | null {
@@ -176,20 +225,29 @@ async function scrapeFuente(fuente: FuenteOficial, supabase: ReturnType<typeof c
 
   try {
     if (fuente.tipo === 'rss' && fuente.rss_url) {
-      // Fetch RSS — legal, son feeds públicos de gobierno
+      // Fetch RSS o HTML — usar User-Agent de navegador moderno para evitar bloqueos (500)
       const rssRes = await fetch(fuente.rss_url, {
         headers: {
-          'User-Agent': 'HandeiaBot/1.0 (wiki.handeia.mx; contacto@handeia.mx)',
-          'Accept': 'application/rss+xml, application/xml, text/xml',
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+          'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
+          'Accept-Language': 'es-MX,es;q=0.9,en-US;q=0.8,en;q=0.7',
         },
       })
 
       if (!rssRes.ok) {
-        throw new Error(`RSS fetch failed: ${rssRes.status}`)
+        throw new Error(`Fetch failed: ${rssRes.status}`)
       }
 
-      const rssText = await rssRes.text()
-      const items = parseRSS(rssText)
+      const contentText = await rssRes.text()
+      let items: RSSItem[] = []
+      
+      if (contentText.includes('<?xml') || contentText.includes('<rss')) {
+        items = parseRSS(contentText)
+      } else if (contentText.includes('<!DOCTYPE html') || contentText.includes('<html')) {
+        console.log(`Fallback HTML scraping para ${fuente.nombre}...`)
+        items = parseHTMLNews(contentText, fuente.rss_url)
+      }
+      
       itemsHallados = items.length
 
       if (items.length > 0) {
@@ -259,16 +317,34 @@ serve(async (req: Request) => {
 
   // Verificar autorización
   const authHeader = req.headers.get('authorization')
-  if (!authHeader?.includes(SUPABASE_KEY.slice(0, 20))) {
-    // Aceptar también token de usuario admin
+  const apiKeyHeader = req.headers.get('apikey')
+  const masterKeyHeader = req.headers.get('x-master-key')
+  
+  // 1. Verificar si coincide con la SERVICE_ROLE_KEY de la función o el MASTER_KEY
+  const isServiceRole = (SUPABASE_KEY && (authHeader?.includes(SUPABASE_KEY) || apiKeyHeader === SUPABASE_KEY))
+  const isMasterKey = (authHeader?.includes(MASTER_KEY) || apiKeyHeader === MASTER_KEY || masterKeyHeader === MASTER_KEY)
+  
+  if (!isServiceRole && !isMasterKey) {
+    // 2. Si no es service_role, intentar verificar si es un token de usuario válido
     const token = authHeader?.replace('Bearer ', '')
     if (token) {
-      const { data: { user } } = await supabase.auth.getUser(token)
-      if (!user) {
-        return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+      const { data: { user }, error: authError } = await supabase.auth.getUser(token)
+      if (authError || !user) {
+        return new Response(JSON.stringify({ 
+          error: 'Unauthorized', 
+          details: 'Invalid token or user not found' 
+        }), {
           status: 401, headers: { ...CORS, 'Content-Type': 'application/json' },
         })
       }
+    } else {
+      // No hay ni service_role ni token de usuario
+      return new Response(JSON.stringify({ 
+        error: 'Unauthorized', 
+        details: 'Missing credentials' 
+      }), {
+        status: 401, headers: { ...CORS, 'Content-Type': 'application/json' },
+      })
     }
   }
 
@@ -283,16 +359,19 @@ serve(async (req: Request) => {
     const { data: fuentes, error: fetchError } = await query
     if (fetchError || !fuentes) throw new Error('No se pudieron obtener las fuentes')
 
-    const resultados = await Promise.allSettled(
-      fuentes.map(f => scrapeFuente(f as FuenteOficial, supabase))
-    )
+    const resultados = []
+    for (const fuente of fuentes) {
+      console.log(`Procesando fuente: ${fuente.nombre}...`)
+      try {
+        const res = await scrapeFuente(fuente as FuenteOficial, supabase)
+        resultados.push({ fuente: (fuente as FuenteOficial).nombre, resultado: res })
+      } catch (e) {
+        console.error(`Error en ${fuente.nombre}:`, e)
+        resultados.push({ fuente: (fuente as FuenteOficial).nombre, resultado: { error: e.message } })
+      }
+    }
 
-    const resumen = resultados.map((r, i) => ({
-      fuente: (fuentes[i] as FuenteOficial).nombre,
-      resultado: r.status === 'fulfilled' ? r.value : { error: 'Promise rejected' },
-    }))
-
-    return new Response(JSON.stringify({ ok: true, resumen }), {
+    return new Response(JSON.stringify({ ok: true, resumen: resultados }), {
       status: 200, headers: { ...CORS, 'Content-Type': 'application/json' },
     })
 

@@ -10,10 +10,10 @@ import { canViewArtifact } from '../artifacts/artifactTypes'
 // ─── Derived user display from UserContext ───────────────────────────────────
 const ROLE_NAMES: Record<string, string> = {
   producer: 'Productor Ganadero',
-  mvz:      'Médico Veterinario',
-  union:    'Unión Ganadera',
+  mvz: 'Médico Veterinario',
+  union: 'Unión Ganadera',
   exporter: 'Exportador',
-  auditor:  'Auditor / Inspector',
+  auditor: 'Auditor / Inspector',
 }
 
 // ─── Ticker IA ────────────────────────────────────────────────────────────────
@@ -29,19 +29,19 @@ function getNavGroups(role: string) {
     {
       label: 'Principal',
       items: [
-        { label: 'Chat',       path: '/chat',                        icon: 'chat' },
-        { label: 'Radar',      path: '/noticias',                    icon: 'radar' },
-        canViewArtifact('fichas', role) === 'visual' ? { label: 'Fichas',     path: '/chat?open=fichas',          icon: 'file' } : null,
-        canViewArtifact('twins', role) === 'visual' ? { label: 'Gemelos',    path: '/chat?open=twins',             icon: 'copy' } : null,
+        { label: 'Chat', path: '/chat', icon: 'chat' },
+        { label: 'Radar', path: '/noticias', icon: 'radar' },
+        canViewArtifact('fichas', role) === 'visual' ? { label: 'Fichas', path: '/chat?open=fichas', icon: 'file' } : null,
+        canViewArtifact('twins', role) === 'visual' ? { label: 'Gemelos', path: '/chat?open=twins', icon: 'copy' } : null,
       ].filter(Boolean),
     },
     {
       label: 'Operaciones',
       items: [
-        canViewArtifact('monitoring', role) === 'visual' ? { label: 'Monitoreo',     path: '/chat?open=monitoring',     icon: 'eye' } : null,
-        canViewArtifact('certification', role) === 'visual' ? { label: 'Certificación', path: '/chat?open=certification',  icon: 'check-circle' } : null,
-        canViewArtifact('tramites', role) === 'visual' ? { label: 'Trámites',      path: role === 'producer' ? '/tramites' : '/tramites/panel', icon: 'tramites' } : null,
-        canViewArtifact('verification', role) === 'visual' ? { label: 'Verificación',  path: '/chat?open=verification',   icon: 'verified' } : null,
+        canViewArtifact('monitoring', role) === 'visual' ? { label: 'Monitoreo', path: '/chat?open=monitoring', icon: 'eye' } : null,
+        canViewArtifact('certification', role) === 'visual' ? { label: 'Certificación', path: '/chat?open=certification', icon: 'check-circle' } : null,
+        canViewArtifact('tramites', role) === 'visual' ? { label: 'Trámites', path: role === 'producer' ? '/tramites' : '/tramites/panel', icon: 'tramites' } : null,
+        canViewArtifact('verification', role) === 'visual' ? { label: 'Verificación', path: '/chat?open=verification', icon: 'verified' } : null,
       ].filter(Boolean),
     },
     {
@@ -59,36 +59,37 @@ function TickerIcon({ categoria }: { categoria: string }) {
   const s = { className: cls, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: '1.75', strokeLinecap: 'round' as const, strokeLinejoin: 'round' as const }
   switch (categoria) {
     case 'SANIDAD':
-      return <svg {...s}><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+      return <svg {...s}><path d="M22 12h-4l-3 9L9 3l-3 9H2" /></svg>
     case 'PRECIOS':
-      return <svg {...s}><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+      return <svg {...s}><line x1="12" y1="1" x2="12" y2="23" /><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" /></svg>
     case 'NORMATIVA':
-      return <svg {...s}><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="9" y1="13" x2="15" y2="13"/><line x1="9" y1="17" x2="15" y2="17"/></svg>
+      return <svg {...s}><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" /><line x1="9" y1="13" x2="15" y2="13" /><line x1="9" y1="17" x2="15" y2="17" /></svg>
     case 'CLIMA':
-      return <svg {...s}><path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"/></svg>
+      return <svg {...s}><path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z" /></svg>
     case 'EXPORTACION':
-      return <svg {...s}><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+      return <svg {...s}><circle cx="12" cy="12" r="10" /><line x1="2" y1="12" x2="22" y2="12" /><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" /></svg>
     case 'MERCADOS':
-      return <svg {...s}><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+      return <svg {...s}><polyline points="22 12 18 12 15 21 9 3 6 12 2 12" /></svg>
     default:
-      return <svg {...s}><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+      return <svg {...s}><circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" /></svg>
   }
 }
 
 // ─── AppLayout ────────────────────────────────────────────────────────────────
 function AppLayout() {
-  const [sidebarCollapsed, setSidebarCollapsed]     = useState(false)
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
   const [tickerItems, setTickerItems] = useState<{ texto: string; categoria: string }[]>(
     TICKER_FALLBACK.map(t => ({ texto: t, categoria: 'GENERAL' }))
   )
-  const [mobileMenuOpen,   setMobileMenuOpen]       = useState(false)
-  const [userMenuOpen,     setUserMenuOpen]         = useState(false)
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const [userMenuOpen, setUserMenuOpen] = useState(false)
   const [notificacionesOpen, setNotificacionesOpen] = useState(false)
-  const [logoutConfirmOpen,  setLogoutConfirmOpen]  = useState(false)
-  const [isLoggingOut,       setIsLoggingOut]       = useState(false)
+  const [logoutConfirmOpen, setLogoutConfirmOpen] = useState(false)
+  const [isLoggingOut, setIsLoggingOut] = useState(false)
+  const [online, setOnline] = useState(navigator.onLine)
   const userMenuRef = useRef<HTMLDivElement>(null)
-  const navigate    = useNavigate()
-  const location    = useLocation()
+  const navigate = useNavigate()
+  const location = useLocation()
   const { profile, profileReady } = useUser()
   const { unreadCount } = useNotifications()
 
@@ -104,7 +105,7 @@ function AppLayout() {
       if (data && data.length > 0) {
         setTickerItems(
           (data as { titulo: string; categoria: string; urgente: boolean }[]).map(n => ({
-            texto:     `${n.urgente ? 'Urgente · ' : ''}${n.titulo}`,
+            texto: `${n.urgente ? 'Urgente · ' : ''}${n.titulo}`,
             categoria: n.categoria,
           }))
         )
@@ -138,22 +139,22 @@ function AppLayout() {
   } = useVoiceNav({ enabled: voiceNavEnabled, onChatCmd: handleVoiceChatCmd })
 
   // Derivar datos de display desde el perfil del contexto
-  const pd  = (profile?.personal_data  as Record<string, string> | null) ?? {}
+  const pd = (profile?.personal_data as Record<string, string> | null) ?? {}
   const id_ = (profile?.institutional_data as Record<string, string> | null) ?? {}
 
   const displayName =
     pd.fullName || pd.full_name || pd.nombre_completo || pd.nombre ||
     profile?.email?.split('@')[0] || ''
 
-  const roleCode  = profile?.role ?? pd.role ?? ''
+  const roleCode = profile?.role ?? pd.role ?? ''
   const ranchName = id_.ranchName || id_.ranch_name || id_.rancho || ''
-  const subtitle  =
+  const subtitle =
     roleCode === 'producer' && ranchName
       ? ranchName
       : ROLE_NAMES[roleCode] || roleCode
 
   const avatarLetter = !profileReady ? '' : (displayName || profile?.email || '?').charAt(0).toUpperCase()
-  const ranchLetter  = !profileReady ? '' : (ranchName || displayName || profile?.email || '?').charAt(0).toUpperCase()
+  const ranchLetter = !profileReady ? '' : (ranchName || displayName || profile?.email || '?').charAt(0).toUpperCase()
 
   const currentUser = { displayName, subtitle, email: profile?.email ?? '', avatarLetter, ranchLetter }
 
@@ -234,15 +235,39 @@ function AppLayout() {
 
   // Voice → notificaciones open/close events
   useEffect(() => {
-    const open  = () => setNotificacionesOpen(true)
+    const open = () => setNotificacionesOpen(true)
     const close = () => setNotificacionesOpen(false)
-    window.addEventListener('gandia:notif-open',  open)
+    window.addEventListener('gandia:notif-open', open)
     window.addEventListener('gandia:notif-close', close)
     return () => {
-      window.removeEventListener('gandia:notif-open',  open)
+      window.removeEventListener('gandia:notif-open', open)
       window.removeEventListener('gandia:notif-close', close)
     }
   }, [])
+
+  // ─── Escuchar estado de conexión ───────────────────────────────────────────
+  useEffect(() => {
+    const handleOnline = () => {
+      setOnline(true)
+      // Si recuperamos red estando en /campo, volver al chat
+      if (location.pathname === '/campo') {
+        navigate('/chat', { replace: true })
+      }
+    }
+    const handleOffline = () => {
+      setOnline(false)
+      // Si perdemos red y no estamos en la página de Campo, forzar el salto
+      if (location.pathname !== '/campo' && location.pathname !== '/login') {
+        navigate('/campo', { replace: true })
+      }
+    }
+    window.addEventListener('online', handleOnline)
+    window.addEventListener('offline', handleOffline)
+    return () => {
+      window.removeEventListener('online', handleOnline)
+      window.removeEventListener('offline', handleOffline)
+    }
+  }, [location.pathname, navigate])
 
   return (
     <>
@@ -289,12 +314,15 @@ function AppLayout() {
         }
 
         /* Main content scrollbar */
-        main::-webkit-scrollbar { width: 3px; }
+        /* Main content scrollbar Premium */
+        main::-webkit-scrollbar { width: 2px; height: 2px; }
         main::-webkit-scrollbar-track { background: transparent; }
-        main::-webkit-scrollbar-thumb { background: #e7e5e4; border-radius: 999px; }
-        .dark main::-webkit-scrollbar-thumb { background: #3c3836; }
-        main { scrollbar-width: thin; scrollbar-color: #e7e5e4 transparent; }
-        .dark main { scrollbar-color: #3c3836 transparent; }
+        main::-webkit-scrollbar-thumb { background: rgba(0,0,10,0.15); border-radius: 10px; }
+        .dark main::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); }
+        main::-webkit-scrollbar-thumb:hover { background: rgba(0,0,10,0.25); }
+        .dark main::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.2); }
+        main { scrollbar-width: thin; scrollbar-color: rgba(0,0,10,0.15) transparent; }
+        .dark main { scrollbar-color: rgba(255,255,255,0.1) transparent; }
       `}</style>
 
       <div className="flex h-screen bg-[#fafaf9] dark:bg-[#0c0a09] overflow-hidden">
@@ -311,7 +339,7 @@ function AppLayout() {
                 {voiceAwaitLogout && (
                   <div className="g-fade flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl bg-rose-500 shadow-lg pointer-events-auto">
                     <svg className="w-3.5 h-3.5 text-white shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-                      <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/>
+                      <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" /><polyline points="16 17 21 12 16 7" /><line x1="21" y1="12" x2="9" y2="12" />
                     </svg>
                     <span className="text-[11.5px] font-medium text-white">Di "confirmar" para cerrar sesión</span>
                   </div>
@@ -330,7 +358,7 @@ function AppLayout() {
                 {voiceLastCmd && !voicePending && !voiceAwaitLogout && (
                   <div className="g-fade flex items-center gap-2 px-3 py-2 rounded-xl bg-[#1c1917] dark:bg-stone-100 shadow-lg">
                     <svg className="w-3 h-3 text-[#2FAF8F] shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-                      <path d="M12 2a3 3 0 0 1 3 3v7a3 3 0 0 1-6 0V5a3 3 0 0 1 3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="22"/>
+                      <path d="M12 2a3 3 0 0 1 3 3v7a3 3 0 0 1-6 0V5a3 3 0 0 1 3-3z" /><path d="M19 10v2a7 7 0 0 1-14 0v-2" /><line x1="12" y1="19" x2="12" y2="22" />
                     </svg>
                     <span className="text-[11.5px] font-medium text-white dark:text-stone-900 max-w-[180px] truncate">{voiceLastCmd}</span>
                   </div>
@@ -349,13 +377,12 @@ function AppLayout() {
                   <button
                     onClick={voiceTogglePause}
                     title={voicePaused ? 'Reanudar voz' : 'Pausar voz'}
-                    className={`flex items-center gap-2 px-3 py-2 rounded-xl shadow-lg transition-all active:scale-[0.97] ${
-                      voicePaused
+                    className={`flex items-center gap-2 px-3 py-2 rounded-xl shadow-lg transition-all active:scale-[0.97] ${voicePaused
                         ? 'bg-white dark:bg-[#1c1917] text-stone-400 dark:text-stone-500 border border-stone-200/60 dark:border-stone-700/50 opacity-70'
                         : voiceListening
                           ? 'bg-[#2FAF8F] text-white'
                           : 'bg-white dark:bg-[#1c1917] text-stone-400 dark:text-stone-500 border border-stone-200/60 dark:border-stone-700/50'
-                    }`}
+                      }`}
                   >
                     <span className={`relative flex w-2 h-2 shrink-0 ${voiceListening && !voicePaused ? '' : 'opacity-40'}`}>
                       {voiceListening && !voicePaused && (
@@ -365,8 +392,8 @@ function AppLayout() {
                     </span>
                     <svg className="w-3.5 h-3.5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round">
                       {voicePaused
-                        ? <><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></>
-                        : <><path d="M12 2a3 3 0 0 1 3 3v7a3 3 0 0 1-6 0V5a3 3 0 0 1 3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="22"/></>
+                        ? <><rect x="6" y="4" width="4" height="16" /><rect x="14" y="4" width="4" height="16" /></>
+                        : <><path d="M12 2a3 3 0 0 1 3 3v7a3 3 0 0 1-6 0V5a3 3 0 0 1 3-3z" /><path d="M19 10v2a7 7 0 0 1-14 0v-2" /><line x1="12" y1="19" x2="12" y2="22" /></>
                       }
                     </svg>
                     <span className="text-[11px] font-medium">
@@ -381,7 +408,7 @@ function AppLayout() {
                     className="w-7 h-7 flex items-center justify-center rounded-xl bg-white dark:bg-[#1c1917] border border-stone-200/60 dark:border-stone-700/50 text-stone-400 dark:text-stone-500 hover:text-stone-600 dark:hover:text-stone-300 shadow-lg transition-all active:scale-[0.95]"
                   >
                     <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
-                      <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+                      <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
                     </svg>
                   </button>
                 </div>
@@ -457,248 +484,252 @@ function AppLayout() {
         )}
 
         {/* ─── Sidebar ──────────────────────────────────────── */}
-        <aside
-          className={[
-            sidebarCollapsed ? 'lg:w-[68px]' : 'lg:w-[256px]',
-            'w-[256px] shrink-0',
-            'bg-white dark:bg-[#141210]',
-            'border-r border-stone-200/80 dark:border-stone-800/70',
-            'flex flex-col',
-            'transition-all duration-[240ms] ease-[cubic-bezier(0.4,0,0.2,1)]',
-            'fixed lg:relative h-full z-50',
-            mobileMenuOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0',
-          ].join(' ')}
-          aria-label="Navegación principal"
-        >
-          {/* Sidebar header */}
-          <div className={[
-            'h-[58px] flex items-center gap-3 border-b border-stone-100 dark:border-stone-800/50',
-            sidebarCollapsed ? 'px-4 lg:justify-center' : 'px-4',
-          ].join(' ')}>
+        {online && location.pathname !== '/campo' && (
+          <aside
+            className={[
+              sidebarCollapsed ? 'lg:w-[68px]' : 'lg:w-[256px]',
+              'w-[256px] shrink-0',
+              'bg-white dark:bg-[#141210]',
+              'border-r border-stone-200/80 dark:border-stone-800/70',
+              'flex flex-col',
+              'transition-all duration-[240ms] ease-[cubic-bezier(0.4,0,0.2,1)]',
+              'fixed lg:relative h-full z-50',
+              mobileMenuOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0',
+            ].join(' ')}
+            aria-label="Navegación principal"
+          >
+            {/* Sidebar header */}
+            <div className={[
+              'h-[58px] flex items-center gap-3 border-b border-stone-100 dark:border-stone-800/50',
+              sidebarCollapsed ? 'px-4 lg:justify-center' : 'px-4',
+            ].join(' ')}>
 
-            {/* Toggle button — desktop */}
-            <button
-              onClick={toggleSidebar}
-              className="hidden lg:flex w-8 h-8 items-center justify-center rounded-lg hover:bg-stone-100 dark:hover:bg-stone-800/60 transition-colors group relative shrink-0"
-              aria-label={sidebarCollapsed ? 'Expandir menú' : 'Colapsar menú'}
-            >
-              <svg
-                className={`w-[18px] h-[18px] text-stone-400 dark:text-stone-500 transition-all duration-150 ${sidebarCollapsed ? 'group-hover:opacity-0 group-hover:scale-75' : ''}`}
-                viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75"
-              >
-                <path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/>
-              </svg>
-              {sidebarCollapsed && (
-                <svg
-                  className="w-[18px] h-[18px] text-stone-400 dark:text-stone-500 absolute opacity-0 scale-75 group-hover:opacity-100 group-hover:scale-100 transition-all duration-150"
-                  viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75"
-                >
-                  <rect x="3" y="3" width="18" height="18" rx="2"/><line x1="9" y1="3" x2="9" y2="21"/>
-                </svg>
-              )}
-            </button>
-
-            {/* Logo — mobile only */}
-            <div className="lg:hidden w-8 h-8 flex items-center justify-center shrink-0">
-              <svg className="w-[18px] h-[18px] text-stone-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75">
-                <path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/>
-              </svg>
-            </div>
-
-            {/* Brand */}
-            <span className="lg:hidden text-[15px] font-semibold tracking-[-0.02em] text-stone-800 dark:text-stone-100">
-              Gandia 7
-            </span>
-            {!sidebarCollapsed && (
-              <span className="hidden lg:block text-[15px] font-semibold tracking-[-0.02em] text-stone-800 dark:text-stone-100 transition-all">
-                Gandia 7
-              </span>
-            )}
-
-            {/* Collapse button — desktop expanded */}
-            {!sidebarCollapsed && (
+              {/* Toggle button — desktop */}
               <button
                 onClick={toggleSidebar}
-                className="hidden lg:flex ml-auto w-7 h-7 items-center justify-center rounded-md text-stone-300 dark:text-stone-600 hover:text-stone-500 dark:hover:text-stone-400 hover:bg-stone-100 dark:hover:bg-stone-800/60 transition-all"
-                aria-label="Colapsar menú"
+                className="hidden lg:flex w-8 h-8 items-center justify-center rounded-lg hover:bg-stone-100 dark:hover:bg-stone-800/60 transition-colors group relative shrink-0"
+                aria-label={sidebarCollapsed ? 'Expandir menú' : 'Colapsar menú'}
               >
-                <svg className="w-[15px] h-[15px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <rect x="3" y="3" width="18" height="18" rx="2"/><line x1="9" y1="3" x2="9" y2="21"/>
+                <svg
+                  className={`w-[18px] h-[18px] text-stone-400 dark:text-stone-500 transition-all duration-150 ${sidebarCollapsed ? 'group-hover:opacity-0 group-hover:scale-75' : ''}`}
+                  viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75"
+                >
+                  <path d="M12 2L2 7l10 5 10-5-10-5z" /><path d="M2 17l10 5 10-5" /><path d="M2 12l10 5 10-5" />
                 </svg>
+                {sidebarCollapsed && (
+                  <svg
+                    className="w-[18px] h-[18px] text-stone-400 dark:text-stone-500 absolute opacity-0 scale-75 group-hover:opacity-100 group-hover:scale-100 transition-all duration-150"
+                    viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75"
+                  >
+                    <rect x="3" y="3" width="18" height="18" rx="2" /><line x1="9" y1="3" x2="9" y2="21" />
+                  </svg>
+                )}
               </button>
-            )}
 
-            {/* Close — mobile */}
-            <button
-              onClick={() => setMobileMenuOpen(false)}
-              className="lg:hidden ml-auto w-7 h-7 flex items-center justify-center rounded-md text-stone-400 hover:text-stone-600 hover:bg-stone-100 dark:hover:bg-stone-800 transition-colors"
-              aria-label="Cerrar menú"
-            >
-              <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
-              </svg>
-            </button>
-          </div>
-
-          {/* Nav */}
-          <nav className="flex-1 overflow-y-auto overflow-x-hidden py-2 px-2" aria-label="Menú">
-            {getNavGroups(roleCode).map((g) => (
-              <NavGroup
-                key={g.label}
-                label={g.label}
-                items={g.items}
-                collapsed={sidebarCollapsed}
-                isActive={isActive}
-                onNav={handleNav}
-              />
-            ))}
-          </nav>
-
-          {/* Footer */}
-          <div
-            className="relative border-t border-stone-100 dark:border-stone-800/50"
-            ref={userMenuRef}
-          >
-            {/* User popup */}
-            {userMenuOpen && (
-              <div className={[
-                'g-popup absolute bottom-full z-50 mb-2',
-                sidebarCollapsed
-                  ? 'hidden lg:block left-full ml-2 w-60'
-                  : 'left-2 right-2',
-              ].join(' ')}>
-                <div className="bg-white dark:bg-[#1c1917] rounded-[16px] border border-stone-200/80 dark:border-stone-800 shadow-[0_8px_32px_rgba(0,0,0,0.10)] dark:shadow-[0_8px_32px_rgba(0,0,0,0.45)] overflow-hidden">
-                  <UserMenuContent
-                    displayName={currentUser.displayName}
-                    email={currentUser.email}
-                    avatarLetter={currentUser.avatarLetter}
-                    onNav={(p) => { setUserMenuOpen(false); navigate(p) }}
-                    onLogout={() => { setUserMenuOpen(false); setLogoutConfirmOpen(true) }}
-                  />
-                </div>
+              {/* Logo — mobile only */}
+              <div className="lg:hidden w-8 h-8 flex items-center justify-center shrink-0">
+                <svg className="w-[18px] h-[18px] text-stone-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75">
+                  <path d="M12 2L2 7l10 5 10-5-10-5z" /><path d="M2 17l10 5 10-5" /><path d="M2 12l10 5 10-5" />
+                </svg>
               </div>
-            )}
 
-            {/* Footer button */}
-            <button
-              id="tour-target-perfil"
-              onClick={() => setUserMenuOpen(p => !p)}
-              aria-expanded={userMenuOpen}
-              aria-label="Menú de usuario"
-              className={[
-                'w-full h-[54px] flex items-center gap-3 px-4',
-                'hover:bg-stone-50 dark:hover:bg-stone-800/40 transition-colors',
-                sidebarCollapsed ? 'lg:justify-center lg:px-0' : '',
-              ].join(' ')}
-            >
-              <Avatar letter={currentUser.avatarLetter} size={28} />
-              <span className={[
-                'text-[13px] font-medium text-stone-700 dark:text-stone-200 truncate flex-1 text-left',
-                sidebarCollapsed ? 'lg:hidden' : '',
-              ].join(' ')}>
-                {currentUser.displayName || <span className="opacity-40">Cargando...</span>}
+              {/* Brand */}
+              <span className="lg:hidden text-[15px] font-semibold tracking-[-0.02em] text-stone-800 dark:text-stone-100">
+                Gandia 7
               </span>
               {!sidebarCollapsed && (
-                <svg
-                  className={`w-3.5 h-3.5 text-stone-400 transition-transform duration-200 ${userMenuOpen ? 'rotate-180' : ''}`}
-                  viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"
-                >
-                  <polyline points="18 15 12 9 6 15"/>
-                </svg>
+                <span className="hidden lg:block text-[15px] font-semibold tracking-[-0.02em] text-stone-800 dark:text-stone-100 transition-all">
+                  Gandia 7
+                </span>
               )}
-            </button>
-          </div>
-        </aside>
+
+              {/* Collapse button — desktop expanded */}
+              {!sidebarCollapsed && (
+                <button
+                  onClick={toggleSidebar}
+                  className="hidden lg:flex ml-auto w-7 h-7 items-center justify-center rounded-md text-stone-300 dark:text-stone-600 hover:text-stone-500 dark:hover:text-stone-400 hover:bg-stone-100 dark:hover:bg-stone-800/60 transition-all"
+                  aria-label="Colapsar menú"
+                >
+                  <svg className="w-[15px] h-[15px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <rect x="3" y="3" width="18" height="18" rx="2" /><line x1="9" y1="3" x2="9" y2="21" />
+                  </svg>
+                </button>
+              )}
+
+              {/* Close — mobile */}
+              <button
+                onClick={() => setMobileMenuOpen(false)}
+                className="lg:hidden ml-auto w-7 h-7 flex items-center justify-center rounded-md text-stone-400 hover:text-stone-600 hover:bg-stone-100 dark:hover:bg-stone-800 transition-colors"
+                aria-label="Cerrar menú"
+              >
+                <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+                </svg>
+              </button>
+            </div>
+
+            {/* Nav */}
+            <nav className="flex-1 overflow-y-auto overflow-x-hidden py-2 px-2" aria-label="Menú">
+              {getNavGroups(roleCode).map((g) => (
+                <NavGroup
+                  key={g.label}
+                  label={g.label}
+                  items={g.items}
+                  collapsed={sidebarCollapsed}
+                  isActive={isActive}
+                  onNav={handleNav}
+                />
+              ))}
+            </nav>
+
+            {/* Footer */}
+            <div
+              className="relative border-t border-stone-100 dark:border-stone-800/50"
+              ref={userMenuRef}
+            >
+              {/* User popup */}
+              {userMenuOpen && (
+                <div className={[
+                  'g-popup absolute bottom-full z-50 mb-2',
+                  sidebarCollapsed
+                    ? 'hidden lg:block left-full ml-2 w-60'
+                    : 'left-2 right-2',
+                ].join(' ')}>
+                  <div className="bg-white dark:bg-[#1c1917] rounded-[16px] border border-stone-200/80 dark:border-stone-800 shadow-[0_8px_32px_rgba(0,0,0,0.10)] dark:shadow-[0_8px_32px_rgba(0,0,0,0.45)] overflow-hidden">
+                    <UserMenuContent
+                      displayName={currentUser.displayName}
+                      email={currentUser.email}
+                      avatarLetter={currentUser.avatarLetter}
+                      onNav={(p) => { setUserMenuOpen(false); navigate(p) }}
+                      onLogout={() => { setUserMenuOpen(false); setLogoutConfirmOpen(true) }}
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* Footer button */}
+              <button
+                id="tour-target-perfil"
+                onClick={() => setUserMenuOpen(p => !p)}
+                aria-expanded={userMenuOpen}
+                aria-label="Menú de usuario"
+                className={[
+                  'w-full h-[54px] flex items-center gap-3 px-4',
+                  'hover:bg-stone-50 dark:hover:bg-stone-800/40 transition-colors',
+                  sidebarCollapsed ? 'lg:justify-center lg:px-0' : '',
+                ].join(' ')}
+              >
+                <Avatar letter={currentUser.avatarLetter} size={28} />
+                <span className={[
+                  'text-[13px] font-medium text-stone-700 dark:text-stone-200 truncate flex-1 text-left',
+                  sidebarCollapsed ? 'lg:hidden' : '',
+                ].join(' ')}>
+                  {currentUser.displayName || <span className="opacity-40">Cargando...</span>}
+                </span>
+                {!sidebarCollapsed && (
+                  <svg
+                    className={`w-3.5 h-3.5 text-stone-400 transition-transform duration-200 ${userMenuOpen ? 'rotate-180' : ''}`}
+                    viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"
+                  >
+                    <polyline points="18 15 12 9 6 15" />
+                  </svg>
+                )}
+              </button>
+            </div>
+          </aside>
+        )}
 
         {/* ─── Main ─────────────────────────────────────────── */}
         <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
 
           {/* ── Glassmorphic header ──────────────────────────── */}
-          <header className="relative z-20 shrink-0 h-[54px] flex items-center gap-3 px-4 lg:px-5 bg-white/40 dark:bg-[#0c0a09]/40 backdrop-blur-2xl backdrop-saturate-[180%] border-b border-white/60 dark:border-white/[0.06] shadow-[0_1px_0_rgba(255,255,255,0.8),0_2px_12px_rgba(0,0,0,0.06)] dark:shadow-[0_1px_0_rgba(255,255,255,0.04),0_2px_16px_rgba(0,0,0,0.35)]">
+          {online && location.pathname !== '/campo' && (
+            <header className="relative z-20 shrink-0 h-[54px] flex items-center gap-3 px-4 lg:px-5 bg-white/40 dark:bg-[#0c0a09]/40 backdrop-blur-2xl backdrop-saturate-[180%] border-b border-white/60 dark:border-white/[0.06] shadow-[0_1px_0_rgba(255,255,255,0.8),0_2px_12px_rgba(0,0,0,0.06)] dark:shadow-[0_1px_0_rgba(255,255,255,0.04),0_2px_16px_rgba(0,0,0,0.35)]">
 
-            {/* Hamburger — mobile */}
-            <button
-              onClick={() => setMobileMenuOpen(true)}
-              className="lg:hidden w-8 h-8 flex items-center justify-center rounded-lg text-stone-500 hover:bg-stone-100 dark:hover:bg-stone-800 transition-colors shrink-0"
-              aria-label="Abrir menú"
-            >
-              <svg className="w-[18px] h-[18px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75">
-                <line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/>
-              </svg>
-            </button>
-
-            {/* Ranch / profile identity */}
-            <button
-              onClick={() => navigate('/perfil-rancho')}
-              className="flex items-center gap-2 group shrink-0"
-              aria-label="Perfil del rancho"
-            >
-              <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-[#2FAF8F] to-[#1a9070] flex items-center justify-center text-white text-[11px] font-bold shadow-sm transition-transform group-hover:scale-105">
-                {currentUser.ranchLetter}
-              </div>
-              <span className="block text-[13px] font-semibold tracking-[-0.015em] text-stone-700 dark:text-stone-200 group-hover:text-[#2FAF8F] transition-colors">
-                {currentUser.subtitle || currentUser.displayName}
-              </span>
-            </button>
-
-            {/* Separator */}
-            <div className="hidden md:block w-px h-3.5 bg-stone-200 dark:bg-stone-700/60 shrink-0 mx-0.5" />
-
-            {/* ── News ticker ────────────────────────────────── */}
-            {tickerItems.length > 0 && <button
-              onClick={() => navigate('/noticias')}
-              className="hidden md:flex flex-1 items-center gap-2.5 min-w-0 overflow-hidden rounded-lg py-1 px-1 -mx-1 hover:bg-stone-100/60 dark:hover:bg-stone-800/30 transition-colors duration-150 group/ticker"
-              aria-label="Ver todas las noticias"
-            >
-              <span className="shrink-0 inline-flex items-center gap-1.5 text-[10.5px] font-semibold uppercase tracking-[0.10em] text-stone-400 dark:text-stone-500 group-hover/ticker:text-stone-600 dark:group-hover/ticker:text-stone-300 transition-colors">
-                <span className="w-[5px] h-[5px] rounded-full bg-[#2FAF8F] animate-pulse shrink-0" />
-                Radar
-              </span>
-              <div className="flex-1 overflow-hidden relative">
-                <div className="pointer-events-none absolute left-0 top-0 bottom-0 w-5 bg-gradient-to-r from-transparent to-transparent z-10" />
-                <div className="pointer-events-none absolute right-0 top-0 bottom-0 w-8 bg-gradient-to-l from-transparent to-transparent z-10" />
-                <div className="g-ticker flex whitespace-nowrap select-none" aria-label="Noticias de IA">
-                  {[...tickerItems, ...tickerItems].map((item, i) => (
-                    <span
-                      key={i}
-                      className="shrink-0 inline-flex items-center gap-2 text-[11.5px] text-stone-500 dark:text-stone-400 group-hover/ticker:text-stone-700 dark:group-hover/ticker:text-stone-300 px-5 border-r border-stone-200/50 dark:border-stone-700/40 last:border-r-0 transition-colors"
-                    >
-                      <TickerIcon categoria={item.categoria} />
-                      {item.texto}
-                    </span>
-                  ))}
-                </div>
-              </div>
-              <svg className="shrink-0 w-3 h-3 text-stone-300 dark:text-stone-600 group-hover/ticker:text-[#2FAF8F] transition-colors mr-1" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                <polyline points="9 18 15 12 9 6"/>
-              </svg>
-            </button>}
-
-            {/* Right: notifications */}
-            <div className="ml-auto shrink-0 relative">
+              {/* Hamburger — mobile */}
               <button
-                id="tour-target-notificaciones"
-                onClick={() => setNotificacionesOpen(p => !p)}
-                className="w-8 h-8 flex items-center justify-center rounded-lg text-stone-400 hover:text-[#2FAF8F] hover:bg-stone-100 dark:hover:bg-stone-800 transition-colors group relative"
-                aria-label="Notificaciones"
-                aria-expanded={notificacionesOpen}
+                onClick={() => setMobileMenuOpen(true)}
+                className="lg:hidden w-8 h-8 flex items-center justify-center rounded-lg text-stone-500 hover:bg-stone-100 dark:hover:bg-stone-800 transition-colors shrink-0"
+                aria-label="Abrir menú"
               >
                 <svg className="w-[18px] h-[18px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75">
-                  <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
-                  <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+                  <line x1="3" y1="6" x2="21" y2="6" /><line x1="3" y1="12" x2="21" y2="12" /><line x1="3" y1="18" x2="21" y2="18" />
                 </svg>
-                {unreadCount > 0 && (
-                  <span className="absolute -top-0.5 -right-0.5 min-w-[15px] h-[15px] bg-rose-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center px-1 leading-none shadow-sm">
-                    {unreadCount > 99 ? '99+' : unreadCount}
-                  </span>
-                )}
               </button>
-              <NotificacionesPanel
-                isOpen={notificacionesOpen}
-                onClose={() => setNotificacionesOpen(false)}
-              />
-            </div>
-          </header>
+
+              {/* Ranch / profile identity */}
+              <button
+                onClick={() => navigate('/perfil-rancho')}
+                className="flex items-center gap-2 group shrink-0"
+                aria-label="Perfil del rancho"
+              >
+                <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-[#2FAF8F] to-[#1a9070] flex items-center justify-center text-white text-[11px] font-bold shadow-sm transition-transform group-hover:scale-105">
+                  {currentUser.ranchLetter}
+                </div>
+                <span className="block text-[13px] font-semibold tracking-[-0.015em] text-stone-700 dark:text-stone-200 group-hover:text-[#2FAF8F] transition-colors">
+                  {currentUser.subtitle || currentUser.displayName}
+                </span>
+              </button>
+
+              {/* Separator */}
+              <div className="hidden md:block w-px h-3.5 bg-stone-200 dark:bg-stone-700/60 shrink-0 mx-0.5" />
+
+              {/* ── News ticker ────────────────────────────────── */}
+              {tickerItems.length > 0 && <button
+                onClick={() => navigate('/noticias')}
+                className="hidden md:flex flex-1 items-center gap-2.5 min-w-0 overflow-hidden rounded-lg py-1 px-1 -mx-1 hover:bg-stone-100/60 dark:hover:bg-stone-800/30 transition-colors duration-150 group/ticker"
+                aria-label="Ver todas las noticias"
+              >
+                <span className="shrink-0 inline-flex items-center gap-1.5 text-[10.5px] font-semibold uppercase tracking-[0.10em] text-stone-400 dark:text-stone-500 group-hover/ticker:text-stone-600 dark:group-hover/ticker:text-stone-300 transition-colors">
+                  <span className="w-[5px] h-[5px] rounded-full bg-[#2FAF8F] animate-pulse shrink-0" />
+                  Radar
+                </span>
+                <div className="flex-1 overflow-hidden relative">
+                  <div className="pointer-events-none absolute left-0 top-0 bottom-0 w-5 bg-gradient-to-r from-transparent to-transparent z-10" />
+                  <div className="pointer-events-none absolute right-0 top-0 bottom-0 w-8 bg-gradient-to-l from-transparent to-transparent z-10" />
+                  <div className="g-ticker flex whitespace-nowrap select-none" aria-label="Noticias de IA">
+                    {[...tickerItems, ...tickerItems].map((item, i) => (
+                      <span
+                        key={i}
+                        className="shrink-0 inline-flex items-center gap-2 text-[11.5px] text-stone-500 dark:text-stone-400 group-hover/ticker:text-stone-700 dark:group-hover/ticker:text-stone-300 px-5 border-r border-stone-200/50 dark:border-stone-700/40 last:border-r-0 transition-colors"
+                      >
+                        <TickerIcon categoria={item.categoria} />
+                        {item.texto}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+                <svg className="shrink-0 w-3 h-3 text-stone-300 dark:text-stone-600 group-hover/ticker:text-[#2FAF8F] transition-colors mr-1" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                  <polyline points="9 18 15 12 9 6" />
+                </svg>
+              </button>}
+
+              {/* Right: notifications */}
+              <div className="ml-auto shrink-0 relative">
+                <button
+                  id="tour-target-notificaciones"
+                  onClick={() => setNotificacionesOpen(p => !p)}
+                  className="w-8 h-8 flex items-center justify-center rounded-lg text-stone-400 hover:text-[#2FAF8F] hover:bg-stone-100 dark:hover:bg-stone-800 transition-colors group relative"
+                  aria-label="Notificaciones"
+                  aria-expanded={notificacionesOpen}
+                >
+                  <svg className="w-[18px] h-[18px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75">
+                    <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
+                    <path d="M13.73 21a2 2 0 0 1-3.46 0" />
+                  </svg>
+                  {unreadCount > 0 && (
+                    <span className="absolute -top-0.5 -right-0.5 min-w-[15px] h-[15px] bg-rose-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center px-1 leading-none shadow-sm">
+                      {unreadCount > 99 ? '99+' : unreadCount}
+                    </span>
+                  )}
+                </button>
+                <NotificacionesPanel
+                  isOpen={notificacionesOpen}
+                  onClose={() => setNotificacionesOpen(false)}
+                />
+              </div>
+            </header>
+          )}
 
           {/* Page content */}
           <main className="flex-1 overflow-y-auto">
@@ -742,9 +773,9 @@ function NavGroup({
           collapsed={collapsed}
           onClick={() => onNav(item.path)}
           tourId={
-            item.label === 'Chat'          ? 'tour-target-chat'           :
-            item.label === 'Trámites'      ? 'tour-target-tramites'       :
-            undefined
+            item.label === 'Chat' ? 'tour-target-chat' :
+              item.label === 'Trámites' ? 'tour-target-tramites' :
+                undefined
           }
         />
       ))}
@@ -811,7 +842,7 @@ function NavItem({
 // ─── LANGUAGE SUBMENU ─────────────────────────────────────────────────────────
 const LANGUAGES = [
   { code: 'es', label: 'Español', flag: '🇲🇽', native: 'Español' },
-  { code: 'en', label: 'Inglés',  flag: '🇺🇸', native: 'English' },
+  { code: 'en', label: 'Inglés', flag: '🇺🇸', native: 'English' },
 ]
 
 function LangMenuItem({
@@ -837,11 +868,10 @@ function LangMenuItem({
     <div className="relative" ref={ref}>
       <button
         onClick={() => setOpen(p => !p)}
-        className={`w-full flex items-center gap-2.5 px-3 py-[9px] rounded-xl text-[13px] font-medium transition-colors duration-100 active:scale-[0.98] ${
-          open
+        className={`w-full flex items-center gap-2.5 px-3 py-[9px] rounded-xl text-[13px] font-medium transition-colors duration-100 active:scale-[0.98] ${open
             ? 'bg-stone-100 dark:bg-stone-800/50 text-stone-800 dark:text-stone-100'
             : 'text-stone-700 dark:text-stone-200 hover:bg-stone-100 dark:hover:bg-stone-800/50'
-        }`}
+          }`}
       >
         <span className={`shrink-0 ${open ? 'text-[#2FAF8F]' : 'text-stone-400 dark:text-stone-500'}`}>
           <IcoGlobe />
@@ -855,7 +885,7 @@ function LangMenuItem({
             className={`w-3 h-3 transition-transform duration-200 ${open ? 'rotate-180 text-[#2FAF8F]' : 'text-stone-300 dark:text-stone-600'}`}
             viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"
           >
-            <polyline points="6 9 12 15 18 9"/>
+            <polyline points="6 9 12 15 18 9" />
           </svg>
         </span>
       </button>
@@ -868,17 +898,16 @@ function LangMenuItem({
               <button
                 key={lang.code}
                 onClick={() => { onSelect(lang.code); setOpen(false) }}
-                className={`w-full flex items-center gap-3 px-2 py-2 rounded-xl text-[13px] font-medium transition-colors duration-100 active:scale-[0.98] ${
-                  isSelected
+                className={`w-full flex items-center gap-3 px-2 py-2 rounded-xl text-[13px] font-medium transition-colors duration-100 active:scale-[0.98] ${isSelected
                     ? 'text-[#2FAF8F]'
                     : 'text-stone-500 dark:text-stone-400 hover:bg-stone-100 dark:hover:bg-stone-800/50 hover:text-stone-800 dark:hover:text-stone-100'
-                }`}
+                  }`}
               >
                 <span className="text-[16px] leading-none">{lang.flag}</span>
                 <span>{lang.native}</span>
                 {isSelected && (
                   <svg className="ml-auto w-3.5 h-3.5 text-[#2FAF8F] shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                    <polyline points="20 6 9 17 4 12"/>
+                    <polyline points="20 6 9 17 4 12" />
                   </svg>
                 )}
               </button>
@@ -898,10 +927,10 @@ function UserMenuContent({
   onNav,
   onLogout,
 }: {
-  displayName:  string
-  email:        string
+  displayName: string
+  email: string
   avatarLetter: string
-  onNav:    (p: string) => void
+  onNav: (p: string) => void
   onLogout: () => void
 }) {
   const [currentLang, setCurrentLang] = useState('es')
@@ -923,13 +952,13 @@ function UserMenuContent({
       </div>
 
       <div className="py-1.5 px-1.5">
-        <UMenuItem icon={<IcoStar />}     label="Mejorar plan"    onClick={() => onNav('/plan')} />
+        <UMenuItem icon={<IcoStar />} label="Mejorar plan" onClick={() => onNav('/plan')} />
         <UMenuItem icon={<IcoSettings />} label="Configuraciones" onClick={() => onNav('/configuraciones')} />
         <LangMenuItem
           currentLang={currentLang}
           onSelect={(code) => setCurrentLang(code)}
         />
-        <UMenuItem icon={<IcoHelp />}     label="Ayuda"           onClick={() => onNav('/ayuda')} />
+        <UMenuItem icon={<IcoHelp />} label="Ayuda" onClick={() => onNav('/ayuda')} />
         <div className="my-1.5 mx-1 border-t border-stone-100 dark:border-stone-800" />
         <UMenuItem icon={<IcoLogout />} label="Cerrar sesión" onClick={onLogout} danger />
       </div>
@@ -982,31 +1011,32 @@ function getIcon(name: string, active = false) {
   const cls = `w-[17px] h-[17px] shrink-0 transition-colors ${active ? 'text-[#2FAF8F]' : ''}`
   const s = { className: cls, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: '1.75' } as const
   const map: Record<string, React.ReactNode> = {
-    chat:          <svg {...s}><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>,
-    file:          <svg {...s}><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>,
-    copy:          <svg {...s}><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>,
-    eye:           <svg {...s}><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>,
-    'check-circle':<svg {...s}><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>,
-    tramites:      <svg {...s}><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="9" y1="15" x2="15" y2="15"/><line x1="9" y1="11" x2="15" y2="11"/></svg>,
-    verified:      <svg {...s}><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>,
-    clock:         <svg {...s}><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>,
-    newspaper:     <svg {...s}><path d="M4 22h16a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2H8a2 2 0 0 0-2 2v16a2 2 0 0 1-2 2zm0 0a2 2 0 0 1-2-2v-9c0-1.1.9-2 2-2h2"/><path d="M18 14h-8"/><path d="M15 18h-5"/><path d="M10 6h8v4h-8z"/></svg>,
-    radar:         <svg {...s}><circle cx="12" cy="12" r="2"/><path d="M16.24 7.76a6 6 0 0 1 0 8.49"/><path d="M7.76 7.76a6 6 0 0 0 0 8.49"/><path d="M20.07 4.93a10 10 0 0 1 0 14.14"/><path d="M3.93 4.93a10 10 0 0 0 0 14.14"/></svg>,
+    chat: <svg {...s}><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" /></svg>,
+    campo: <svg {...s}><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" /><polyline points="9 22 9 12 15 12 15 22" /></svg>,
+    file: <svg {...s}><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" /></svg>,
+    copy: <svg {...s}><rect x="9" y="9" width="13" height="13" rx="2" /><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" /></svg>,
+    eye: <svg {...s}><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" /><circle cx="12" cy="12" r="3" /></svg>,
+    'check-circle': <svg {...s}><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" /><polyline points="22 4 12 14.01 9 11.01" /></svg>,
+    tramites: <svg {...s}><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" /><line x1="9" y1="15" x2="15" y2="15" /><line x1="9" y1="11" x2="15" y2="11" /></svg>,
+    verified: <svg {...s}><path d="M9 11l3 3L22 4" /><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" /></svg>,
+    clock: <svg {...s}><circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" /></svg>,
+    newspaper: <svg {...s}><path d="M4 22h16a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2H8a2 2 0 0 0-2 2v16a2 2 0 0 1-2 2zm0 0a2 2 0 0 1-2-2v-9c0-1.1.9-2 2-2h2" /><path d="M18 14h-8" /><path d="M15 18h-5" /><path d="M10 6h8v4h-8z" /></svg>,
+    radar: <svg {...s}><circle cx="12" cy="12" r="2" /><path d="M16.24 7.76a6 6 0 0 1 0 8.49" /><path d="M7.76 7.76a6 6 0 0 0 0 8.49" /><path d="M20.07 4.93a10 10 0 0 1 0 14.14" /><path d="M3.93 4.93a10 10 0 0 0 0 14.14" /></svg>,
   }
   return map[name] ?? null
 }
 
 // ─── Inline icons (user menu) ─────────────────────────────────────────────────
 const ico = { className: 'w-4 h-4', viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: '1.75', strokeLinecap: 'round' as const, strokeLinejoin: 'round' as const }
-const IcoStar     = () => <svg {...ico}><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
-const IcoSettings = () => <svg {...ico}><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
-const IcoGlobe    = () => <svg {...ico}><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
-const IcoHelp     = () => <svg {...ico}><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><circle cx="12" cy="17" r="0.5" fill="currentColor"/></svg>
-const IcoLogout   = ({ className = 'w-4 h-4' }: { className?: string }) =>
+const IcoStar = () => <svg {...ico}><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" /></svg>
+const IcoSettings = () => <svg {...ico}><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" /><circle cx="12" cy="12" r="3" /></svg>
+const IcoGlobe = () => <svg {...ico}><circle cx="12" cy="12" r="10" /><line x1="2" y1="12" x2="22" y2="12" /><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" /></svg>
+const IcoHelp = () => <svg {...ico}><circle cx="12" cy="12" r="10" /><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" /><circle cx="12" cy="17" r="0.5" fill="currentColor" /></svg>
+const IcoLogout = ({ className = 'w-4 h-4' }: { className?: string }) =>
   <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
-    <polyline points="16 17 21 12 16 7"/>
-    <line x1="21" y1="12" x2="9" y2="12"/>
+    <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+    <polyline points="16 17 21 12 16 7" />
+    <line x1="21" y1="12" x2="9" y2="12" />
   </svg>
 
 export default AppLayout

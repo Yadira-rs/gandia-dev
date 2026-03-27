@@ -129,11 +129,20 @@ export default function ModeradorPanelPage() {
   }, [])
 
   const loadPropuestas = useCallback(async () => {
-    const { data } = await supabase
-      .from('wiki_propuestas')
-      .select('*')
-      .order('created_at', { ascending: false })
-    setPropuestas((data as WikiPropuesta[]) ?? [])
+    try {
+      const { data, error } = await supabase
+        .from('wiki_propuestas')
+        .select('*')
+        .order('created_at', { ascending: false })
+      if (error) {
+        console.error('[ModeradorPanel] loadPropuestas error:', error)
+        showToast('Error cargando Wiki: ' + error.message)
+      }
+      setPropuestas((data as WikiPropuesta[]) ?? [])
+    } catch (err) {
+      console.error('[ModeradorPanel] loadPropuestas catch:', err)
+      showToast('Error de conexión con la Wiki')
+    }
   }, [])
 
   useEffect(() => {

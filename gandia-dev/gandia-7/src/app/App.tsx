@@ -5,9 +5,9 @@ import { UserProvider, useUser } from '../context/UserContext'
 import { NotificationsProvider } from '../context/NotificationsContext'
 
 const IGNORE_ROUTES  = ['/splash', '/home', '/blog', '/contacto', '/recursos',
-                        '/legal', '/compliance', '/modelo-operativo', '/admin', '/signup']
+                        '/legal', '/compliance', '/modelo-operativo', '/admin', '/signup', '/campo']
 
-const PRIVATE_ROUTES = ['/chat', '/historial', '/notificaciones', '/configuraciones',
+const PRIVATE_ROUTES = ['/chat', '/campo', '/historial', '/notificaciones', '/configuraciones',
                         '/voz', '/ayuda', '/plan', '/tramites', '/noticias', '/perfil',
                         '/onboarding', '/tour']
 

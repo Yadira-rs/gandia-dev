@@ -183,7 +183,7 @@ export function ChatInputBar({
         .dark .ch-textarea::-webkit-scrollbar-thumb { background: rgba(168,162,158,0.15); }
         .dark .ch-textarea::-webkit-scrollbar-thumb:hover { background: rgba(168,162,158,0.30); }
       `}</style>
-    <div className="px-4 lg:pl-10 lg:pr-6 pb-6 shrink-0">
+    <div className="px-4 lg:px-6 pb-2 shrink-0">
       <div className="max-w-170 mx-auto">
 
         {/* ── Dictation banner ─────────────────────────────────── */}

@@ -207,13 +207,12 @@ export default function TwinsFeedWidget({
         {/* FIX: barra usa el prop `completitud` real en lugar de contar tarjetas */}
         <div className="relative h-2.5 bg-stone-100 dark:bg-stone-800/50 rounded-full overflow-hidden">
           <div
-            className={`h-full rounded-full transition-all duration-700 ${
-              completitud >= 90
-                ? "bg-[#2FAF8F]"
-                : completitud >= 70
-                  ? "bg-amber-400"
-                  : "bg-rose-400"
-            }`}
+            className={`h-full rounded-full transition-all duration-700 ${completitud >= 90
+              ? "bg-[#2FAF8F]"
+              : completitud >= 70
+                ? "bg-amber-400"
+                : "bg-rose-400"
+              }`}
             style={{ width: `${completitud}%` }}
           />
         </div>
@@ -257,10 +256,9 @@ export default function TwinsFeedWidget({
             <div
               key={a.id}
               className={`bg-white dark:bg-[#1c1917] rounded-[12px] overflow-hidden border cursor-pointer transition-all hover:shadow-sm
-                ${
-                  a.estado === "incompleto"
-                    ? `${cfg.leftBorder} border border-rose-200/70 dark:border-rose-800/40`
-                    : "border border-stone-200/60 dark:border-stone-800/50"
+                ${a.estado === "incompleto"
+                  ? `${cfg.leftBorder} border border-rose-200/70 dark:border-rose-800/40`
+                  : "border border-stone-200/60 dark:border-stone-800/50"
                 }`}
               onClick={() => {
                 setExpanded(isOpen ? null : a.id);
@@ -308,20 +306,18 @@ export default function TwinsFeedWidget({
               {isOpen && (
                 <>
                   <div
-                    className={`flex flex-wrap gap-1.5 px-4 py-2.5 border-t ${
-                      a.estado === "incompleto"
-                        ? "bg-rose-50/40 dark:bg-rose-950/10 border-rose-100 dark:border-rose-800/20"
-                        : "bg-stone-50/60 dark:bg-stone-800/20 border-stone-100 dark:border-stone-800/40"
-                    }`}
+                    className={`flex flex-wrap gap-1.5 px-4 py-2.5 border-t ${a.estado === "incompleto"
+                      ? "bg-rose-50/40 dark:bg-rose-950/10 border-rose-100 dark:border-rose-800/20"
+                      : "bg-stone-50/60 dark:bg-stone-800/20 border-stone-100 dark:border-stone-800/40"
+                      }`}
                   >
                     {a.pills.map((p, i) => (
                       <div
                         key={i}
-                        className={`flex items-center gap-1.5 text-[11px] px-2.5 py-1 rounded-[7px] border ${
-                          p.ok
-                            ? "bg-white dark:bg-[#1c1917] border-stone-200/70 dark:border-stone-700/50 text-stone-600 dark:text-stone-300"
-                            : "bg-rose-50 dark:bg-rose-950/20 border-rose-200 dark:border-rose-800/30 text-rose-600 dark:text-rose-400"
-                        }`}
+                        className={`flex items-center gap-1.5 text-[11px] px-2.5 py-1 rounded-[7px] border ${p.ok
+                          ? "bg-white dark:bg-[#1c1917] border-stone-200/70 dark:border-stone-700/50 text-stone-600 dark:text-stone-300"
+                          : "bg-rose-50 dark:bg-rose-950/20 border-rose-200 dark:border-rose-800/30 text-rose-600 dark:text-rose-400"
+                          }`}
                       >
                         <span
                           className={`shrink-0 ${p.ok ? "text-[#2FAF8F]" : "text-rose-400"}`}
@@ -341,11 +337,10 @@ export default function TwinsFeedWidget({
                       <IcoHash />
                     </span>
                     <span
-                      className={`font-mono text-[9.5px] truncate ${
-                        a.hashOk
-                          ? "text-stone-400 dark:text-stone-500"
-                          : "text-stone-300 dark:text-stone-600 italic"
-                      }`}
+                      className={`font-mono text-[9.5px] truncate ${a.hashOk
+                        ? "text-stone-400 dark:text-stone-500"
+                        : "text-stone-300 dark:text-stone-600 italic"
+                        }`}
                     >
                       {a.hash}
                     </span>

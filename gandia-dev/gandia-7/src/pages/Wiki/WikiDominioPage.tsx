@@ -62,9 +62,25 @@ export default function WikiDominioPage() {
     setLoadingH(false)
   }, [])
 
+  const loadHechosGeneral = useCallback(async (dom: string) => {
+    setLoadingH(true)
+    const { data } = await supabase
+      .from('wiki_hechos')
+      .select('id,afirmacion,hti,fuente_nombre,verificado_at,estado')
+      .eq('dominio', dom)
+      .in('estado', ['activo', 'en_revision'])
+      .order('hti', { ascending: false })
+    setHechos((data as WikiHecho[]) ?? [])
+    setLoadingH(false)
+  }, [])
+
   const selectTema = async (tema: WikiTema) => {
     setTemaActivo(tema)
-    await loadHechos(tema.slug, dominio ?? '')
+    if (tema.id === 'virtual-general') {
+      await loadHechosGeneral(dominio ?? '')
+    } else {
+      await loadHechos(tema.slug, dominio ?? '')
+    }
   }
 
   useEffect(() => {
@@ -79,26 +95,53 @@ export default function WikiDominioPage() {
         .order('orden')
 
       const temasList = (temasData as WikiTema[]) ?? []
+      
+      let finalTemas = temasList
 
-      // Contar hechos por tema
-      const temasConConteo = await Promise.all(
-        temasList.map(async t => {
-          const { count } = await supabase
-            .from('wiki_hechos')
-            .select('*', { count: 'exact', head: true })
-            .eq('dominio', dominio)
-            .eq('tema', t.slug)
-            .eq('estado', 'activo')
-          return { ...t, hechos_count: count ?? 0 }
-        })
-      )
+      // Si no hay temas definidos pero hay hechos, crear un tema virtual "General"
+      if (temasList.length === 0) {
+        const { count } = await supabase
+          .from('wiki_hechos')
+          .select('*', { count: 'exact', head: true })
+          .eq('dominio', dominio)
+          .eq('estado', 'activo')
+        
+        if ((count ?? 0) > 0) {
+          finalTemas = [{
+            id: 'virtual-general',
+            slug: 'general',
+            titulo: 'Información General',
+            descripcion: 'Hechos verificados en este dominio.',
+            hechos_count: count ?? 0
+          }]
+        }
+      } else {
+        // Contar hechos por tema (solo si hay temas reales)
+        finalTemas = await Promise.all(
+          temasList.map(async t => {
+            const { count } = await supabase
+              .from('wiki_hechos')
+              .select('*', { count: 'exact', head: true })
+              .eq('dominio', dominio)
+              .eq('tema', t.slug)
+              .eq('estado', 'activo')
+            return { ...t, hechos_count: count ?? 0 }
+          })
+        )
+      }
 
-      setTemas(temasConConteo)
+      setTemas(finalTemas)
 
       // Si hay temas, cargar el primero
-      if (temasConConteo.length > 0) {
-        setTemaActivo(temasConConteo[0] ?? null)
-        await loadHechos(temasConConteo[0]?.slug ?? '', dominio)
+      if (finalTemas.length > 0) {
+        setTemaActivo(finalTemas[0] ?? null)
+        // Intentar cargar por el slug del tema activo
+        // Pero si es el virtual, cargar todos los hechos del dominio que no tengan tema o sean del slug
+        if (finalTemas[0].slug === 'general' && finalTemas[0].id === 'virtual-general') {
+          await loadHechosGeneral(dominio)
+        } else {
+          await loadHechos(finalTemas[0]?.slug ?? '', dominio)
+        }
       }
 
       setLoading(false)
@@ -174,101 +217,98 @@ export default function WikiDominioPage() {
             </div>
           ) : (
             /* Layout split: temas izq, hechos der */
-            <div className="flex gap-6 fu" style={{ animationDelay: '100ms' }}>
-
-              {/* Panel izquierdo — Temas */}
-              <div className="w-[220px] shrink-0">
-                <p className="text-[10.5px] font-semibold text-stone-400 dark:text-stone-500 uppercase tracking-[0.08em] mb-3">
-                  Temas ({temas.length})
-                </p>
-                <div className="space-y-1">
-                  {temas.map(t => (
-                    <button
-                      key={t.id}
-                      onClick={() => void selectTema(t)}
-                      className={`w-full text-left px-3 py-2.5 rounded-xl transition-all duration-150 ${
-                        temaActivo?.id === t.id
-                          ? 'bg-[#2FAF8F]/10 border border-[#2FAF8F]/30'
-                          : 'hover:bg-stone-100 dark:hover:bg-stone-800/50 border border-transparent'
-                      }`}
-                    >
-                      <p className={`text-[13px] font-medium leading-snug ${
-                        temaActivo?.id === t.id
-                          ? 'text-[#2FAF8F]'
-                          : 'text-stone-700 dark:text-stone-300'
-                      }`}>
-                        {t.titulo}
-                      </p>
-                      {(t.hechos_count ?? 0) > 0 && (
-                        <p className="text-[10.5px] text-stone-400 dark:text-stone-500 mt-0.5">
-                          {t.hechos_count} {(t.hechos_count ?? 0) === 1 ? 'hecho' : 'hechos'}
-                        </p>
-                      )}
-                    </button>
-                  ))}
+            <div className="fu" style={{ animationDelay: '100ms' }}>
+              {/* Selector de temas (Solo si hay más de 1) */}
+              {temas.length > 1 && (
+                <div className="mb-10 border-b border-stone-200 dark:border-stone-800">
+                  <div className="flex gap-8 overflow-x-auto pb-px scrollbar-hide">
+                    {temas.map(t => {
+                      const isActive = temaActivo?.id === t.id;
+                      return (
+                        <button
+                          key={t.id}
+                          onClick={() => void selectTema(t)}
+                          className={`pb-4 text-[13.5px] font-medium transition-all relative shrink-0 ${
+                            isActive 
+                              ? 'text-stone-900 dark:text-stone-50' 
+                              : 'text-stone-400 dark:text-stone-600 hover:text-stone-600 dark:hover:text-stone-400'
+                          }`}
+                        >
+                          {t.titulo}
+                          {isActive && (
+                            <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-stone-900 dark:bg-stone-50" />
+                          )}
+                          {(t.hechos_count ?? 0) > 0 && (
+                            <span className="ml-1.5 text-[10px] opacity-60">({t.hechos_count})</span>
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
-              </div>
+              )}
 
-              {/* Panel derecho — Hechos */}
-              <div className="flex-1 min-w-0">
+              {/* Contenido — Hechos */}
+              <div className="min-w-0">
                 {temaActivo && (
                   <>
-                    <div className="mb-5">
-                      <h2 className="text-[16px] font-semibold text-stone-800 dark:text-stone-100 mb-0.5">
+                    <div className="mb-8">
+                      <h2 className="text-[18px] font-semibold text-stone-800 dark:text-stone-100 mb-1.5">
                         {temaActivo.titulo}
                       </h2>
                       {temaActivo.descripcion && (
-                        <p className="text-[12.5px] text-stone-400 dark:text-stone-500">
+                        <p className="text-[13px] text-stone-400 dark:text-stone-500 max-w-[600px] leading-relaxed">
                           {temaActivo.descripcion}
                         </p>
                       )}
                     </div>
 
                     {loadingH ? (
-                      <div className="flex justify-center py-10">
-                        <div className="w-4 h-4 border-[1.5px] border-[#2FAF8F] border-t-transparent rounded-full animate-spin" />
+                      <div className="flex justify-center py-12">
+                        <div className="w-5 h-5 border-[1.5px] border-stone-300 dark:border-stone-700 border-t-stone-900 dark:border-t-stone-50 rounded-full animate-spin" />
                       </div>
                     ) : hechos.length === 0 ? (
-                      <p className="text-[13px] text-stone-400 dark:text-stone-500 py-8 text-center">
-                        Sin hechos en este tema aún.
-                      </p>
+                      <div className="py-12 bg-white dark:bg-stone-900/20 rounded-2xl border border-stone-100 dark:border-stone-800/50 text-center">
+                        <p className="text-[13px] text-stone-400 dark:text-stone-500">
+                          Sin hechos verificados en este tema.
+                        </p>
+                      </div>
                     ) : (
-                      <div className="divide-y divide-stone-100 dark:divide-stone-800/40">
+                      <div className="space-y-3">
                         {hechos.map((h, i) => (
                           <button
                             key={h.id}
                             onClick={() => navigate(`/wiki/hecho/${h.id}`)}
-                            className="w-full text-left py-3.5 group fu"
+                            className="w-full text-left p-5 rounded-2xl bg-white dark:bg-[#121212] border border-stone-100 dark:border-stone-900/50 hover:border-stone-200 dark:hover:border-stone-800 hover:shadow-sm transition-all group fu"
                             style={{ animationDelay: `${i * 40}ms` }}
                           >
-                            <div className="flex items-start gap-3">
-                              <div className="shrink-0 mt-[5px] w-1.5 h-1.5 rounded-full bg-stone-300 dark:bg-stone-700 group-hover:bg-[#2FAF8F] transition-colors" />
+                            <div className="flex items-start gap-4">
                               <div className="flex-1 min-w-0">
-                                <p className="text-[13.5px] text-stone-700 dark:text-stone-300 leading-[1.55] group-hover:text-stone-900 dark:group-hover:text-stone-100 transition-colors mb-1.5">
+                                <p className="text-[14.5px] text-stone-700 dark:text-stone-300 leading-relaxed font-medium mb-3 group-hover:text-stone-900 dark:group-hover:text-stone-50 transition-colors">
                                   {h.afirmacion}
                                 </p>
-                                <div className="flex items-center gap-2.5">
-                                  <span
-                                    className="text-[10.5px] font-semibold tabular-nums"
-                                    style={{ color: htiColor(h.hti) }}
-                                  >
+                                <div className="flex flex-wrap items-center gap-3">
+                                  <div className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-stone-50 dark:bg-stone-800/50 border border-stone-100 dark:border-stone-800`}
+                                    style={{ color: htiColor(h.hti) }}>
                                     HTI {h.hti}
-                                  </span>
-                                  <span className="text-stone-200 dark:text-stone-700">·</span>
-                                  <span className="text-[10.5px] text-stone-400 dark:text-stone-500 truncate">
+                                  </div>
+                                  <span className="text-stone-200 dark:text-stone-800 text-[10px]">|</span>
+                                  <span className="text-[11px] text-stone-400 dark:text-stone-500 font-medium">
                                     {h.fuente_nombre}
                                   </span>
                                   {h.estado === 'en_revision' && (
                                     <>
-                                      <span className="text-stone-200 dark:text-stone-700">·</span>
-                                      <span className="text-[9.5px] font-semibold text-amber-500">En revisión</span>
+                                      <span className="w-1 h-1 rounded-full bg-stone-300 dark:bg-stone-700" />
+                                      <span className="text-[10px] font-bold text-amber-500/80 uppercase tracking-widest">Revisión</span>
                                     </>
                                   )}
                                 </div>
                               </div>
-                              <svg className="w-3 h-3 shrink-0 text-stone-300 dark:text-stone-700 group-hover:text-stone-400 transition-colors mt-1.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-                                <polyline points="9 18 15 12 9 6"/>
-                              </svg>
+                              <div className="mt-1 p-2 rounded-xl bg-stone-50 dark:bg-stone-950/50 group-hover:bg-stone-100 dark:group-hover:bg-stone-900 transition-colors">
+                                <svg className="w-3.5 h-3.5 text-stone-300 dark:text-stone-700 group-hover:text-stone-500 transition-colors" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                                  <polyline points="9 18 15 12 9 6"/>
+                                </svg>
+                              </div>
                             </div>
                           </button>
                         ))}

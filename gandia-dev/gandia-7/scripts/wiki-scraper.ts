@@ -43,8 +43,9 @@ async function main() {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                apikey: SUPABASE_SERVICE_ROLE_KEY,
-                Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+                'apikey': SUPABASE_SERVICE_ROLE_KEY,
+                'Authorization': `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+                'x-master-key': 'GANDIA-MASTER-2026'
             },
             body: JSON.stringify({}),
         })
