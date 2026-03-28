@@ -1,0 +1,6 @@
+VITE_SUPABASE_URL=https://hmicjywweeozibtycesg.supabase.co
+VITE_SUPABASE_ANON_KEY=sb_publishable_2j-YUCgJaP0Y6K1CUs1gIg_n_qXoGS5
+VITE_ADMIN_MASTER_KEY=GANDIA-MASTER-2026
+VITE_SUPABASE_FUNCTIONS_URL=https://hmicjywweeozibtycesg.supabase.co/functions/v1
+VITE_ACIPE_URL=https://tu-backend.com
+VITE_BIOMETRIA_API_URL=http://127.0.0.1:8000

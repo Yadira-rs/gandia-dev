@@ -16,6 +16,7 @@ export default defineConfig({
 
       // ── Service Worker ─────────────────────────────────────────────────────
       workbox: {
+        maximumFileSizeToCacheInBytes: 10 * 1024 * 1024, // 10 MB para evitar el error con archivos grandes
         // Estrategia: Network First con fallback a cache
         // Ideal para GANDIA: intenta red, si falla usa cache local
         runtimeCaching: [
